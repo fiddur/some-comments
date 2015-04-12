@@ -2,9 +2,13 @@
   background: yellowgreen;
   padding: .5rem;
 }
+.comment_row {
+  display: table-row;
+}
+
 .comments .user {
   vertical-align: top;
-  display: inline-block;
+  display: table-cell;
   width:  2rem;
   height: 2rem;
   border: 1px solid grey;
@@ -13,7 +17,7 @@
 
 .comments .comment_text {
   vertical-align: top;
-  display: inline-block;
+  display: table-cell;
   margin-left: 0.1rem;
 }
 

@@ -19,7 +19,7 @@
  * GNU-AGPL-3.0
  */
 
-function(window) {
+(function(window) {
   /**
    * Make a shortcut to document.getElementById…
    */
@@ -148,9 +148,10 @@ function(window) {
   Comment.getElement = function(comment) {
     var div = document.createElement('div')
 
+    div.className = 'comment_row'
     div.innerHTML =
-      '<div class="user"><img alt="' + comment.displayName + '" src="' + comment.avatar + '" /></div>'
-      + '<div class="comment_text">'
+      '<div class="user"><img alt="' + comment.displayName + '" src="' + comment.avatar
+      + '" /></div><div class="comment_text">'
       + markdown.toHTML('**' + comment.displayName + '**: ' + comment.text) + '</div>'
     console.log(div)
 
@@ -162,6 +163,7 @@ function(window) {
   window.Comment = Comment
   window.Site    = Site
   window.User    = User
-}(window)
+  window.e       = e
+})(window)
 
 // @license-end
