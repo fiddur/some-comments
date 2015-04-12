@@ -1,0 +1,33 @@
+.comments {
+  background: yellowgreen;
+  padding: .5rem;
+}
+.comments .user {
+  vertical-align: top;
+  display: inline-block;
+  width:  2rem;
+  height: 2rem;
+  border: 1px solid grey;
+  overflow: hidden;
+}
+
+.comments .comment_text {
+  vertical-align: top;
+  display: inline-block;
+  margin-left: 0.1rem;
+}
+
+.comments .comment_text p:first-child {
+  margin-top: 0;
+}
+
+iframe.login {
+  position: fixed;
+  top: 5%;
+  left: 5%;
+  width: 800px;
+  max-width: 90%;
+  height: 800px;
+  max-height: 90%;
+  background: white;
+}
