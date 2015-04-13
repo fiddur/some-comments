@@ -1,5 +1,5 @@
 .comments {
-  background: yellowgreen;
+  background: wheat;
   padding: .5rem;
 }
 .comment_row {
@@ -11,14 +11,26 @@
   display: table-cell;
   width:  2rem;
   height: 2rem;
-  border: 1px solid grey;
   overflow: hidden;
+  padding-bottom: 0.2rem;
 }
 
 .comments .comment_text {
   vertical-align: top;
   display: table-cell;
-  margin-left: 0.1rem;
+  padding-left: 0.5rem;
+  border-bottom: 1px solid lightgrey;
+}
+.comment_text .created {
+  font-size: 70%;
+  color:     grey;
+}
+
+.comment_preview {
+  border: 1px solig lightgrey;
+}
+.comment_text textarea {
+  width: 100%;
 }
 
 .comments .comment_text p:first-child {

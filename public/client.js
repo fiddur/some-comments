@@ -20,6 +20,8 @@
  */
 
 (function(window) {
+  var baseUrl = 'http://localhost:1337'
+
   /**
    * Make a shortcut to document.getElementById…
    */
@@ -70,7 +72,7 @@
 
     var deferred = Q.defer()
     window.addEventListener("message", function(event) {
-      if (event.origin !== 'http://localhost:1337') {
+      if (event.origin !== baseUrl) {
         console.log('This does not originate from localhost:1337! Ignoring')
         return
       }
@@ -83,7 +85,6 @@
     }, false);
 
     document.body.appendChild(iframe)
-    console.log(iframe.contentWindow)
 
     return deferred.promise
   }
@@ -91,7 +92,7 @@
   var Site = {}
   Site.add = function(domain) {
     return ajax.post(
-      'http://localhost:1337/sites/', {domain: domain})
+      baseUrl + '/sites/', {domain: domain})
       .then(
         function(response) {
           console.log('Added site', response)
@@ -101,18 +102,11 @@
       )
   }
   Site.list = function() {
-    return ajax.get('http://localhost:1337/sites/')
-      .then(function(sites_json) {
-        console.log('in list')
-        return JSON.parse(sites_json)
-      })
+    return ajax.get(baseUrl + '/sites/').then(function(sites_json) {return JSON.parse(sites_json)})
   }
 
   Site.list().then(
-    function(sites) {
-      console.log("Number of sites", sites.length)
-      e('sites').innerHTML = sites
-    },
+    function(sites) {e('sites').innerHTML = sites},
     function(error) {console.log('Error', error)}
   )
 
@@ -120,7 +114,7 @@
   var Comment = {}
 
   Comment.getAllByPage = function(site, page) {
-    return ajax.get('http://localhost:1337/sites/' + site + '/pages/' + page + '/comments/')
+    return ajax.get(baseUrl + '/sites/' + site + '/pages/' + page + '/comments/')
       .then(function(commentsJson) {
         return JSON.parse(commentsJson)
       })
@@ -128,7 +122,7 @@
 
   Comment.add = function(site, page, text) {
     return ajax.post(
-      'http://localhost:1337/sites/' + site + '/pages/' + page + '/comments/', {text: text})
+      baseUrl + '/sites/' + site + '/pages/' + page + '/comments/', {text: text})
       .then(
         function(response) {
           console.log('Added comment', response)
@@ -139,10 +133,28 @@
   }
 
   Comment.displayAll = function(comments, element) {
-    console.log(element, comments)
-    for (var i = 0; i < comments.length; i++) {
-      element.appendChild(Comment.getElement(comments[i]))
-    }
+    for (var i = 0; i < comments.length; i++) {element.appendChild(Comment.getElement(comments[i]))}
+
+    // Add input field
+    var div = document.createElement('div')
+    div.className = 'comment_row'
+    user = {displayName: 'Foo Bar', avatar: 'nope'}
+    div.innerHTML =
+      '<div class="user"><img alt="' + user.displayName + '" src="' + user.avatar
+      + '" /></div><div class="comment_text">'
+      + '<textarea id="comment_123" placeholder="Comment…"></textarea>'
+      + '<div class="comment_preview" id="preview_123"></div></div>'
+    element.appendChild(div)
+    new Editor(e("comment_123"), e("preview_123"));
+
+  }
+
+  function Editor(input, preview) {
+    this.update = function () {
+      preview.innerHTML = markdown.toHTML(input.value);
+    };
+    input.editor = this;
+    this.update();
   }
 
   Comment.getElement = function(comment) {
@@ -152,9 +164,8 @@
     div.innerHTML =
       '<div class="user"><img alt="' + comment.displayName + '" src="' + comment.avatar
       + '" /></div><div class="comment_text">'
-      + markdown.toHTML('**' + comment.displayName + '**: ' + comment.text) + '</div>'
-    console.log(div)
-
+      + markdown.toHTML('**' + comment.displayName + '**: ' + comment.text)
+      + '<div class="created">' + comment.created + '</div></div>'
 
     return div
   }

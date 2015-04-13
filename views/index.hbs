@@ -1,11 +1,5 @@
 <h3>Logged in as {{user}}</h3>
 
-<form onsubmit="return addSite()">
-  <label>Add site: <input id="domain" /></label>
-</form>
-
-<div id="sites"> </div>
-
 <hr />
 <div class="comments" id="comments"></div>
 <hr />
@@ -29,25 +23,17 @@
 <script src="/node_modules/q/q.js"></script>
 <script src="/client.js"></script>
 <script>
-  function Editor(input, preview) {
-    this.update = function () {
-      preview.innerHTML = markdown.toHTML(input.value);
-    };
-    input.editor = this;
-    this.update();
-  }
-  new Editor(e("comment"), e("preview"));
-
-  function addSite() {
-    domain = e('domain').value
-    Site.add(domain)
-      .then(function(done) {console.log(done)})
-    return false
-  }
+  //function Editor(input, preview) {
+  //  this.update = function () {
+  //    preview.innerHTML = markdown.toHTML(input.value);
+  //  };
+  //  input.editor = this;
+  //  this.update();
+  //}
+  //new Editor(e("comment"), e("preview"));
 
   Comment.getAllByPage(1, 'mypage')
     .then(function(comments) {
-      console.log(comments)
       Comment.displayAll(comments, e('comments'))
     })
 

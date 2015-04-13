@@ -30,161 +30,23 @@ var GoogleStrategy   = require('passport-google').Strategy
 var cookieSession    = require('cookie-session')
 var cors             = require('cors')
 
+var User    = require('./models/user.js')
+var Account = require('./models/account.js')
+var Site    = require('./models/site.js')
+var Comment = require('./models/comment.js')
+
 global.app = express()
-
-/**
- * User
- */
-function User(id, displayName, avatar) {
-  this.id          = id
-  this.displayName = displayName
-  this.avatar      = avatar
-}
-User.getById = function(id) {
-  return global.app.locals.db
-    .get('SELECT * FROM users WHERE id = ?', id)
-    .then(function(userData) {
-      if (typeof userData === 'undefined') {
-        throw 'No user with id: ' + id
-      }
-
-      return new User(id, userData.displayName, userData.avatar)
-    }, function(error) {
-      console.log(error)
-    })
-}
-User.create = function(displayName, avatar) {
-  return global.app.locals.db
-    .run('INSERT INTO users (displayName, avatar) VALUES(?,?)', displayName, avatar)
-    .then(function(db) {
-      return new User(db.lastID, displayName, avatar)
-    })
-}
-User.prototype.toString = function() {
-  return this.displayName + ' (' + this.id + ')'
-}
-
-/**
- * Account - representing a login account at a connected service like Google, Facebook, Openid etc.
- *
- * @param uid     The unique identifier on the connected system
- * @param system  The authentication system - normally the passport strategy used.
- * @param user    The User ID.
- */
-function Account(id, uid, system, user) {
-  this.id     = id
-  this.uid    = uid
-  this.system = system
-  this.user   = user
-}
-Account.getOrCreate = function(system, uid, displayName) {
-  return global.app.locals.db
-    .get('SELECT * FROM accounts WHERE system = ? AND uid = ?', system, uid)
-    .then(function(account_data) {
-      if (typeof account_data === 'undefined') {
-        return User.create(displayName, 'http://graph.facebook.com/' + uid + '/picture')
-          .then(function(user) {
-            return global.app.locals.db.run(
-              'INSERT INTO accounts (uid, system, user) VALUES (?,?,?)', uid, system, user.id
-            )
-          }).then(function(db) {
-            return new Account(db.lastID, uid, system, user.id)
-          })
-      }
-      else {
-        return new Account(account_data.id, uid, system, account_data.user)
-      }
-    })
-}
-
-/**
- * Site - a site to comment things on.
- */
-function Site(id, domain) {
-  this.id     = id
-  this.domain = domain
-}
-Site.add = function(domain) {
-  return global.app.locals.db
-    .run('INSERT INTO sites (domain) VALUES (?)', domain)
-    .then(function(db) {
-      console.log('Created Site', db.lastID, domain)
-      return new Site(db.lastID, domain)
-    })
-}
-Site.prototype.addAdmin = function(user) {
-  return global.app.locals.db
-    .run('INSERT INTO siteadmins (site, user) VALUES (?,?)', this.id, user.id)
-}
-
-/**
- * Comment
- */
-function Comment(id, text, user, page, parent, deleted) {
-  this.id       = id
-  this.text     = text
-  this.user     = user
-  this.page     = page
-  this.parent   = parent
-  this.deleted  = deleted
-  this.children = null
-}
-Comment.add = function(site, page, user, text, parent) {
-  console.log('Adding a comment for ' + site + ' on ' + page + ' by ' + user + ': ' + text)
-
-  return global.app.locals.db
-    .run('INSERT INTO comments (text, user, site, page, parent) VALUES (?,?,?,?,?)',
-         text, user, site, page, parent)
-}
-Comment.getAllByPage = function(site, page) {
-  console.log('Getting comments for site ' + site + ' and page ' + page)
-
-  return global.app.locals.db
-    .all('SELECT comments.id, comments.parent, comments.text, comments.user, users.displayName, users.avatar FROM comments LEFT JOIN users ON users.id = comments.user WHERE site=? AND page=? AND deleted IS NULL ORDER BY comments.id',
-         site, page)
-    .then(function(commentRows) {
-      console.log(commentRows)
-
-      var commentById = {}
-      var usersToGet = []
-      var comments = [] // Comments without parent
-
-      for (var i = 0; i < commentRows.length; i++) {
-        var comment = commentRows[i]
-
-        comment.children = [] // We promise to fill in children for all comments.
-        commentById[comment.id] = comment
-
-        if (comment.parent === null) {comments.push(comment)}
-        else {
-          if (typeof commentById[comment.parent] === 'undefined') {
-            throw 'Comment ' + comment.id + ' claims to have a parent that isn\'t loaded.'
-          }
-
-          commentById[comment.parent].children.push(comment)
-        }
-      }
-
-      return comments
-    })
-}
-
 
 // serialize and deserialize
 passport.serializeUser(function(user, done) {
-  console.log("Serializing user:", user)
   done(null, user.id)
 })
 passport.deserializeUser(function(id, done) {
-  console.log('Deserializing user 1')
   User.getById(id)
-    .then(function(user) {
-      console.log("Deserialized user:", user)
-      done(null, user)
-    }, function(error) {
-      console.log(error)
-      done(error, null)
-    })
+    .then(
+      function(user)  {done(null, user)},
+      function(error) {done(error, null)}
+    )
 })
 
 // config
@@ -196,7 +58,6 @@ passport.use(new FacebookStrategy(
   },
   function(accessToken, refreshToken, profile, done) {
     process.nextTick(function () {
-      console.log('Authenticated:', profile)
       Account.getOrCreate('Facebook', profile._json.id, profile.displayName)
         .then(function(account) {
           console.log("Authenticated with account:", account)
@@ -222,11 +83,26 @@ app.use(cookieSession({httpOnly: false, keys: ['ett', 'två']}))
 app.use(passport.initialize())
 app.use(passport.session())
 app.use(function(req, res, next) {
-  console.log('http://' + req.headers.host + req.url, req.user)
+  console.log(req.method + ' ' + req.protocol + '://' + req.headers.host + req.url, '' + req.user)
   next()
 })
 
-app.use(cors({credentials: true, origin: true}))
+app.use(cors({
+  origin: function(origin, callback) {
+    console.log('Checking if cors is allowed by', origin)
+    if (typeof origin === 'undefined') {return callback(null, false)}
+    Site.getByOrigin(origin).then(
+      function(site) {
+        callback(null, true)
+      },
+      function(error) {
+        console.log(error)
+        callback(null, false)
+      }
+    )
+  },
+  credentials: true
+}))
 
 // routes
 app.get('/', function(req, res) {res.render('index')})
@@ -325,35 +201,19 @@ app.post('/sites/', function(req, res) {
     return res.status(401).send('Unauthorized')
   }
 
-  console.log(req.user)
-
   Site.add(req.body.domain)
     .then(function(site) {
       site.addAdmin(req.user) // No need to wait for it to finish.
-
-      res
-        .status(201)
-        .location('/sites/' + site.id)
-        .send('Created site ' + site.id + ' with admin ' + req.user)
-    }, function(error) {
-      res
-        .status(500)
-        .send(error)
-    })
+      res.status(201).location('/sites/' + site.id).send(site)
+    }, function(error) {res.status(500).send(error)})
 })
 
-//app.use(function(err, req, res, next) {
-//  console.error(err.stack)
-//  res.status(500).send('Something broke!', err)
-//})
-
 app.get('/sites/:site/pages/:page/comments/', function(req, res) {
-  console.log('Getting comments')
   Comment.getAllByPage(req.params.site, req.params.page)
-    .then(function(comments) {
-      console.log('Sending comments')
-      res.send(comments)
-    }, function(error) {console.log(error); res.status(500).send(error)})
+    .then(
+      function(comments) {res.send(comments)},
+      function(error)    {console.log(error); res.status(500).send(error)}
+    )
 })
 
 app.post('/sites/:site/pages/:page/comments/', function(req, res) {
@@ -364,10 +224,8 @@ app.post('/sites/:site/pages/:page/comments/', function(req, res) {
   }
 
   Comment.add(req.params.site, req.params.page, req.user.id, req.body.text, null)
-    .then(function(comment) {
-      console.log('Comment added', comment)
-      res.status(201).location(req.path + comment.id).send(comment)
-    }, function(error) {res.status(500).send(error)})
+    .then(
+      function(comment) {res.status(201).location(req.path + comment.id).send(comment)},
+      function(error)   {res.status(500).send(error)}
+    )
 })
-
-// @license-end
