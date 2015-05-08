@@ -1,0 +1,26 @@
+<h1>Sites</h1>
+
+<ul>
+  {{#sites}}
+    <li>{{domain}}</li>
+  {{/sites}}
+</ul>
+
+<h2>Add</h2>
+
+<form onsubmit="return addSite()">
+  <label>Add site: <input id="domain" /></label>
+</form>
+
+<script src="/node_modules/markdown/lib/markdown.js"></script>
+<script src="/node_modules/q/q.js"></script>
+<script src="/client.js"></script>
+<script>
+  function addSite() {
+    console.log('Adding site.')
+    domain = e('domain').value
+    Site.add(domain)
+      .then(function(done) {console.log(done)})
+    return false
+  }
+</script>

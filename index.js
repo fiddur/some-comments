@@ -90,7 +90,7 @@ app.use(function(req, res, next) {
 app.use(cors({
   origin: function(origin, callback) {
     console.log('Checking if cors is allowed by', origin)
-    if (typeof origin === 'undefined') {return callback(null, false)}
+    if (typeof origin === 'undefined') {return callback(null, true)}
     Site.getByOrigin(origin).then(
       function(site) {
         callback(null, true)
@@ -111,11 +111,11 @@ app.get('/login', function(req, res) {res.render('login')})
 app.get('/ping', function(req, res) {res.send('pong')})
 
 app.get('/account', ensureAuthenticated, function(req, res) {
-  res.render('account', { user: req.user })
+  res.render('account', {user: req.user})
 })
 
 app.get('/', function(req, res) {
-  res.render('login', { user: req.user })
+  res.render('login', {user: req.user})
 })
 
 app.get(
@@ -182,9 +182,16 @@ function setup_db(db) {
 app.get('/sites/', function(req, res) {
   var db = req.app.locals.db
 
+  console.log('Listing sites.')
   db.all('SELECT * FROM sites ORDER BY id')
-    .then(function(sites_data) {
-      res.json(sites_data)
+    .then(function(sitesData) {
+      if (req.accepts('json', 'html') === 'json') {
+        console.log('Rendering JSON')
+        return res.json(sitesData)
+      }
+
+      console.log('Rendering HTML')
+      res.render('sites/index', {sites: sitesData})
     })
 })
 

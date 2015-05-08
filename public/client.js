@@ -102,14 +102,13 @@
       )
   }
   Site.list = function() {
-    return ajax.get(baseUrl + '/sites/').then(function(sites_json) {return JSON.parse(sites_json)})
+    return ajax.get(baseUrl + '/sites/').then(function(sitesJson) {return JSON.parse(sitesJson)})
   }
 
   Site.list().then(
     function(sites) {e('sites').innerHTML = sites},
     function(error) {console.log('Error', error)}
   )
-
 
   var Comment = {}
 
