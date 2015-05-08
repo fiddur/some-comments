@@ -3,44 +3,11 @@
 <hr />
 <div class="comments" id="comments"></div>
 <hr />
-<form onsubmit="return addComment()">
-  <label>
-    Add comment<br/>
-    <textarea id="comment" oninput="this.editor.update()"
-              style="width: 15em; height: 6em">Type **Markdown** here.</textarea>
-  </label>
-  <br/>
-  <label>
-    Preview
-    <div id="preview"
-         style="width: 15em; height: 6em; border: 1px solid black; display: inline-block"></div>
-  </label>
-  <br/>
-  <input type="submit" />
-</form>
 
 <script src="/node_modules/markdown/lib/markdown.js"></script>
 <script src="/node_modules/q/q.js"></script>
 <script src="/client.js"></script>
 <script>
-  //function Editor(input, preview) {
-  //  this.update = function () {
-  //    preview.innerHTML = markdown.toHTML(input.value);
-  //  };
-  //  input.editor = this;
-  //  this.update();
-  //}
-  //new Editor(e("comment"), e("preview"));
-
-  Comment.getAllByPage(1, 'mypage')
-    .then(function(comments) {
-      Comment.displayAll(comments, e('comments'))
-    })
-
-  function addComment() {
-    var text = e('comment').value
-    Comment.add(1, 'mypage', text)
-    return false
-  }
+  Comment.displayAll(1, 'mypage', e('comments'))
 </script>
 

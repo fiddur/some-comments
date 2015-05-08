@@ -16,7 +16,11 @@ Comment.add = function(site, page, user, text, parent) {
   return global.app.locals.db
     .run('INSERT INTO comments (text, user, site, page, parent) VALUES (?,?,?,?,?)',
          text, user, site, page, parent)
+    .then(function(result) {
+      return new Comment(result.lastID, text, user, page, parent, false)
+    })
 }
+
 Comment.getAllByPage = function(site, page) {
   console.log('Getting comments for site ' + site + ' and page ' + page)
 

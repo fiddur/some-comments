@@ -40,7 +40,7 @@
     for (var header in headers) {req.setRequestHeader(header, headers[header])}
 
     req.onload = function() {
-      if (req.status == 200) {return deferred.resolve(req.response)}
+      if (req.status >= 200 && req.status < 300) {return deferred.resolve(req.response)}
       if (req.status == 401) {
         return User.offerLogin(method, url, headers, body)
       }
@@ -124,29 +124,50 @@
     return ajax.post(
       baseUrl + '/sites/' + site + '/pages/' + page + '/comments/', {text: text})
       .then(
-        function(response) {
-          console.log('Added comment', response)
+        function(comment) {
+          console.log('Added comment', comment)
+          return comment
         }, function(error) {
           console.log('Error', error)
         }
       )
   }
 
-  Comment.displayAll = function(comments, element) {
-    for (var i = 0; i < comments.length; i++) {element.appendChild(Comment.getElement(comments[i]))}
+  /**
+   * Displays all comments, and adds an input box for adding a comment.
+   */
+  Comment.displayAll = function(site, page, element) {
+    Comment.getAllByPage(site, page)
+      .then(function(comments) {
+        for (var i = 0; i < comments.length; i++) {
+          element.appendChild(Comment.getElement(comments[i]))
+        }
 
-    // Add input field
-    var div = document.createElement('div')
-    div.className = 'comment_row'
-    user = {displayName: 'Foo Bar', avatar: 'nope'}
-    div.innerHTML =
-      '<div class="user"><img alt="' + user.displayName + '" src="' + user.avatar
-      + '" /></div><div class="comment_text">'
-      + '<textarea id="comment_123" placeholder="Comment…"></textarea>'
-      + '<div class="comment_preview" id="preview_123"></div></div>'
-    element.appendChild(div)
-    new Editor(e("comment_123"), e("preview_123"));
+        // Add input field
+        var newCommentDiv = document.createElement('div')
+        newCommentDiv.className = 'comment_row'
+        user = {displayName: 'Foo Bar', avatar: 'nope'}
+        newCommentDiv.innerHTML =
+          '<div class="user"><img alt="' + user.displayName + '" src="' + user.avatar
+          + '" /></div><div class="comment_text">'
+          + '<textarea id="comment_123" placeholder="Comment…" oninput="this.editor.update()">'
+          + '</textarea>'
+          + '<div class="comment_preview" id="preview_123"></div></div>'
+        element.appendChild(newCommentDiv)
 
+        var input = e('comment_123')
+        input.addEventListener("keypress", function(kp) {
+          if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
+            console.log('POST')
+            Comment.add(site, page, input.value)
+              .then(function(comment) {
+                element.insertBefore(Comment.getElement(comment), newCommentDiv)
+              })
+          }
+        })
+
+        new Editor(input, e("preview_123"))
+      })
   }
 
   function Editor(input, preview) {
