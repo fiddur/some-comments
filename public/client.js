@@ -32,7 +32,7 @@
    */
   var ajax = {}
   ajax.call = function(method, url, headers, body) {
-    var deferred = Q.defer()
+    var deferred = window.Q.defer()
     var req = new XMLHttpRequest()
     req.withCredentials = true
     req.open(method, url, true)
@@ -148,15 +148,18 @@
         newCommentDiv.className = 'comment_row'
         user = {displayName: 'Foo Bar', avatar: 'nope'}
         newCommentDiv.innerHTML =
-          '<div class="user"><img alt="' + user.displayName + '" src="' + user.avatar
-          + '" /></div><div class="comment_text">'
-          + '<textarea id="comment_123" placeholder="Comment…" oninput="this.editor.update()">'
-          + '</textarea>'
-          + '<div class="comment_preview" id="preview_123"></div></div>'
+          '<div class="user">' +
+          '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
+          '</div>' +
+          '<div class="comment_text">' +
+          '  <textarea id="comment_123" placeholder="Comment…" oninput="this.editor.update()">' +
+          '  </textarea>' +
+          '  <div class="comment_preview" id="preview_123"></div>' +
+          '</div>'
         element.appendChild(newCommentDiv)
 
         var input = e('comment_123')
-        input.addEventListener("keypress", function(kp) {
+        input.addEventListener('keypress', function(kp) {
           if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
             console.log('POST')
             Comment.add(site, page, input.value)
@@ -166,7 +169,7 @@
           }
         })
 
-        new Editor(input, e("preview_123"))
+        new Editor(input, e('preview_123'))
       })
   }
 
