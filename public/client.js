@@ -43,6 +43,10 @@
       if (req.status >= 200 && req.status < 300) {return deferred.resolve(req.response)}
       if (req.status == 401) {
         return User.offerLogin(method, url, headers, body)
+          .then(
+            function (result) {deferred.resolve(result)},
+            function (error) {deferred.reject(error)}
+          )
       }
       deferred.reject(req.statusText)
     }
@@ -66,11 +70,14 @@
    * Display a login iframe, promise to fulfil the original request.
    */
   User.offerLogin = function(method, url, headers, body) {
+    console.log('SomeComments: User is not logged in.  Offering login in iframe.')
+
     var iframe = document.createElement('iframe')
     iframe.src = "http://localhost:1337/login"
     iframe.className = 'login'
 
     var deferred = Q.defer()
+
     window.addEventListener("message", function(event) {
       if (event.origin !== baseUrl) {
         console.log('This does not originate from localhost:1337! Ignoring')
@@ -85,6 +92,8 @@
     }, false);
 
     document.body.appendChild(iframe)
+
+    console.log(iframe)
 
     return deferred.promise
   }
@@ -105,10 +114,10 @@
     return ajax.get(baseUrl + '/sites/').then(function(sitesJson) {return JSON.parse(sitesJson)})
   }
 
-  Site.list().then(
-    function(sites) {e('sites').innerHTML = sites},
-    function(error) {console.log('Error', error)}
-  )
+  //Site.list().then(
+  //  function(sites) {e('sites').innerHTML = sites},
+  //  function(error) {console.log('Error', error)}
+  //)
 
   var Comment = {}
 
@@ -123,7 +132,9 @@
     return ajax.post(
       baseUrl + '/sites/' + site + '/pages/' + page + '/comments/', {text: text})
       .then(
-        function(comment) {
+        function(commentJson) {
+          var comment = JSON.parse(commentJson)
+          /// @todo Inline the user data.
           console.log('Added comment', comment)
           return comment
         }, function(error) {
@@ -151,24 +162,27 @@
           '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
           '</div>' +
           '<div class="comment_text">' +
-          '  <textarea id="comment_123" placeholder="Comment…" oninput="this.editor.update()">' +
+          '  <textarea id="comment_' + page + '" placeholder="Comment…" ' +
+          '            oninput="this.editor.update()">' +
           '  </textarea>' +
-          '  <div class="comment_preview" id="preview_123"></div>' +
+          '  <div class="comment_preview" id="preview_' + page + '"></div>' +
           '</div>'
         element.appendChild(newCommentDiv)
 
-        var input = e('comment_123')
+        var input = e('comment_' + page)
         input.addEventListener('keypress', function(kp) {
           if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
             console.log('POST')
-            Comment.add(site, page, input.value)
+            var commentText = input.value
+            input.value = ''
+            Comment.add(site, page, commentText)
               .then(function(comment) {
                 element.insertBefore(Comment.getElement(comment), newCommentDiv)
               })
           }
         })
 
-        new Editor(input, e('preview_123'))
+        new Editor(input, e('preview_' + page))
       })
   }
 

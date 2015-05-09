@@ -1,9 +1,23 @@
 <h1>You need to authenticate ({{user}})</h1>
 
 <p>
-  <a href="/auth/facebook">Authenticate with Facebook</a>
+  <a href="/auth/facebook" target="_new">Authenticate with Facebook</a>
 </p>
 
 <script>
   console.log('Parent:', window.parent)
+
+  window.addEventListener("message", function(event) {
+    var baseUrl = 'http://localhost:1337'
+    console.log('Got event.', event)
+    if (event.origin !== baseUrl) {
+      console.log('This does not originate from localhost:1337! Ignoring')
+      return
+    }
+
+    if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
+
+    // Forward to parent.
+    window.parent.postMessage({authenticated: true}, '*')
+  }, false);
 </script>

@@ -1,7 +1,9 @@
 <h1>You are logged in as {{user}}!</h1>
 
 <script>
-  console.log('Sending message to:', window.parent)
+  console.log('Sending message to:', window.parent, window.opener)
+  window.opener.postMessage({authenticated: true}, '*')
   window.parent.postMessage({authenticated: true}, '*')
-  console.log('Sent message to:', window.parent)
+  console.log('Sent message to:', window.parent, window.opener)
+  window.close()
 </script>

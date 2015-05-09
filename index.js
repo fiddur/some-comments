@@ -176,9 +176,6 @@ function setup_db(db) {
  * REST API for /sites/
  */
 
-/**
- * GET /sites/ to list all sites.
- */
 app.get('/sites/', function(req, res) {
   var db = req.app.locals.db
 
@@ -195,9 +192,6 @@ app.get('/sites/', function(req, res) {
     })
 })
 
-/**
- * POST to /sites/ to create a new one.
- */
 app.post('/sites/', function(req, res) {
   if (typeof req.body.domain === 'undefined') {
     return res.status(400).send('Bad Request: domain is required')
@@ -235,4 +229,17 @@ app.post('/sites/:site/pages/:page/comments/', function(req, res) {
       function(comment) {res.status(201).location(req.path + comment.id).send(comment)},
       function(error)   {res.status(500).send(error)}
     )
+})
+
+/**
+ * REST API for /users/
+ */
+
+/// Special shortcut for currently logged in.
+app.get('/users/me', function(req, res) {
+  if (typeof req.user === 'undefined') {
+    return res.sendStatus(204) // No Content
+  }
+
+  res.json(req.user)
 })

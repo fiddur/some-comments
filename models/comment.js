@@ -10,6 +10,12 @@ function Comment(id, text, user, page, parent, deleted) {
   this.deleted  = deleted
   this.children = null
 }
+Comment.get = function(id) {
+  return global.app.locals.db
+    .get('SELECT comments.id, comments.created, comments.parent, comments.text, comments.user, users.displayName, users.avatar FROM comments LEFT JOIN users ON users.id = comments.user WHERE comments.id=?',
+         id)
+}
+
 Comment.add = function(site, page, user, text, parent) {
   console.log('Adding a comment for ' + site + ' on ' + page + ' by ' + user + ': ' + text)
 
@@ -17,7 +23,7 @@ Comment.add = function(site, page, user, text, parent) {
     .run('INSERT INTO comments (text, user, site, page, parent) VALUES (?,?,?,?,?)',
          text, user, site, page, parent)
     .then(function(result) {
-      return new Comment(result.lastID, text, user, page, parent, false)
+      return Comment.get(result.lastID)
     })
 }
 
