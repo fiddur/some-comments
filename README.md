@@ -12,3 +12,11 @@ This is not ready for use.  I'm experimenting in learning nodejs, and I haven't 
 name.  My working names were "restful comments" and "comment anything", but they are both already
 taken.
 
+
+Todo
+----
+* Make sure login works with creating user first time.
+* Display already logged in instead of "Foo Bar".
+* Reasonable logging.
+* Error handling.
+* Testing.

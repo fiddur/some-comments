@@ -26,9 +26,10 @@ var bodyParser       = require('body-parser')
 var config           = require('./config.js')
 var FacebookStrategy = require('passport-facebook').Strategy
 var GithubStrategy   = require('passport-github').Strategy
-var GoogleStrategy   = require('passport-google').Strategy
+var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var cookieSession    = require('cookie-session')
 var cors             = require('cors')
+var morgan           = require('morgan')
 
 var User    = require('./models/user.js')
 var Account = require('./models/account.js')
@@ -49,43 +50,71 @@ passport.deserializeUser(function(id, done) {
     )
 })
 
-// config
+// Authentication strategies
 passport.use(new FacebookStrategy(
   {
-    clientID:     config.connectors.facebook.clientID,
+    clientID:     config.connectors.facebook.clientId,
     clientSecret: config.connectors.facebook.clientSecret,
-    callbackURL:  config.connectors.facebook.callbackURL
+    callbackURL:  config.connectors.facebook.callbackUrl
   },
   function(accessToken, refreshToken, profile, done) {
-    process.nextTick(function () {
-      Account.getOrCreate('Facebook', profile._json.id, profile.displayName)
-        .then(function(account) {
-          console.log("Authenticated with account:", account)
-          return User.getById(account.user)
-        })
-        .then(function(user) {
-          console.log("Authenticated with user:", user)
-          done(null, user)
-        })
+
+    Account.getOrCreate('Facebook', profile._json.id, {
+      displayName: profile.displayName,
+      avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
     })
+      .then(function(account) {
+        console.log("Authenticated with account:", account)
+        return User.getById(account.user)
+      })
+      .then(function(user) {
+        console.log("Authenticated with user:", user)
+        done(null, user)
+      })
+  }
+))
+passport.use(new GoogleOauth2(
+  {
+    clientID:     config.connectors.googleOauth2.clientId,
+    clientSecret: config.connectors.googleOauth2.clientSecret,
+    callbackURL:  config.connectors.googleOauth2.callbackUrl,
+    passReqToCallback: true
+  },
+  function(request, accessToken, refreshToken, profile, done) {
+    console.log('Callback from google oauth2', profile)
+
+    /// @todo Check if there is a photo
+
+    Account.getOrCreate('GoogleOauth2', profile.id, {
+      displayName: profile.displayName,
+      avatar:      profile.photos[0].value,
+    })
+      .then(function(account) {
+        console.log("Authenticated with account:", account)
+        return User.getById(account.user)
+      })
+      .then(function(user) {
+        console.log("Authenticated with user:", user)
+        done(null, user)
+      })
   }
 ))
 
+
+
+// Config app
 app.set('views', __dirname + '/views')
 
 var expressHbs = require('express3-handlebars')
 app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
 app.set('view engine', 'hbs')
 
+app.use(morgan('combined'))
 app.use(express.static(__dirname + '/public'))
 app.use(bodyParser.json())
 app.use(cookieSession({httpOnly: false, keys: ['ett', 'två']}))
 app.use(passport.initialize())
 app.use(passport.session())
-app.use(function(req, res, next) {
-  console.log(req.method + ' ' + req.protocol + '://' + req.headers.host + req.url, '' + req.user)
-  next()
-})
 
 app.use(cors({
   origin: function(origin, callback) {
@@ -118,19 +147,41 @@ app.get('/', function(req, res) {
   res.render('login', {user: req.user})
 })
 
-app.get(
-  '/auth/facebook',
-  passport.authenticate('facebook'),
-  function(req, res) {
-  }
-)
+/**
+ * Authentication endpoints
+ */
+app.get('/auth/facebook', passport.authenticate('facebook'))
 app.get(
   '/auth/facebook/callback',
-  passport.authenticate('facebook', { failureRedirect: '/' }),
-  function(req, res) {
-    res.redirect('/account')
-  }
+  passport.authenticate('facebook', {failureRedirect: '/login'}),
+  function(req, res) {res.redirect('/account')}
 )
+
+app.get(
+  '/auth/googleOauth2',
+  passport.authenticate(
+    'google', {
+      scope:
+      [ 'https://www.googleapis.com/auth/plus.login', ,
+        'https://www.googleapis.com/auth/plus.profile.emails.read' ]
+    }
+  ))
+app.get(
+  '/auth/googleOauth2/callback',
+  passport.authenticate( 'google', {
+    successRedirect: '/account',
+    failureRedirect: '/login'
+  })
+)
+
+app.get('/auth/google', passport.authenticate('google'))
+app.get(
+  '/auth/google/return',
+  passport.authenticate('google', {failureRedirect: '/login'}),
+  function(req, res) {res.redirect('/account')}
+);
+
+
 app.get('/logout', function(req, res) {
   req.logout()
   res.redirect('/')

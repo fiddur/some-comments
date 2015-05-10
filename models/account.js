@@ -1,3 +1,5 @@
+var User = require('./user.js')
+
 /**
  * Account - representing a login account at a connected service like Google, Facebook, Openid etc.
  *
@@ -11,17 +13,22 @@ function Account(id, uid, system, user) {
   this.system = system
   this.user   = user
 }
-Account.getOrCreate = function(system, uid, displayName) {
+Account.getOrCreate = function(system, uid, data) {
   return global.app.locals.db
     .get('SELECT * FROM accounts WHERE system = ? AND uid = ?', system, uid)
     .then(function(account_data) {
       if (typeof account_data === 'undefined') {
-        return User.create(displayName, 'http://graph.facebook.com/' + uid + '/picture')
+
+        console.log('There is no account.  Creating user and account.', system, uid)
+
+        return User.create(data.displayName, data.avatar)
           .then(function(user) {
+            console.log('Created user.  Now creating account.')
             return global.app.locals.db.run(
               'INSERT INTO accounts (uid, system, user) VALUES (?,?,?)', uid, system, user.id
             )
           }).then(function(db) {
+            console.log('Created account.  Authentication should be done.')
             return new Account(db.lastID, uid, system, user.id)
           })
       }

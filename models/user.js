@@ -18,6 +18,9 @@ User.getById = function(id) {
     })
 }
 User.create = function(displayName, avatar) {
+  console.log('Creating user: INSERT INTO users (displayName, avatar) VALUES(?,?)',
+              displayName, avatar)
+
   return global.app.locals.db
     .run('INSERT INTO users (displayName, avatar) VALUES(?,?)', displayName, avatar)
     .then(function(db) {

@@ -15,7 +15,7 @@
     "passport": "^0.2.1",
     "passport-facebook": "^2.0.0",
     "passport-github": "^0.1.5",
-    "passport-google": "^0.3.0",
+    "passport-google-oauth2": "^0.1.6",
     "q": "^1.2.0",
     "q-sqlite3": "^0.1.2",
     "sqlite3": "^3.0.5"
