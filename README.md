@@ -13,6 +13,21 @@ name.  My working names were "restful comments" and "comment anything", but they
 taken.
 
 
+Install (server)
+----------------
+```
+git clone https://github.com/fiddur/some-comments.git
+cd some-comments
+npm install
+cp config.js.example config.js # Edit to add your API-keys for wanted services
+node index.js
+```
+
+To run in production I suggest using [forever](https://github.com/foreverjs/forever).
+
+node 0.10 seems to be easier to install; for me sqlite3 fails to build on 0.11.
+
+
 Client usage
 ------------
 Make sure you added your site (with Site.add(server, domain)). (No frontend yet.)
