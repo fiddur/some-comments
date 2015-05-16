@@ -54,3 +54,19 @@ Todo
 * Add more login-services from node-passport.
 * Admin frontend for adding/managing a site.
 * User page to see/remove comments on all sites on a server.
+
+
+License
+-------
+
+Copyright (C) 2015 Fredrik Liljegren <fredrik@liljegren.org>
+
+Some Comments is free software: you can redistribute it and/or modify it under the terms of the GNU
+Affero General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+Affero General Public License for more details.
+
+See COPYING.

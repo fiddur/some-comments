@@ -2,18 +2,16 @@
  * Some Comments - a comment engine
  * Copyright (C) 2015 Fredrik Liljegren
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+ * the GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License along with this
+ * program. If not, see <http://www.gnu.org/licenses/>.
  *
  * @license magnet:?xt=urn:btih:0b31508aeb0634b347b8270c7bee4d411b5d4109&dn=agpl-3.0.txt
  * GNU-AGPL-3.0
@@ -149,11 +147,32 @@
   }
 
   SomeCommentsPrototype.getSites = function() {
-    return ajax.get(this.server + '/sites/')
+    return ajax.get(this.server + 'sites/')
       .then(function(sitesJson) {
         return JSON.parse(sitesJson)
       })
   }
+  SomeCommentsPrototype.addSite = function(domain) {
+    var sc = this
+
+    return ajax.post(
+      sc.server + 'sites/', {domain: domain})
+      .then(
+        function(response) {
+          console.log('Added site', response)
+        }, function(error) {
+          if (error instanceof ForbiddenError) {
+            // Lets offer login and retry
+            return User.offerLogin(sc.server, error.call)
+              .then(function (siteJson) {
+                console.log('Added site after auth?', siteJson)
+              })
+          }
+          console.log('Error', error)
+        }
+      )
+  }
+
 
   ////////
   // User
@@ -163,18 +182,18 @@
   /**
    * Display a login iframe, promise to fulfil the original request.
    */
-  User.offerLogin = function(site, call) {
+  User.offerLogin = function(server, call) {
     console.log('SomeComments: User is not logged in.  Offering login in iframe.')
 
     var iframe = document.createElement('iframe')
-    iframe.src = site + 'login'
+    iframe.src = server + 'login'
     iframe.className = 'login'
 
     var deferred = Q.defer()
 
     window.addEventListener("message", function(event) {
       var origUrl   = parseUrl(event.origin)
-      var serverUrl = parseUrl(site.server)
+      var serverUrl = parseUrl(server)
 
       if (origUrl.hostname !== serverUrl.hostname) {
         console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
@@ -207,18 +226,6 @@
     site.server = server
 
     return site
-  }
-
-  Site.add = function(domain) {
-    return ajax.post(
-      baseUrl + '/sites/', {domain: domain})
-      .then(
-        function(response) {
-          console.log('Added site', response)
-        }, function(error) {
-          console.log('Error', error)
-        }
-      )
   }
 
 
@@ -257,7 +264,7 @@
           console.log('Got error', error)
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
-            return User.offerLogin(site, error.call)
+            return User.offerLogin(site.server, error.call)
               .then(function (commentJson) {
                 var comment = JSON.parse(commentJson)
                 console.log('After auth: Added comment', comment)

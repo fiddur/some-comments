@@ -11,12 +11,14 @@
   console.log('Parent:', window.parent)
 
   window.addEventListener("message", function(event) {
-    var baseUrl = 'http://localhost:1337'
     console.log('Got event.', event)
-    if (event.origin !== baseUrl) {
-      console.log('This does not originate from localhost:1337! Ignoring')
-      return
-    }
+    //var origUrl   = parseUrl(event.origin)
+    //var serverUrl = parseUrl(site.server)
+    //
+    //if (origUrl.hostname !== serverUrl.hostname) {
+    //  console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
+    //  return
+    //}
 
     if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
 

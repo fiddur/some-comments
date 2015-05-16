@@ -1,6 +1,10 @@
 var path = require('path')
 
 var config = {
+  server: {
+    domain: 'localhost',
+    port:   1337
+  },
   connectors: {
     facebook: {
       clientID:     'get_your_own',
