@@ -20,12 +20,22 @@
  */
 
 (function(window) {
-  var baseUrl = 'http://localhost:1337'
+  /************************************************************************************************
+   * A few simple utility helpers
+   ************************************************************************************************/
 
   /**
    * Make a shortcut to document.getElementById…
    */
   var e = function (id) {return document.getElementById(id)}
+
+  function ForbiddenError(req, call) {
+    this.name = "Forbidden"
+    this.call = call
+    this.req  = req
+    this.message = ''
+  }
+  ForbiddenError.prototype = Error.prototype
 
   /**
    * Minimal ajax wrapper with promises.
@@ -42,11 +52,9 @@
     req.onload = function() {
       if (req.status >= 200 && req.status < 300) {return deferred.resolve(req.response)}
       if (req.status == 401) {
-        return User.offerLogin(method, url, headers, body)
-          .then(
-            function (result) {deferred.resolve(result)},
-            function (error) {deferred.reject(error)}
-          )
+        deferred.reject(
+          new ForbiddenError(req, {method: method, url: url, headers: headers, body: body})
+        )
       }
       deferred.reject(req.statusText)
     }
@@ -65,89 +73,43 @@
     return ajax.call('POST', url, headers, body)
   }
 
-  var User = {}
-  /**
-   * Display a login iframe, promise to fulfil the original request.
-   */
-  User.offerLogin = function(method, url, headers, body) {
-    console.log('SomeComments: User is not logged in.  Offering login in iframe.')
-
-    var iframe = document.createElement('iframe')
-    iframe.src = "http://localhost:1337/login"
-    iframe.className = 'login'
-
-    var deferred = Q.defer()
-
-    window.addEventListener("message", function(event) {
-      if (event.origin !== baseUrl) {
-        console.log('This does not originate from localhost:1337! Ignoring')
-        return
-      }
-
-      if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
-
-      // Resend ajax request.
-      document.body.removeChild(iframe)
-      ajax.call(method, url, headers, body).then(deferred.resolve)
-    }, false);
-
-    document.body.appendChild(iframe)
-
-    console.log(iframe)
-
-    return deferred.promise
+  function Editor(input, preview) {
+    this.update = function () {
+      preview.innerHTML = markdown.toHTML(input.value)
+    }
+    input.editor = this
+    this.update()
   }
 
-  var Site = {}
-  Site.add = function(domain) {
-    return ajax.post(
-      baseUrl + '/sites/', {domain: domain})
-      .then(
-        function(response) {
-          console.log('Added site', response)
-        }, function(error) {
-          console.log('Error', error)
-        }
-      )
-  }
-  Site.list = function() {
-    return ajax.get(baseUrl + '/sites/').then(function(sitesJson) {return JSON.parse(sitesJson)})
+  function parseUrl(url) {
+    return document.createElement('a')
   }
 
-  //Site.list().then(
-  //  function(sites) {e('sites').innerHTML = sites},
-  //  function(error) {console.log('Error', error)}
-  //)
 
-  var Comment = {}
+  /************************************************************************************************
+   * Some Comments
+   ************************************************************************************************/
 
-  Comment.getAllByPage = function(site, page) {
-    return ajax.get(baseUrl + '/sites/' + site + '/pages/' + page + '/comments/')
-      .then(function(commentsJson) {
-        return JSON.parse(commentsJson)
-      })
-  }
-
-  Comment.add = function(site, page, text) {
-    return ajax.post(
-      baseUrl + '/sites/' + site + '/pages/' + page + '/comments/', {text: text})
-      .then(
-        function(commentJson) {
-          var comment = JSON.parse(commentJson)
-          /// @todo Inline the user data.
-          console.log('Added comment', comment)
-          return comment
-        }, function(error) {
-          console.log('Error', error)
-        }
-      )
-  }
+  var SomeCommentsPrototype = {}
 
   /**
-   * Displays all comments, and adds an input box for adding a comment.
+   * Base class for Some Comments.
+   *
+   * @param server  string   Base URL, e.g. https://foo.bar/sc/
+   * @param siteId  integer  Site ID
    */
-  Comment.displayAll = function(site, page, element) {
-    Comment.getAllByPage(site, page)
+  function SomeComments(server) {
+    var sc = Object.create(SomeCommentsPrototype)
+    sc.server = server
+    return sc
+  }
+
+  SomeCommentsPrototype.displayByPage = function(siteId, pageId, elementId) {
+    var element = e(elementId)
+    var sc      = this
+    var site    = Site(sc.server, siteId)
+
+    Comment.getAllByPage(site, pageId)
       .then(function(comments) {
         for (var i = 0; i < comments.length; i++) {
           element.appendChild(Comment.getElement(comments[i]))
@@ -162,36 +124,149 @@
           '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
           '</div>' +
           '<div class="comment_text">' +
-          '  <textarea id="comment_' + page + '" placeholder="Comment…" ' +
+          '  <textarea id="comment_' + pageId + '" placeholder="Comment…" ' +
           '            oninput="this.editor.update()">' +
           '  </textarea>' +
-          '  <div class="comment_preview" id="preview_' + page + '"></div>' +
+          '  <div class="comment_preview" id="preview_' + pageId + '"></div>' +
           '</div>'
         element.appendChild(newCommentDiv)
 
-        var input = e('comment_' + page)
+        var input = e('comment_' + pageId)
         input.addEventListener('keypress', function(kp) {
           if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
             console.log('POST')
             var commentText = input.value
             input.value = ''
-            Comment.add(site, page, commentText)
+            Comment.add(site, pageId, commentText)
               .then(function(comment) {
                 element.insertBefore(Comment.getElement(comment), newCommentDiv)
               })
           }
         })
 
-        new Editor(input, e('preview_' + page))
+        new Editor(input, e('preview_' + pageId))
       })
   }
 
-  function Editor(input, preview) {
-    this.update = function () {
-      preview.innerHTML = markdown.toHTML(input.value);
-    };
-    input.editor = this;
-    this.update();
+  SomeCommentsPrototype.getSites = function() {
+    return ajax.get(this.server + '/sites/')
+      .then(function(sitesJson) {
+        return JSON.parse(sitesJson)
+      })
+  }
+
+  ////////
+  // User
+  //
+  var User = {}
+
+  /**
+   * Display a login iframe, promise to fulfil the original request.
+   */
+  User.offerLogin = function(site, call) {
+    console.log('SomeComments: User is not logged in.  Offering login in iframe.')
+
+    var iframe = document.createElement('iframe')
+    iframe.src = site + 'login'
+    iframe.className = 'login'
+
+    var deferred = Q.defer()
+
+    window.addEventListener("message", function(event) {
+      var origUrl   = parseUrl(event.origin)
+      var serverUrl = parseUrl(site.server)
+
+      if (origUrl.hostname !== serverUrl.hostname) {
+        console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
+        return
+      }
+
+      if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
+
+      // Resend ajax request.
+      document.body.removeChild(iframe)
+      ajax.call(call.method, call.url, call.headers, call.body).then(deferred.resolve)
+    }, false);
+
+    document.body.appendChild(iframe)
+
+    console.log(iframe)
+
+    return deferred.promise
+  }
+
+  ////////
+  // Site
+  //
+  //var SitePrototype = {}
+
+  function Site(server, siteId) {
+    var site = {}//object.create(SitePrototype)
+
+    site.id     = siteId
+    site.server = server
+
+    return site
+  }
+
+  Site.add = function(domain) {
+    return ajax.post(
+      baseUrl + '/sites/', {domain: domain})
+      .then(
+        function(response) {
+          console.log('Added site', response)
+        }, function(error) {
+          console.log('Error', error)
+        }
+      )
+  }
+
+
+  ///////////
+  // Comment
+  //
+  var Comment = {}
+
+  /**
+   * Get all the comments from one page
+   *
+   * @param site    object  A site object
+   * @param pageId  string  The page ID
+   */
+  Comment.getAllByPage = function(site, pageId) {
+    return ajax.get(site.server + 'sites/' + site.id + '/pages/' + pageId + '/comments/')
+      .then(function(commentsJson) {
+        return JSON.parse(commentsJson)
+      })
+  }
+
+  /**
+   * @param site    object  A site object
+   * @param pageId  string  The page ID
+   * @param text    string  Comment text
+   */
+  Comment.add = function(site, pageId, text) {
+    return ajax.post(
+      site.server + 'sites/' + site.id + '/pages/' + pageId + '/comments/', {text: text})
+      .then(
+        function(commentJson) {
+          var comment = JSON.parse(commentJson)
+          console.log('Added comment', comment)
+          return comment
+        }, function(error) {
+          console.log('Got error', error)
+          if (error instanceof ForbiddenError) {
+            // Lets offer login and retry
+            return User.offerLogin(site, error.call)
+              .then(function (commentJson) {
+                var comment = JSON.parse(commentJson)
+                console.log('After auth: Added comment', comment)
+                return comment
+              })
+          }
+          console.log('Error', error)
+        }
+      )
   }
 
   Comment.getElement = function(comment) {
@@ -208,10 +283,7 @@
   }
 
   // Make some things available on window
-  window.Comment = Comment
-  window.Site    = Site
-  window.User    = User
-  window.e       = e
+  window.SomeComments = SomeComments
 })(window)
 
 // @license-end

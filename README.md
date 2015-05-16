@@ -13,10 +13,29 @@ name.  My working names were "restful comments" and "comment anything", but they
 taken.
 
 
+Client usage
+------------
+Make sure you added your site (with Site.add(server, domain)). (No frontend yet.)
+
+Where you want to enable commenting, add something like (replacing site id and post id):
+
+```html
+<div class="comments" id="comments"></div>
+<script src="http://somecomment.domain/node_modules/markdown/lib/markdown.js"></script>
+<script src="http://somecomment.domain/node_modules/q/q.js"></script>
+<script src="http://somecomment.domain/client.js"></script>
+<script>
+  SomeComments('http://somecomment.domain/').displayByPage(1, 'post-{{id}}', 'comments')
+</script>
+```
+
+
 Todo
 ----
-* Make sure login works with creating user first time.
 * Display already logged in instead of "Foo Bar".
 * Reasonable logging.
 * Error handling.
 * Testing.
+* Add more login-services from node-passport.
+* Admin frontend for adding/managing a site.
+* User page to see/remove comments on all sites on a server.
