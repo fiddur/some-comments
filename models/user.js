@@ -39,13 +39,10 @@ UserFactoryPrototype.getById = function(id) {
     })
 }
 UserFactoryPrototype.create = function(displayName, avatar) {
-  console.log('Creating user: INSERT INTO users (displayName, avatar) VALUES(?,?)',
-              displayName, avatar)
-
   return this.db
     .run('INSERT INTO users (displayName, avatar) VALUES(?,?)', displayName, avatar)
     .then(function(db) {
-      return new User(db.lastID, displayName, avatar)
+      return {id: db.lastID, displayName: displayName, avatar: avatar}
     })
 }
 

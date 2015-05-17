@@ -28,8 +28,14 @@ var spawn    = require('child_process').spawn
 var q        = require('q')
 var qsqlite3 = require('q-sqlite3')
 
+var CommentFactory = require('../models/comment')
+var SiteFactory    = require('../models/site')
+var UserFactory    = require('../models/user')
+
+
 describe('Routing', function() {
-  var serverProcess, baseUrl, db
+  var serverProcess, baseUrl, db,
+  commentFactory, siteFactory, userFactory
 
 
   before(function(done) {
@@ -41,10 +47,15 @@ describe('Routing', function() {
     var serverDeferred = q.defer()
 
     var dbDone = qsqlite3.createDatabase(config.database.connection.filename)
-      .then(function(connectedDb) {db = connectedDb})
+      .then(function(connectedDb) {
+        db = connectedDb
+        commentFactory = CommentFactory(db)
+        siteFactory    = SiteFactory(db)
+        userFactory    = UserFactory(db)
+      })
 
     serverProcess.stdout.on('data', function (buffer) {
-      console.log('Server output: ' + buffer)
+      //console.log('Server output: ' + buffer)
 
       var portRegex = /listening on port (\d+) in/g
       var portMatch = portRegex.exec(buffer.toString())
@@ -105,14 +116,53 @@ describe('Routing', function() {
     })
   })
 
-  //describe('Page comments', function() {
-  //  it('should give comments with user info', function(done) {
-  //    // Setup site, page, user and comments
-  //
-  //    request(baseUrl)
-  //      .post('/sites/')
-  //      .send({domain: 'example.org'})
-  //      .expect(401, done)
-  //  })
-  //})
+  describe('Page comments', function() {
+    it('should give comments with user info', function(done) {
+      this.timeout(5000) // Setting up things can take time if hd isn't quick
+      // Setup site, page, user and comments
+      var admin, site, comment
+
+      userFactory.create('Test User', 'http://my.avatar/jpg')
+        .then(function(adminIn) {
+          admin = adminIn
+          return siteFactory.create('mydomain')
+        })
+        .then(function(siteIn) {
+          site = siteIn
+          return commentFactory.create(site.id, 'testpage', admin.id, 'This is Some Comment.', null)
+        })
+        .then(function(comment) {
+          request(baseUrl)
+            .get('/sites/' + site.id + '/pages/testpage/comments/')
+            .expect(200)
+            .expect('Content-Type', /json/)
+            .end(function(err, res) {
+              if (err) {throw err}
+
+              //console.log(res)
+              res.body[0].id.should.equal(comment.id)
+              res.body[0].displayName.should.equal('Test User')
+              done()
+            })
+        })
+    })
+
+    it('should require auth to add comment', function(done) {
+      siteFactory.create('mydomain')
+        .then(function(site) {
+          request(baseUrl)
+            .post('/sites/' + site.id + '/pages/testpage/comments/')
+            .expect(401, done)
+        })
+    })
+
+    //it('should add comment if user is logged in', function(done) {
+    //  siteFactory.create('mydomain')
+    //    .then(function(site) {
+    //      request(baseUrl)
+    //        .post('/sites/' + site.id + '/pages/testpage/comments/')
+    //        .expect(401, done)
+    //    })
+    //})
+  })
 })

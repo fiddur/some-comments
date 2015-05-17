@@ -34,8 +34,11 @@ var GithubStrategy   = require('passport-github').Strategy
 var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var cookieSession    = require('cookie-session')
 var expressHbs       = require('express3-handlebars')
+
 var SiteFactory      = require('./models/site.js')
+var CommentFactory   = require('./models/comment.js')
 var SiteRoutes       = require('./routes/sites.js')
+var CommentRoutes    = require('./routes/comments.js')
 
 var app = express()
 
@@ -64,6 +67,19 @@ app.use(cors({
   },
   credentials: true
 }))
+
+
+// development error handler
+// will print stacktrace
+if (app.get('env') === 'development') {
+  app.use(function(err, req, res, next) {
+    res.status(err.status || 500)
+    res.render('error', {
+      message: err.message,
+      error: err
+    })
+  })
+}
 
 // Setup an error handler
 app.use(function(err, req, res, next) {
@@ -180,49 +196,46 @@ function start(db, config) {
 
   // Setup routes
 
-  SiteRoutes(app, SiteFactory(db))
+  SiteRoutes(app, SiteFactory(db), config)
+  CommentRoutes(app, CommentFactory(db))
 
-// test authentication
-function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated()) { return next() }
-  res.redirect('/')
-}
 
-// routes
-app.get('/', function(req, res) {res.render('index')})
-app.get('/login', function(req, res) {res.render('login')})
-
-app.get('/ping', function(req, res) {res.send('pong')})
-
-app.get('/account', ensureAuthenticated, function(req, res) {
-  res.render('account', {user: req.user})
-})
-
-app.get('/', function(req, res) {
-  res.render('login', {user: req.user})
-})
-
-app.get('/logout', function(req, res) {
-  req.logout()
-  res.redirect('/')
-})
-
-/**
- * REST API for /users/
- */
-
-/// Special shortcut for currently logged in.
-app.get('/users/me', function(req, res) {
-  if (typeof req.user === 'undefined') {
-    return res.sendStatus(204) // No Content
+  // test authentication
+  function ensureAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) { return next() }
+    res.redirect('/')
   }
 
-  res.json(req.user)
-})
+  // routes
+  app.get('/', function(req, res) {res.render('index')})
+  app.get('/login', function(req, res) {res.render('login')})
 
+  app.get('/ping', function(req, res) {res.send('pong')})
 
+  app.get('/account', ensureAuthenticated, function(req, res) {
+    res.render('account', {user: req.user})
+  })
 
+  app.get('/', function(req, res) {
+    res.render('login', {user: req.user})
+  })
 
-  return app
+  app.get('/logout', function(req, res) {
+    req.logout()
+    res.redirect('/')
+  })
+
+  /**
+   * REST API for /users/
+   */
+
+  /// Special shortcut for currently logged in.
+  app.get('/users/me', function(req, res) {
+    if (typeof req.user === 'undefined') {
+      return res.sendStatus(204) // No Content
+    }
+
+    res.json(req.user)
+  })
 }
 exports.start = start

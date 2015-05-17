@@ -36,18 +36,16 @@ SiteFactoryPrototype.getAll = function() {
   )
 }
 
-SiteFactory.create = function(domain) {
+SiteFactoryPrototype.create = function(domain) {
   return this.db
     .run('INSERT INTO sites (domain) VALUES (?)', domain)
     .then(function(db) {
-      console.log('Created Site', db.lastID, domain)
       return {id: db.lastID, domain: domain}
     })
 }
 
-SiteFactory.getByOrigin = function(origin) {
+SiteFactoryPrototype.getByOrigin = function(origin) {
   var domain = origin.split('//')[1]
-  console.log('Getting site by ' + domain)
   var deferred = q.defer()
   this.db
     .get('SELECT * FROM sites WHERE domain = ?', domain)
@@ -59,7 +57,7 @@ SiteFactory.getByOrigin = function(origin) {
   return deferred.promise
 }
 
-SiteFactory.addAdmin = function(site, user) {
+SiteFactoryPrototype.addAdmin = function(site, user) {
   return this.db
     .run('INSERT INTO siteadmins (site, user) VALUES (?,?)', site.id, user.id)
 }

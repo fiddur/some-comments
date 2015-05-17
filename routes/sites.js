@@ -17,7 +17,7 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function (app, SiteFactory) {
+module.exports = function (app, SiteFactory, config) {
   app.get('/sites/', function(req, res) {
     var db = req.app.locals.db
 
@@ -49,30 +49,8 @@ module.exports = function (app, SiteFactory) {
 
     SiteFactory.create(req.body.domain)
       .then(function(site) {
-        site.addAdmin(req.user) // No need to wait for it to finish.
+        SiteFactory.addAdmin(site, req.user) // No need to wait for it to finish.
         res.status(201).location('/sites/' + site.id).send(site)
       }, function(error) {res.status(500).send(error)})
-  })
-
-  app.get('/sites/:site/pages/:page/comments/', function(req, res) {
-    Comment.getAllByPage(req.params.site, req.params.page)
-      .then(
-        function(comments) {res.send(comments)},
-        function(error)    {console.log(error); res.status(500).send(error)}
-      )
-  })
-
-  app.post('/sites/:site/pages/:page/comments/', function(req, res) {
-    if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
-
-    if (typeof req.body.text === 'undefined') {
-      return res.status(400).send('Bad Request: text is required')
-    }
-
-    Comment.add(req.params.site, req.params.page, req.user.id, req.body.text, null)
-      .then(
-        function(comment) {res.status(201).location(req.path + comment.id).send(comment)},
-        function(error)   {res.status(500).send(error)}
-      )
   })
 }
