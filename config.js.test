@@ -1,0 +1,17 @@
+var path = require('path')
+
+var config = {
+  server: {
+    domain: 'localhost'
+  },
+  connectors: {},
+  database: {
+    client: 'sqlite3',
+    connection: {
+      filename: path.join(__dirname, 'comments-test.db')
+    },
+    debug: false
+  }
+}
+
+module.exports = config

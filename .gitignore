@@ -1,3 +1,4 @@
-comments.db
-config.js
-node_modules
+/build
+/comments.db
+/config.js
+/node_modules

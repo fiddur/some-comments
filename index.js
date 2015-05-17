@@ -17,17 +17,26 @@
  * GNU-AGPL-3.0
  */
 
+var istanbulMiddleware = require('istanbul-middleware')
+var coverage = (process.env.COVERAGE == 'true')
+if (coverage) {
+  console.log('Hook loader for coverage - ensure this is not production!');
+  istanbulMiddleware.hookLoader(__dirname);
+}
+
 var express          = require('express')
 var q                = require('q')
 var passport         = require('passport')
 var bodyParser       = require('body-parser')
-var config           = require('./config.js')
 var FacebookStrategy = require('passport-facebook').Strategy
 var GithubStrategy   = require('passport-github').Strategy
 var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var cookieSession    = require('cookie-session')
 var cors             = require('cors')
 var morgan           = require('morgan')
+
+var configFile = process.argv[2] || 'config.js'
+var config = require('./' + configFile)
 
 var User    = require('./models/user.js')
 var Account = require('./models/account.js')
@@ -49,56 +58,59 @@ passport.deserializeUser(function(id, done) {
 })
 
 // Authentication strategies
-passport.use(new FacebookStrategy(
-  {
-    clientID:     config.connectors.facebook.clientId,
-    clientSecret: config.connectors.facebook.clientSecret,
-    callbackURL:  config.connectors.facebook.callbackUrl
-  },
-  function(accessToken, refreshToken, profile, done) {
+if (typeof config.connectors.facebook !== 'undefined') {
+  passport.use(new FacebookStrategy(
+    {
+      clientID:     config.connectors.facebook.clientId,
+      clientSecret: config.connectors.facebook.clientSecret,
+      callbackURL:  config.connectors.facebook.callbackUrl
+    },
+    function(accessToken, refreshToken, profile, done) {
 
-    Account.getOrCreate('Facebook', profile._json.id, {
-      displayName: profile.displayName,
-      avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
-    })
-      .then(function(account) {
-        console.log("Authenticated with account:", account)
-        return User.getById(account.user)
+      Account.getOrCreate('Facebook', profile._json.id, {
+        displayName: profile.displayName,
+        avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
       })
-      .then(function(user) {
-        console.log("Authenticated with user:", user)
-        done(null, user)
+        .then(function(account) {
+          console.log("Authenticated with account:", account)
+          return User.getById(account.user)
+        })
+        .then(function(user) {
+          console.log("Authenticated with user:", user)
+          done(null, user)
+        })
+    }
+  ))
+}
+
+if (typeof config.connectors.googleOuth2 !== 'undefined') {
+  passport.use(new GoogleOauth2(
+    {
+      clientID:     config.connectors.googleOauth2.clientId,
+      clientSecret: config.connectors.googleOauth2.clientSecret,
+      callbackURL:  config.connectors.googleOauth2.callbackUrl,
+      passReqToCallback: true
+    },
+    function(request, accessToken, refreshToken, profile, done) {
+      console.log('Callback from google oauth2', profile)
+
+      /// @todo Check if there is a photo
+
+      Account.getOrCreate('GoogleOauth2', profile.id, {
+        displayName: profile.displayName,
+        avatar:      profile.photos[0].value,
       })
-  }
-))
-passport.use(new GoogleOauth2(
-  {
-    clientID:     config.connectors.googleOauth2.clientId,
-    clientSecret: config.connectors.googleOauth2.clientSecret,
-    callbackURL:  config.connectors.googleOauth2.callbackUrl,
-    passReqToCallback: true
-  },
-  function(request, accessToken, refreshToken, profile, done) {
-    console.log('Callback from google oauth2', profile)
-
-    /// @todo Check if there is a photo
-
-    Account.getOrCreate('GoogleOauth2', profile.id, {
-      displayName: profile.displayName,
-      avatar:      profile.photos[0].value,
-    })
-      .then(function(account) {
-        console.log("Authenticated with account:", account)
-        return User.getById(account.user)
-      })
-      .then(function(user) {
-        console.log("Authenticated with user:", user)
-        done(null, user)
-      })
-  }
-))
-
-
+        .then(function(account) {
+          console.log('Authenticated with account:', account)
+          return User.getById(account.user)
+        })
+        .then(function(user) {
+          console.log('Authenticated with user:', user)
+          done(null, user)
+        })
+    }
+  ))
+}
 
 // Config app
 app.set('views', __dirname + '/views')
@@ -107,6 +119,7 @@ var expressHbs = require('express3-handlebars')
 app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
 app.set('view engine', 'hbs')
 
+if (coverage) {app.use('/coverage', istanbulMiddleware.createHandler())}
 app.use(morgan('combined'))
 app.use(express.static(__dirname + '/public'))
 app.use(bodyParser.json())
@@ -186,7 +199,10 @@ app.get('/logout', function(req, res) {
 })
 
 // port
-app.listen(1337)
+var port = config.server.port || null
+var server = app.listen(port)
+console.log('Express server listening on port %d in %s mode', server.address().port,
+            app.settings.env)
 
 // test authentication
 function ensureAuthenticated(req, res, next) {
@@ -219,8 +235,6 @@ function setup_db(db) {
   db.run('CREATE UNIQUE INDEX IF NOT EXISTS siteuser ON siteadmins (site, user)')
 }
 
-
-
 /**
  * REST API for /sites/
  */
@@ -229,21 +243,15 @@ app.get('/sites/', function(req, res) {
   var db = req.app.locals.db
 
   console.log('Listing sites.')
-  db.all(
-    'SELECT s.id, s.domain, u.displayName, u.avatar ' +
-      'FROM sites s ' +
-      '  LEFT JOIN siteadmins sa ON sa.site = s.id ' +
-      '  LEFT JOIN users u ON u.id = sa.user ' +
-      'ORDER BY s.id'
-  )
-    .then(function(sitesData) {
+  Site.getAll()
+    .then(function(sites) {
       if (req.accepts('json', 'html') === 'json') {
         console.log('Rendering JSON')
-        return res.json(sitesData)
+        return res.json(sites)
       }
 
       console.log('Rendering HTML')
-      res.render('sites/index', {sites: sitesData, server: config.server})
+      res.render('sites/index', {sites: sites, server: config.server})
     }, function(error) {
       console.log('Error in site-list', error)
       throw error

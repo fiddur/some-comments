@@ -29,6 +29,7 @@ function Comment(id, text, user, page, parent, deleted) {
   this.deleted  = deleted
   this.children = null
 }
+
 Comment.get = function(id) {
   return global.app.locals.db
     .get('SELECT comments.id, comments.created, comments.parent, comments.text, comments.user, users.displayName, users.avatar FROM comments LEFT JOIN users ON users.id = comments.user WHERE comments.id=?',
@@ -49,9 +50,15 @@ Comment.add = function(site, page, user, text, parent) {
 Comment.getAllByPage = function(site, page) {
   console.log('Getting comments for site ' + site + ' and page ' + page)
 
-  return global.app.locals.db
-    .all('SELECT comments.id, comments.created, comments.parent, comments.text, comments.user, users.displayName, users.avatar FROM comments LEFT JOIN users ON users.id = comments.user WHERE site=? AND page=? AND deleted IS NULL ORDER BY comments.id',
-         site, page)
+  return global.app.locals.db.all(
+    'SELECT comments.id, comments.created, comments.parent, comments.text, comments.user, ' +
+      '     users.displayName, users.avatar ' +
+      'FROM comments ' +
+      '  LEFT JOIN users ON users.id = comments.user ' +
+      'WHERE site=? AND page=? AND deleted IS NULL ' +
+      'ORDER BY comments.id',
+    site, page
+  )
     .then(function(commentRows) {
       var commentById = {}
       var usersToGet = []

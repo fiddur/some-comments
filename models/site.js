@@ -26,6 +26,17 @@ function Site(id, domain) {
   this.id     = id
   this.domain = domain
 }
+
+Site.getAll = function() {
+  return global.app.locals.db.all(
+    'SELECT s.id, s.domain, u.displayName, u.avatar ' +
+      'FROM sites s ' +
+      '  LEFT JOIN siteadmins sa ON sa.site = s.id ' +
+      '  LEFT JOIN users u ON u.id = sa.user ' +
+      'ORDER BY s.id'
+  )
+}
+
 Site.add = function(domain) {
   return global.app.locals.db
     .run('INSERT INTO sites (domain) VALUES (?)', domain)
@@ -34,6 +45,7 @@ Site.add = function(domain) {
       return new Site(db.lastID, domain)
     })
 }
+
 Site.getByOrigin = function(origin) {
   var domain = origin.split('//')[1]
   console.log('Getting site by ' + domain)
@@ -47,6 +59,7 @@ Site.getByOrigin = function(origin) {
 
   return deferred.promise
 }
+
 Site.prototype.addAdmin = function(user) {
   return global.app.locals.db
     .run('INSERT INTO siteadmins (site, user) VALUES (?,?)', this.id, user.id)
