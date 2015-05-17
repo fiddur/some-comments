@@ -20,34 +20,33 @@
 /**
  * User
  */
-function User(id, displayName, avatar) {
-  this.id          = id
-  this.displayName = displayName
-  this.avatar      = avatar
+var UserFactoryPrototype = {}
+function UserFactory(db) {
+  var uf = Object.create(UserFactoryPrototype)
+  uf.db = db
+  return uf
 }
-User.getById = function(id) {
-  return global.app.locals.db
+
+UserFactoryPrototype.getById = function(id) {
+  return this.db
     .get('SELECT * FROM users WHERE id = ?', id)
-    .then(function(userData) {
-      if (typeof userData === 'undefined') {
+    .then(function(user) {
+      if (typeof user === 'undefined') {
         throw 'No user with id: ' + id
       }
 
-      return new User(id, userData.displayName, userData.avatar)
+      return user
     })
 }
-User.create = function(displayName, avatar) {
+UserFactoryPrototype.create = function(displayName, avatar) {
   console.log('Creating user: INSERT INTO users (displayName, avatar) VALUES(?,?)',
               displayName, avatar)
 
-  return global.app.locals.db
+  return this.db
     .run('INSERT INTO users (displayName, avatar) VALUES(?,?)', displayName, avatar)
     .then(function(db) {
       return new User(db.lastID, displayName, avatar)
     })
 }
-User.prototype.toString = function() {
-  return this.displayName + ' (' + this.id + ')'
-}
 
-module.exports = User
+module.exports = UserFactory

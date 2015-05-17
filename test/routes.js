@@ -44,7 +44,7 @@ describe('Routing', function() {
       .then(function(connectedDb) {db = connectedDb})
 
     serverProcess.stdout.on('data', function (buffer) {
-      //console.log('Server output: ' + buffer)
+      console.log('Server output: ' + buffer)
 
       var portRegex = /listening on port (\d+) in/g
       var portMatch = portRegex.exec(buffer.toString())

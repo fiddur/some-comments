@@ -19,16 +19,15 @@
 
 var q = require('q')
 
-/**
- * Site - a site to comment things on.
- */
-function Site(id, domain) {
-  this.id     = id
-  this.domain = domain
+var SiteFactoryPrototype = {}
+function SiteFactory(db) {
+  var sf = Object.create(SiteFactoryPrototype)
+  sf.db = db
+  return sf
 }
 
-Site.getAll = function() {
-  return global.app.locals.db.all(
+SiteFactoryPrototype.getAll = function() {
+  return this.db.all(
     'SELECT s.id, s.domain, u.displayName, u.avatar ' +
       'FROM sites s ' +
       '  LEFT JOIN siteadmins sa ON sa.site = s.id ' +
@@ -37,32 +36,32 @@ Site.getAll = function() {
   )
 }
 
-Site.add = function(domain) {
-  return global.app.locals.db
+SiteFactory.create = function(domain) {
+  return this.db
     .run('INSERT INTO sites (domain) VALUES (?)', domain)
     .then(function(db) {
       console.log('Created Site', db.lastID, domain)
-      return new Site(db.lastID, domain)
+      return {id: db.lastID, domain: domain}
     })
 }
 
-Site.getByOrigin = function(origin) {
+SiteFactory.getByOrigin = function(origin) {
   var domain = origin.split('//')[1]
   console.log('Getting site by ' + domain)
   var deferred = q.defer()
-  global.app.locals.db
+  this.db
     .get('SELECT * FROM sites WHERE domain = ?', domain)
     .then(function(site) {
       if (typeof site === 'undefined') {return deferred.reject('No site with domain ' + domain)}
-      deferred.resolve(new Site(site.id, site.domain))
+      deferred.resolve(site)
     }, function(error) {deferred.reject(error)})
 
   return deferred.promise
 }
 
-Site.prototype.addAdmin = function(user) {
-  return global.app.locals.db
-    .run('INSERT INTO siteadmins (site, user) VALUES (?,?)', this.id, user.id)
+SiteFactory.addAdmin = function(site, user) {
+  return this.db
+    .run('INSERT INTO siteadmins (site, user) VALUES (?,?)', site.id, user.id)
 }
 
-module.exports = Site
+module.exports = SiteFactory
