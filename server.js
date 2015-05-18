@@ -34,6 +34,7 @@ var GithubStrategy   = require('passport-github').Strategy
 var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var cookieSession    = require('cookie-session')
 var expressHbs       = require('express3-handlebars')
+var nodemailer       = require('nodemailer')
 
 var SiteFactory      = require('./models/site.js')
 var CommentFactory   = require('./models/comment.js')
@@ -97,6 +98,8 @@ app.set('view engine', 'hbs')
 
 function start(db, config) {
   var UserFactory = require('./models/user.js')(db)
+  var mailTransport = nodemailer.createTransport() /// @todo add config.mail
+  var commentFactory = Commentfactory(db, mailTransport)
 
   // serialize and deserialize
   passport.serializeUser(function(user, done) {
@@ -195,10 +198,8 @@ function start(db, config) {
   }
 
   // Setup routes
-
   SiteRoutes(app, SiteFactory(db), config)
-  CommentRoutes(app, CommentFactory(db))
-
+  CommentRoutes(app, commentFactory)
 
   // test authentication
   function ensureAuthenticated(req, res, next) {

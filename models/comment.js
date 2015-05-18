@@ -18,9 +18,10 @@
  */
 
 var CommentFactoryPrototype = {}
-function CommentFactory(db) {
+function CommentFactory(db, mailTransport) {
   var cf = Object.create(CommentFactoryPrototype)
   cf.db = db
+  cf.mailTransport = mailTransport
   return cf
 }
 
@@ -47,7 +48,7 @@ CommentFactoryPrototype.create = function(site, page, user, text, parent) {
     })
 }
 
-CommentFactoryPrototype.getAllByPage = function(site, page) {
+CommentFactoryPrototype.getAllByPage = function(siteId, page) {
   return this.db.all(
     'SELECT comments.id, comments.created, comments.parent, comments.text, comments.user, ' +
       '     users.displayName, users.avatar ' +
@@ -55,7 +56,7 @@ CommentFactoryPrototype.getAllByPage = function(site, page) {
       '  LEFT JOIN users ON users.id = comments.user ' +
       'WHERE site=? AND page=? AND deleted IS NULL ' +
       'ORDER BY comments.id',
-    site, page
+    siteId, page
   )
     .then(function(commentRows) {
       var commentById = {}
@@ -81,5 +82,33 @@ CommentFactoryPrototype.getAllByPage = function(site, page) {
       return comments
     })
 }
+
+/// @todo This shall be broken out into a subscription model
+function getSubscribers(db, siteId, page) {
+  var subscribers = [] ///< List of user objects.
+
+  // Always add all site admins
+  var adminsPromise = db.all(
+    'SELECT users.* ' +
+      'FROM siteadmins ' +
+      '  LEFT JOIN users ON users.id = siteadmins.user ' +
+      'WHERE siteadmins.site=? ',
+    siteId
+  )
+
+  // Add everyone who commented on this page
+  var commentersPromise = db.all(
+    'SELECT users.* ' +
+      'FROM comments ' +
+      '  LEFT JOIN users ON users.id = comments.user ' +
+      'WHERE site=? AND page=? AND deleted IS NULL ' +
+      'GROUP BY comments.user',
+    siteId, page
+  )
+}
+
+function notifySubscribers(siteId, page) {
+}
+
 
 module.exports = CommentFactory
