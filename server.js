@@ -99,7 +99,7 @@ app.set('view engine', 'hbs')
 function start(db, config) {
   var UserFactory = require('./models/user.js')(db)
   var mailTransport = nodemailer.createTransport() /// @todo add config.mail
-  var commentFactory = Commentfactory(db, mailTransport)
+  var commentFactory = CommentFactory(db, mailTransport)
 
   // serialize and deserialize
   passport.serializeUser(function(user, done) {
@@ -113,7 +113,7 @@ function start(db, config) {
       )
   })
 
-  var port = process.env.PORT || config.port || null
+  var port = process.env.PORT || config.server.port || null
   server = app.listen(port)
   console.log('Express server listening on port %d in %s mode', server.address().port,
               app.settings.env)
