@@ -45,6 +45,76 @@ Where you want to enable commenting, add something like (replacing site id and p
 ```
 
 
+Configuration
+-------------
+
+### Connectors
+
+These are the ways the user can authenticat.  *Some Comments* have no authentication of it's own,
+but relies solely on other systems.
+
+
+#### Dynamic [OpenID Connect](http://openid.net/connect/) (NOT older OpenID 2.0 or less)
+
+To use Dynamic OpenID, simply include `openidconnect` with an empty array:
+
+```
+connectors: {
+  openidconnect: []
+}
+```
+
+If you add objects in the array (see below), Dynamic Registration will still be available.
+
+
+#### OpenID Connect without Dynamic (e.g. Google)
+
+For OpenID Connect endpoints that haven't implemented Dynamic Client Registration, you need to
+supply API credentials.  For example:
+
+```
+connectors: {
+  openidconnect: [
+    {
+      title:            'Google OpenID Connect',
+      shortName:        'google',
+      authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenURL:         'https://www.googleapis.com/oauth2/v4/token',
+      userInfoURL:      'https://www.googleapis.com/oauth2/v3/userinfo',
+      clientID:         'get your own',
+      clientSecret:     'get your own',
+    }
+  ]
+}
+```
+
+For Google, you get your API credentials at [the Developers
+Console](https://console.developers.google.com/).  Add an Oauth Client, with redirect URIs in the
+form: `http(s)://yourdomain.org/auth/<shortName>/callback`.  The `shortName` is a URL fragment and
+is needed to separate the callback URIs for each openidconnect issuer.
+
+
+#### Facebook
+
+```
+connectors: {
+  facebook: [
+    {
+      clientId:     'get your own',
+      clientSecret: 'get your own',
+    }
+  ]
+}
+```
+
+Callback URI will be `http(s)://domain/auth/facebook/callback`.
+
+
+### Database
+
+Right now it uses sqlite3.
+
+
 Todo
 ----
 * Display already logged in instead of "Foo Bar".

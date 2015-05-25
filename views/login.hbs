@@ -2,9 +2,18 @@
 
 <h2>Authenticate with:</h2>
 
+<form action="/auth/oidc" target="_blank">
+  <input name="oidci" /><input type="submit" />
+</form>
+
 <ul>
-  <li><a href="/auth/facebook" target="_new">Facebook</a></li>
-  <li><a href="/auth/googleOauth2" target="_new">Google Oauth 2.0</a></li>
+  {{#config.connectors.openidconnect}}
+    <li><a href="/auth/oidc{{nameCounter}}" target="_blank">{{title}}</a></li>
+  {{/config.connectors.openidconnect}}
+
+  {{#config.connectors.facebook}}
+    <li><a href="/auth/facebook" target="_blank">Facebook</a></li>
+  {{/config.connectors.facebook}}
 </ul>
 
 <script>

@@ -17,44 +17,46 @@
  * GNU-AGPL-3.0
  */
 
-var User = require('./user.js')
+var AccountFactoryPrototype = {}
+function AccountFactory(db) {
+  var af = Object.create(AccountFactoryPrototype)
+  af.db = db
+  af.UserFactory = require('./user.js')(db)
+  return af
+}
 
 /**
  * Account - representing a login account at a connected service like Google, Facebook, Openid etc.
  *
- * @param uid     The unique identifier on the connected system
- * @param system  The authentication system - normally the passport strategy used.
- * @param user    The User ID.
+ * - system  The authentication system - normally the passport strategy used.
+ * - uid     The unique identifier on the connected system
+ * - user    The User ID.
  */
-function Account(id, uid, system, user) {
-  this.id     = id
-  this.uid    = uid
-  this.system = system
-  this.user   = user
-}
-Account.getOrCreate = function(system, uid, data) {
-  return global.app.locals.db
+AccountFactoryPrototype.getOrCreate = function(system, uid, data) {
+  var self = this
+
+  return this.db
     .get('SELECT * FROM accounts WHERE system = ? AND uid = ?', system, uid)
     .then(function(account_data) {
       if (typeof account_data === 'undefined') {
 
         console.log('There is no account.  Creating user and account.', system, uid)
 
-        return User.create(data.displayName, data.avatar)
+        return self.UserFactory.create(data.displayName, data.avatar)
           .then(function(user) {
             console.log('Created user.  Now creating account.')
-            return global.app.locals.db.run(
+            return self.db.run(
               'INSERT INTO accounts (uid, system, user) VALUES (?,?,?)', uid, system, user.id
             )
           }).then(function(db) {
-            console.log('Created account.  Authentication should be done.')
-            return new Account(db.lastID, uid, system, user.id)
+            console.log('Created account.  Authentication should be done.', user)
+            return {id: db.lastID, uid: uid, system: system, user: user.id}
           })
       }
       else {
-        return new Account(account_data.id, uid, system, account_data.user)
+        return {id: account_data.id, uid: uid, system: system, user: account_data.user}
       }
     })
 }
 
-module.exports = Account
+module.exports = AccountFactory

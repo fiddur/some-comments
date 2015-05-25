@@ -1,0 +1,16 @@
+<html>
+  <head>
+    <title>Some Comments testing page</title>
+    <link href="http://fredrik.liljegren.org:1337/comments.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="comments" id="comments"></div>
+    <script src="http://localhost:1337/node_modules/markdown/lib/markdown.js"></script>
+    <script src="http://localhost:1337/node_modules/q/q.js"></script>
+    <script src="http://localhost:1337/client.js"></script>
+    <script>
+      SomeComments('http://localhost:1337/').displayByPage(1, 'post-{{id}}', 'comments')
+    </script>
+  </body>
+</html>
+

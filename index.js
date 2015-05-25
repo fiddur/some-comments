@@ -24,7 +24,6 @@ var config = require('./' + configFile)
 var server = require('./server.js')
 
 var User    = require('./models/user.js')
-var Account = require('./models/account.js')
 var Site    = require('./models/site.js')
 var Comment = require('./models/comment.js')
 
@@ -40,14 +39,51 @@ qsqlite3.createDatabase(config.database.connection.filename)
 
 function setup_db(db) {
   // Setup tables
-  db.run('CREATE TABLE users (id INTEGER PRIMARY KEY, displayName STRING, avatar STRING)')
-  db.run('CREATE TABLE accounts (id INTEGER PRIMARY KEY, uid STRING, system STRING, user INTEGER)')
-  db.run('CREATE TABLE sites (id INTEGER PRIMARY KEY, domain STRING, maxLevels INTEGER)')
-  db.run('CREATE TABLE siteadmins (site INTEGER, user INTEGER)')
-  db.run('CREATE TABLE comments (id INTEGER PRIMARY KEY, text TEXT, user INTEGER, site INTEGER, page STRING, parent INTEGER, created DATETIME DEFAULT CURRENT_TIMESTAMP, changed DATETIME, deleted DATETIME)')
-  db.run('CREATE TABLE subscription (page STRING, user INTEGER)')
-  db.run('CREATE TABLE settings (key STRING, value STRING)')
-  db.run('CREATE TABLE superadmins (user INTEGER)')
+  db.run(
+    'CREATE TABLE IF NOT EXISTS users ' +
+      '(id INTEGER PRIMARY KEY, displayName STRING, avatar STRING)'
+  )
+  db.run(
+    'CREATE TABLE IF NOT EXISTS accounts ' +
+      '(id INTEGER PRIMARY KEY, uid STRING, system STRING, user INTEGER)'
+  )
+  db.run(
+    'CREATE TABLE IF NOT EXISTS sites ' +
+      '(id INTEGER PRIMARY KEY, domain STRING, maxLevels INTEGER)'
+  )
+  db.run(
+    'CREATE TABLE IF NOT EXISTS siteadmins ' +
+      '(site INTEGER, user INTEGER)'
+  )
+  db.run(
+    'CREATE TABLE IF NOT EXISTS comments ' +
+      '(id INTEGER PRIMARY KEY, text TEXT, user INTEGER, site INTEGER, ' +
+      'page STRING, parent INTEGER, created DATETIME DEFAULT CURRENT_TIMESTAMP, ' +
+      'changed DATETIME, deleted DATETIME)'
+  )
+  db.run('CREATE TABLE IF NOT EXISTS subscription (page STRING, user INTEGER)')
+  db.run('CREATE TABLE IF NOT EXISTS settings (key STRING, value STRING)')
+  db.run('CREATE TABLE IF NOT EXISTS superadmins (user INTEGER)')
+  db.run(
+    'CREATE TABLE IF NOT EXISTS oidc (' +
+      '  id               INTEGER PRIMARY KEY,' +
+      '  issuer           STRING,' +
+      '  authorizationURL STRING,' +
+      '  tokenURL         STRING,' +
+      '  userInfoURL      STRING,' +
+      '  registrationURL  STRING,' +
+      '  clientID         STRING,' +
+      '  clientSecret     STRING,' +
+      '  expiresAt        INTEGER' +
+      ')'
+  )
+  db.run(
+    'CREATE TABLE IF NOT EXISTS oidc_identifiers (' +
+      '  oidc       INTEGER,' +
+      '  identifier STRING' +
+      ')'
+  )
+
   db.run('CREATE UNIQUE INDEX IF NOT EXISTS domain ON sites (domain)')
   db.run('CREATE UNIQUE INDEX IF NOT EXISTS system_uid ON accounts (system, uid)')
   db.run('CREATE UNIQUE INDEX IF NOT EXISTS siteuser ON siteadmins (site, user)')

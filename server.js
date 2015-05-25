@@ -28,18 +28,16 @@ var express          = require('express')
 var morgan           = require('morgan')
 var cors             = require('cors')
 var bodyParser       = require('body-parser')
-var passport         = require('passport')
-var FacebookStrategy = require('passport-facebook').Strategy
-var GithubStrategy   = require('passport-github').Strategy
-var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var cookieSession    = require('cookie-session')
-var expressHbs       = require('express3-handlebars')
+var expressHbs       = require('express-handlebars')
 var nodemailer       = require('nodemailer')
 
-var SiteFactory      = require('./models/site.js')
+var Authentication   = require('./authentication')
 var CommentFactory   = require('./models/comment.js')
+
 var SiteRoutes       = require('./routes/sites.js')
 var CommentRoutes    = require('./routes/comments.js')
+
 
 var app = express()
 
@@ -48,27 +46,6 @@ app.use(morgan('combined'))
 app.use(bodyParser.json())
 app.use(cookieSession({httpOnly: false, keys: ['ett', 'två']}))
 app.use(express.static(__dirname + '/public'))
-app.use(passport.initialize())
-app.use(passport.session())
-
-// Setup Cross-origin resource sharing
-app.use(cors({
-  origin: function(origin, callback) {
-    console.log('Checking if cors is allowed by', origin)
-    if (typeof origin === 'undefined') {return callback(null, true)}
-    Site.getByOrigin(origin).then(
-      function(site) {
-        callback(null, true)
-      },
-      function(error) {
-        console.log(error)
-        callback(null, false)
-      }
-    )
-  },
-  credentials: true
-}))
-
 
 // development error handler
 // will print stacktrace
@@ -98,107 +75,44 @@ app.set('view engine', 'hbs')
 
 function start(db, config) {
   var UserFactory = require('./models/user.js')(db)
+  var AccountFactory   = require('./models/account.js')(db)
   var mailTransport = nodemailer.createTransport() /// @todo add config.mail
   var commentFactory = CommentFactory(db, mailTransport)
+  var SiteFactory      = require('./models/site.js')(db)
 
-  // serialize and deserialize
-  passport.serializeUser(function(user, done) {
-    done(null, user.id)
-  })
-  passport.deserializeUser(function(id, done) {
-    UserFactory.getById(id)
-      .then(
-        function(user)  {done(null, user)},
-        function(error) {done(error, null)}
+  // Setup Cross-origin resource sharing
+  app.use(cors({
+    origin: function(origin, callback) {
+      console.log('Checking if cors is allowed by', origin)
+      if (typeof origin === 'undefined') {return callback(null, true)}
+      Site.getByOrigin(origin).then(
+        function(site) {
+          callback(null, true)
+        },
+        function(error) {
+          console.log(error)
+          callback(null, false)
+        }
       )
-  })
+    },
+    credentials: true
+  }))
 
   var port = process.env.PORT || config.server.port || null
   server = app.listen(port)
-  console.log('Express server listening on port %d in %s mode', server.address().port,
+  config.server.port = server.address().port
+
+  console.log('Express server listening on port %d in %s mode', config.server.port,
               app.settings.env)
 
+  var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
+
+
   // Authentication strategies
-  if (typeof config.connectors.facebook !== 'undefined') {
-    passport.use(new FacebookStrategy(
-      {
-        clientID:     config.connectors.facebook.clientId,
-        clientSecret: config.connectors.facebook.clientSecret,
-        callbackURL:  config.connectors.facebook.callbackUrl
-      },
-      function(accessToken, refreshToken, profile, done) {
-
-        Account.getOrCreate('Facebook', profile._json.id, {
-          displayName: profile.displayName,
-          avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
-        })
-          .then(function(account) {
-            console.log("Authenticated with account:", account)
-            return UserFactory.getById(account.user)
-          })
-          .then(function(user) {
-            console.log("Authenticated with user:", user)
-            done(null, user)
-          })
-      }
-    ))
-
-    app.get('/auth/facebook', passport.authenticate('facebook'))
-    app.get(
-      '/auth/facebook/callback',
-      passport.authenticate('facebook', {failureRedirect: '/login'}),
-      function(req, res) {res.redirect('/account')}
-    )
-  }
-
-  if (typeof config.connectors.googleOuth2 !== 'undefined') {
-    passport.use(new GoogleOauth2(
-      {
-        clientID:     config.connectors.googleOauth2.clientId,
-        clientSecret: config.connectors.googleOauth2.clientSecret,
-        callbackURL:  config.connectors.googleOauth2.callbackUrl,
-        passReqToCallback: true
-      },
-      function(request, accessToken, refreshToken, profile, done) {
-        console.log('Callback from google oauth2', profile)
-
-        /// @todo Check if there is a photo
-
-        Account.getOrCreate('GoogleOauth2', profile.id, {
-          displayName: profile.displayName,
-          avatar:      profile.photos[0].value,
-        })
-          .then(function(account) {
-            console.log('Authenticated with account:', account)
-            return UserFactory.getById(account.user)
-          })
-          .then(function(user) {
-            console.log('Authenticated with user:', user)
-            done(null, user)
-          })
-      }
-    ))
-
-    app.get(
-      '/auth/googleOauth2',
-      passport.authenticate(
-        'google', {
-          scope:
-          [ 'https://www.googleapis.com/auth/plus.login', ,
-            'https://www.googleapis.com/auth/plus.profile.emails.read' ]
-        }
-      ))
-    app.get(
-      '/auth/googleOauth2/callback',
-      passport.authenticate( 'google', {
-        successRedirect: '/account',
-        failureRedirect: '/login'
-      })
-    )
-  }
+  Authentication.setup(app, db, config)
 
   // Setup routes
-  SiteRoutes(app, SiteFactory(db), config)
+  SiteRoutes(app, SiteFactory, config)
   CommentRoutes(app, commentFactory)
 
   // test authentication
@@ -209,26 +123,8 @@ function start(db, config) {
 
   // routes
   app.get('/', function(req, res) {res.render('index')})
-  app.get('/login', function(req, res) {res.render('login')})
 
   app.get('/ping', function(req, res) {res.send('pong')})
-
-  app.get('/account', ensureAuthenticated, function(req, res) {
-    res.render('account', {user: req.user})
-  })
-
-  app.get('/', function(req, res) {
-    res.render('login', {user: req.user})
-  })
-
-  app.get('/logout', function(req, res) {
-    req.logout()
-    res.redirect('/')
-  })
-
-  /**
-   * REST API for /users/
-   */
 
   /// Special shortcut for currently logged in.
   app.get('/users/me', function(req, res) {
