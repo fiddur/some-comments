@@ -2,30 +2,27 @@ var path = require('path')
 
 var config = {
   server: {
-    domain: 'localhost',
-    port:   1337
+    protocol: 'http'
+    domain:   'localhost',
+    port:     1337,
   },
   connectors: {
     facebook: {
       clientID:     'get_your_own',
       clientSecret: 'get_your_own',
-      callbackURL:  'http://localhost:1337/auth/facebook/callback'
+      callbackURL:  'http://localhost:1337/auth/facebook/callback',
     },
-    twitter: {
-      consumerKey:    'get_your_own',
-      consumerSecret: 'get_your_own',
-      callbackURL:    'http://127.0.0.1:1337/auth/twitter/callback'
-    },
-    github: {
-      clientID:     'get_your_own',
-      clientSecret: 'get_your_own',
-      callbackURL:  'http://127.0.0.1:1337/auth/github/callback'
-    },
-    googleOauth2: {
-      clientId:     'get_your_own',
-      clientSecret: 'get_your_own',
-      callbackUrl:  'http://localhost:1337/auth/googleOauth2/callback'
-    }
+    openidconnect: [
+      {
+        title:            'Google OpenID Connect',
+        shortName:        'google',
+        authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenURL:         'https://www.googleapis.com/oauth2/v4/token',
+        userInfoURL:      'https://www.googleapis.com/oauth2/v3/userinfo',
+        clientID:         'get_your_own',
+        clientSecret:     'get_your_own',
+      }
+    ],
   },
   database: {
     client: 'sqlite3',

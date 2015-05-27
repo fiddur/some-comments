@@ -1,3 +1,6 @@
+all:
+	npm install
+
 test:
 	rm -fr build
 	mkdir build

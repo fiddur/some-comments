@@ -17,7 +17,7 @@
  * GNU-AGPL-3.0
  */
 
-var q                = require('q')
+var q = require('q')
 
 var configFile = process.argv[2] || 'config.js'
 var config = require('./' + configFile)
@@ -35,7 +35,6 @@ qsqlite3.createDatabase(config.database.connection.filename)
 
     server.start(db, config)
   })
-
 
 function setup_db(db) {
   // Setup tables

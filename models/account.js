@@ -47,10 +47,10 @@ AccountFactoryPrototype.getOrCreate = function(system, uid, data) {
             console.log('Created user.  Now creating account.')
             return self.db.run(
               'INSERT INTO accounts (uid, system, user) VALUES (?,?,?)', uid, system, user.id
-            )
-          }).then(function(db) {
-            console.log('Created account.  Authentication should be done.', user)
-            return {id: db.lastID, uid: uid, system: system, user: user.id}
+            ).then(function(db) {
+              console.log('Created account.  Authentication should be done.', user)
+              return {id: db.lastID, uid: uid, system: system, user: user.id}
+            })
           })
       }
       else {

@@ -38,7 +38,6 @@ var CommentFactory   = require('./models/comment.js')
 var SiteRoutes       = require('./routes/sites.js')
 var CommentRoutes    = require('./routes/comments.js')
 
-
 var app = express()
 
 if (coverage) {app.use('/coverage', istanbulMiddleware.createHandler())}
@@ -74,8 +73,6 @@ app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
 app.set('view engine', 'hbs')
 
 function start(db, config) {
-  var UserFactory = require('./models/user.js')(db)
-  var AccountFactory   = require('./models/account.js')(db)
   var mailTransport = nodemailer.createTransport() /// @todo add config.mail
   var commentFactory = CommentFactory(db, mailTransport)
   var SiteFactory      = require('./models/site.js')(db)
@@ -85,7 +82,7 @@ function start(db, config) {
     origin: function(origin, callback) {
       console.log('Checking if cors is allowed by', origin)
       if (typeof origin === 'undefined') {return callback(null, true)}
-      Site.getByOrigin(origin).then(
+      SiteFactory.getByOrigin(origin).then(
         function(site) {
           callback(null, true)
         },
@@ -106,7 +103,7 @@ function start(db, config) {
               app.settings.env)
 
   var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
-
+  config.host = host
 
   // Authentication strategies
   Authentication.setup(app, db, config)
@@ -115,16 +112,26 @@ function start(db, config) {
   SiteRoutes(app, SiteFactory, config)
   CommentRoutes(app, commentFactory)
 
-  // test authentication
-  function ensureAuthenticated(req, res, next) {
-    if (req.isAuthenticated()) { return next() }
-    res.redirect('/')
-  }
-
   // routes
   app.get('/', function(req, res) {res.render('index')})
 
   app.get('/ping', function(req, res) {res.send('pong')})
+
+  app.get('/test', function(req, res) {
+    SiteFactory.getByOrigin(config.server.protocol + '://' + config.server.domain)
+      .then(function(site) {
+        return site // Chain it for creation below
+      }, function(error) {
+        console.log('There is no test site created!', error)
+        return SiteFactory.create(config.server.domain)
+      })
+      .then(function(site) {
+        console.log('NOW we have site.', site)
+
+        res.render('test', {config: config, site: site.id})
+      })
+      .done()
+  })
 
   /// Special shortcut for currently logged in.
   app.get('/users/me', function(req, res) {

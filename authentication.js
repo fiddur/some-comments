@@ -22,6 +22,8 @@ var FacebookStrategy = require('passport-facebook').Strategy
 var GithubStrategy   = require('passport-github').Strategy
 var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var OpenIdConnect    = require('passport-openidconnect')
+var AccountFactory   = require('./models/account.js')
+var UserFactory      = require('./models/user.js')
 
 
 function openIdConnectDynamic(db, app, config) {
@@ -33,11 +35,11 @@ function openIdConnectDynamic(db, app, config) {
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
     /// @todo Save identifier -> oidc  connection.
 
-    AccountFactory.getOrCreate('OpenID Connect:' + iss, sub, {
+    AccountFactory(db).getOrCreate('OpenID Connect:' + iss, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture || '',
     })
-      .then(function(account) {return UserFactory.getById(account.user)})
+      .then(function(account) {return UserFactory(db).getById(account.user)})
       .then(function(user)    {done(null, user)})
       .done()
   })
@@ -110,11 +112,11 @@ function openIdConnectProvider(app, host, provider) {
     clientSecret:     provider.clientSecret,
     scope:            'openid profile email',
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
-    AccountFactory.getOrCreate(provider.shortName, sub, {
+    AccountFactory(db).getOrCreate(provider.shortName, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture || '',
     })
-      .then(function(account) {return UserFactory.getById(account.user)})
+      .then(function(account) {return UserFactory(db).getById(account.user)})
       .then(function(user)    {done(null, user)})
       .done()
   })
@@ -138,7 +140,7 @@ function openIdConnectProvider(app, host, provider) {
   )
 }
 
-function facebook(app, provider) {
+function facebook(app, provider, db, host) {
   passport.use(new FacebookStrategy(
     {
       clientID:     provider.clientId,
@@ -146,11 +148,11 @@ function facebook(app, provider) {
       callbackURL:  host + '/auth/facebook/callback',
     },
     function(accessToken, refreshToken, profile, done) {
-      AccountFactory.getOrCreate('Facebook', profile._json.id, {
+      AccountFactory(db).getOrCreate('Facebook', profile._json.id, {
         displayName: profile.displayName,
         avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
       })
-        .then(function(account) {return UserFactory.getById(account.user)})
+        .then(function(account) {return UserFactory(db).getById(account.user)})
         .then(function(user) {done(null, user)})
         .done()
     }
@@ -164,6 +166,12 @@ function facebook(app, provider) {
   )
 }
 
+// test authentication
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) { return next() }
+  res.sendStatus(403)
+}
+
 function setup(app, db, config) {
   var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
 
@@ -175,10 +183,13 @@ function setup(app, db, config) {
     done(null, user.id)
   })
   passport.deserializeUser(function(id, done) {
-    UserFactory.getById(id)
+    UserFactory(db).getById(id)
       .then(
         function(user)  {done(null, user)},
-        function(error) {done(error, null)}
+        function(error) {
+          /// @todo Remove user from session.
+          done(error, null)
+        }
       )
   })
 
@@ -192,6 +203,7 @@ function setup(app, db, config) {
     res.redirect('/')
   })
 
+  // Setup OpenID Connect authentication
   if ('openidconnect' in config.connectors) {
     openIdConnectDynamic(db, app, config)
 
@@ -200,7 +212,16 @@ function setup(app, db, config) {
     }
   }
 
-
+  // Setup Facebook authentication
+  if ('facebook' in config.connectors) {facebook(app, config.connectors.facebook, db, host)}
 }
 
 exports.setup = setup
+
+/**
+ * @todo
+ *
+ * * Don't initiate factories deep in the code!  Inject AccountFactory into setup.
+ * * Use account.getUser rather than UserFactory.getById(account.user)
+ *
+ */
