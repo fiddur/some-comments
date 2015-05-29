@@ -63,7 +63,7 @@ function openIdConnectDynamic(db, app, config) {
     db.get('SELECT * FROM oidc WHERE issuer=?', issuer)
       .then(function(oidc) {
         if (oidc) {done(null, oidc)}
-        else      {done('No oidc found by ' + issuer, null)}
+        else      {done(null, null)}//'No oidc found by ' + issuer, null)}
       }, function(error) {done(error, null)})
       .done()
   })
@@ -102,9 +102,9 @@ function openIdConnectDynamic(db, app, config) {
   )
 }
 
-function openIdConnectProvider(app, host, provider) {
+function openIdConnectProvider(app, db, host, provider) {
   var oidc_strategy = new OpenIdConnect.Strategy({
-    shortName:        provider.shortName,
+    name:             provider.shortName,
     authorizationURL: provider.authorizationURL,
     tokenURL:         provider.tokenURL,
     userInfoURL:      provider.userInfoURL,
@@ -208,7 +208,7 @@ function setup(app, db, config) {
     openIdConnectDynamic(db, app, config)
 
     for (var i = 0, len = config.connectors.openidconnect.length; i < len; i++) {
-      openIdConnectProvider(app, host, config.connectors.openidconnect[i])
+      openIdConnectProvider(app, db, host, config.connectors.openidconnect[i])
     }
   }
 
