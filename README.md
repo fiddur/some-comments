@@ -1,8 +1,8 @@
 Some comments
 =============
 
-[![Build Status](https://travis-ci.org/fiddur/some-comments.png)](https://travis-ci.org/fiddur/some-comments)
-[![Coverage Status](https://coveralls.io/repos/fiddur/some-comments/badge.png)](https://coveralls.io/r/fiddur/some-comments)
+[![Build Status](https://travis-ci.org/fiddur/some-comments.svg)](https://travis-ci.org/fiddur/some-comments)
+[![Coverage Status](https://coveralls.io/repos/fiddur/some-comments/badge.svg)](https://coveralls.io/r/fiddur/some-comments)
 
 Aims to become a free standing commenting system that you attach by including javascript.  I need
 this because Ghost has no commenting function and I don't want ads funded commenting, nor tie it to
