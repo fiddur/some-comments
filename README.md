@@ -48,6 +48,19 @@ Where you want to enable commenting, add something like (replacing site id and p
 Configuration
 -------------
 
+### Server
+
+State protocol, domain and port.  If you use a proxy, this should be the proxies values; used for
+URLs in redirect etc.
+
+```javascript
+server: {
+  protocol: 'http'
+  domain:   'localhost',
+  port:     1337,
+}
+```
+
 ### Connectors
 
 These are the ways the user can authenticat.  *Some Comments* have no authentication of it's own,
@@ -58,7 +71,7 @@ but relies solely on other systems.
 
 To use Dynamic OpenID, simply include `openidconnect` with an empty array:
 
-```
+```javascript
 connectors: {
   openidconnect: []
 }
@@ -72,7 +85,7 @@ If you add objects in the array (see below), Dynamic Registration will still be 
 For OpenID Connect endpoints that haven't implemented Dynamic Client Registration, you need to
 supply API credentials.  For example:
 
-```
+```javascript
 connectors: {
   openidconnect: [
     {
@@ -96,7 +109,7 @@ is needed to separate the callback URIs for each openidconnect issuer.
 
 #### Facebook
 
-```
+```javascript
 connectors: {
   facebook: [
     {
@@ -112,15 +125,35 @@ Callback URI will be `http(s)://domain/auth/facebook/callback`.
 
 ### Database
 
-Right now it uses sqlite3.
+Right now it uses sqlite3.  In the future this will be more configurable.
+
+
+Changelog
+---------
+
+### 0.1.0
+
+Working simple version.
+
+* OpenID Connect authentication
+* Simple commenting testing endpoint: `/test`
+* Endpoint to get logged in users info: `/users/me`
+* Some configuration documentation.
+* Better code separation using factories, started using express router.
+
+Still no email notification…
 
 
 Todo
 ----
+* Make real subscription model and endpoints to configure.
+* Notify subscribers on new comments.
 * Display already logged in instead of "Foo Bar".
+* Database migrations and other db options.
+* Consistent factory naming (userFactory for instantiated, UserFactory for require).
+* Use express router consistently.
 * Reasonable logging.
 * Error handling.
-* Testing.
 * Add more login-services from node-passport.
 * Admin frontend for adding/managing a site.
 * User page to see/remove comments on all sites on a server.
