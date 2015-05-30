@@ -4,7 +4,7 @@
   "description": "Some Comments",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "make test-coveralls"
   },
   "repository": {
     "type": "git",
