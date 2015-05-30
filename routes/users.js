@@ -17,37 +17,38 @@
  * GNU-AGPL-3.0
  */
 
+var express = require('express')
+
 /**
- * User
+ * @param  UserFactory instance
+ *
+ * @return Router middleware
  */
-var UserFactoryPrototype = {}
-function UserFactory(db) {
-  var uf = Object.create(UserFactoryPrototype)
-  uf.db = db
-  return uf
-}
+module.exports = function(userFactory) {
+  var router = express.Router()
 
-UserFactoryPrototype.getById = function(id) {
-  return this.db
-    .get('SELECT * FROM users WHERE id = ?', id)
-    .then(function(user) {
-      if (typeof user === 'undefined') {
-        throw 'No user with id: ' + id
-      }
+  router.get('/:id', function(req, res) {
+    // Not logged in
+    if (typeof req.user === 'undefined') {return res.sendStatus(401)}
 
-      return user
-    })
-}
-UserFactoryPrototype.create = function(user) {
-  return this.db
-    .run(
-      'INSERT INTO users (displayName, avatar, email) VALUES(?,?,?)',
-      user.displayName, user.avatar, user.email
-    )
-    .then(function(db) {
-      user.id = db.lastID
-      return user
-    })
-}
+    // Info about yourself
+    if (req.params.id === 'me' || req.user.id === parseInt(req.params.id)) {
+      return res.json(req.user)
+    }
 
-module.exports = UserFactory
+    /// @todo Check if superadmin
+    if (req.user.id !== parseInt(req.params.id)) {return res.sendStatus(401)}
+
+    // Specific user ID
+    userFactory.getById(req.params.id)
+      .then(function (user) {
+        if (!user) {return res.sendStatus(404)}
+
+        res.json(user)
+      })
+      .done()
+  });
+
+
+  return router
+}

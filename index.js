@@ -40,7 +40,7 @@ function setup_db(db) {
   // Setup tables
   db.run(
     'CREATE TABLE IF NOT EXISTS users ' +
-      '(id INTEGER PRIMARY KEY, displayName STRING, avatar STRING)'
+      '(id INTEGER PRIMARY KEY, displayName STRING, avatar STRING, email STRING)'
   )
   db.run(
     'CREATE TABLE IF NOT EXISTS accounts ' +

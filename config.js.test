@@ -1,6 +1,7 @@
 var path = require('path')
 
 var config = {
+  testMode: true,
   server: {
     domain: 'localhost'
   },

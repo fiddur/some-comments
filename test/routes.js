@@ -33,7 +33,7 @@ var SiteFactory    = require('../models/site')
 var UserFactory    = require('../models/user')
 
 
-describe('Routing', function() {
+describe('Routing Integration', function() {
   var serverProcess, baseUrl, db,
   commentFactory, siteFactory, userFactory
 
@@ -122,7 +122,7 @@ describe('Routing', function() {
       // Setup site, page, user and comments
       var admin, site, comment
 
-      userFactory.create('Test User', 'http://my.avatar/jpg')
+      userFactory.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
         .then(function(adminIn) {
           admin = adminIn
           return siteFactory.create('mydomain')
@@ -137,14 +137,13 @@ describe('Routing', function() {
             .expect(200)
             .expect('Content-Type', /json/)
             .end(function(err, res) {
-              if (err) {throw err}
-
-              //console.log(res)
+              should.not.exist(err)
               res.body[0].id.should.equal(comment.id)
               res.body[0].displayName.should.equal('Test User')
               done()
             })
         })
+        .done()
     })
 
     it('should require auth to add comment', function(done) {
@@ -153,6 +152,53 @@ describe('Routing', function() {
           request(baseUrl)
             .post('/sites/' + site.id + '/pages/testpage/comments/')
             .expect(401, done)
+        })
+        .done()
+    })
+  })
+
+  describe('Anonymous user', function() {
+    it('should be denied access to /users/X', function(done) {
+      request(baseUrl)
+        .get('/users/1')
+        .expect(401, done)
+    })
+  })
+
+  describe('Logged in user', function() {
+    var user, agent
+
+    before(function(done) {
+      // Create a user and login with an agent
+      userFactory.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
+        .then(function(userIn) {
+          user = userIn
+
+          // Login
+          agent = request.agent(baseUrl)
+          agent
+            .get('/login/' + user.id)
+            .end(function(err, res) {
+              agent.saveCookies(res)
+              done()
+            })
+        })
+        .done()
+    })
+
+    it('should give user info in JSON if preferred', function(done) {
+      agent
+        .get('/users/' + user.id)
+        .set('Accept', 'application/json')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end(function(err, res) {
+          should.not.exist(err)
+
+          res.body.displayName.should.equal('Test User')
+          res.body.avatar.should.equal('http://my.avatar/jpg')
+          should.not.exist(res.body.email)
+          done()
         })
     })
 

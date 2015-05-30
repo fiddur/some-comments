@@ -34,6 +34,8 @@ var nodemailer       = require('nodemailer')
 
 var Authentication   = require('./authentication')
 var CommentFactory   = require('./models/comment.js')
+var UserFactory      = require('./models/user.js')
+var SiteFactory      = require('./models/site.js')
 
 var SiteRoutes       = require('./routes/sites.js')
 var CommentRoutes    = require('./routes/comments.js')
@@ -75,14 +77,15 @@ app.set('view engine', 'hbs')
 function start(db, config) {
   var mailTransport = nodemailer.createTransport() /// @todo add config.mail
   var commentFactory = CommentFactory(db, mailTransport)
-  var SiteFactory      = require('./models/site.js')(db)
+  var siteFactory    = SiteFactory(db)
+  var userFactory    = UserFactory(db)
 
   // Setup Cross-origin resource sharing
   app.use(cors({
     origin: function(origin, callback) {
       console.log('Checking if cors is allowed by', origin)
       if (typeof origin === 'undefined') {return callback(null, true)}
-      SiteFactory.getByOrigin(origin).then(
+      siteFactory.getByOrigin(origin).then(
         function(site) {
           callback(null, true)
         },
@@ -94,6 +97,7 @@ function start(db, config) {
     },
     credentials: true
   }))
+
 
   var port = process.env.PORT || config.server.port || null
   server = app.listen(port)
@@ -109,21 +113,22 @@ function start(db, config) {
   Authentication.setup(app, db, config)
 
   // Setup routes
-  SiteRoutes(app, SiteFactory, config)
+  SiteRoutes(app, siteFactory, config)
   CommentRoutes(app, commentFactory)
 
   // routes
+  app.use('/users', require('./routes/users')(userFactory))
   app.get('/', function(req, res) {res.render('index')})
 
   app.get('/ping', function(req, res) {res.send('pong')})
 
   app.get('/test', function(req, res) {
-    SiteFactory.getByOrigin(config.server.protocol + '://' + config.server.domain)
+    siteFactory.getByOrigin(config.server.protocol + '://' + config.server.domain)
       .then(function(site) {
         return site // Chain it for creation below
       }, function(error) {
         console.log('There is no test site created!', error)
-        return SiteFactory.create(config.server.domain)
+        return siteFactory.create(config.server.domain)
       })
       .then(function(site) {
         console.log('NOW we have site.', site)
@@ -131,15 +136,6 @@ function start(db, config) {
         res.render('test', {config: config, site: site.id})
       })
       .done()
-  })
-
-  /// Special shortcut for currently logged in.
-  app.get('/users/me', function(req, res) {
-    if (typeof req.user === 'undefined') {
-      return res.sendStatus(204) // No Content
-    }
-
-    res.json(req.user)
   })
 }
 exports.start = start

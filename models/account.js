@@ -42,7 +42,7 @@ AccountFactoryPrototype.getOrCreate = function(system, uid, data) {
 
         console.log('There is no account.  Creating user and account.', system, uid)
 
-        return self.UserFactory.create(data.displayName, data.avatar)
+        return self.UserFactory.create(data)
           .then(function(user) {
             console.log('Created user.  Now creating account.')
             return self.db.run(

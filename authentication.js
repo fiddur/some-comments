@@ -37,7 +37,8 @@ function openIdConnectDynamic(db, app, config) {
 
     AccountFactory(db).getOrCreate('OpenID Connect:' + iss, sub, {
       displayName: userInfo.displayName,
-      avatar:      userInfo.picture || '',
+      avatar:      userInfo.picture,
+      email:       userInfo.email,
     })
       .then(function(account) {return UserFactory(db).getById(account.user)})
       .then(function(user)    {done(null, user)})
@@ -112,9 +113,11 @@ function openIdConnectProvider(app, db, host, provider) {
     clientSecret:     provider.clientSecret,
     scope:            'openid profile email',
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
+    console.log('Got userinfo from provider:', userInfo)
     AccountFactory(db).getOrCreate(provider.shortName, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture || '',
+      email:       userInfo.email,
     })
       .then(function(account) {return UserFactory(db).getById(account.user)})
       .then(function(user)    {done(null, user)})
@@ -148,9 +151,11 @@ function facebook(app, provider, db, host) {
       callbackURL:  host + '/auth/facebook/callback',
     },
     function(accessToken, refreshToken, profile, done) {
+      console.log('Got facebook data:', profile)
       AccountFactory(db).getOrCreate('Facebook', profile._json.id, {
         displayName: profile.displayName,
         avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
+        email:       profile._json.email,
       })
         .then(function(account) {return UserFactory(db).getById(account.user)})
         .then(function(user) {done(null, user)})
@@ -158,7 +163,7 @@ function facebook(app, provider, db, host) {
     }
   ))
 
-  app.get('/auth/facebook', passport.authenticate('facebook'))
+  app.get('/auth/facebook', passport.authenticate('facebook', {scope: ['public_profile','email']}))
   app.get(
     '/auth/facebook/callback',
     passport.authenticate('facebook', {failureRedirect: '/login'}),
@@ -197,6 +202,16 @@ function setup(app, db, config) {
   app.get('/account', ensureAuthenticated, function(req, res) {
     res.render('account', {user: req.user})
   })
+
+  if (config.testMode) {
+    app.get('/login/:id', function(req, res, next) {
+      var user = {id: req.params.id}
+      req.logIn(user, function(err) {
+        if (err) {return next(err)}
+        res.json('done')
+      })
+    })
+  }
 
   app.get('/logout', function(req, res) {
     req.logout()
