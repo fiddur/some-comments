@@ -1,6 +1,6 @@
 {
   "name": "some-comments",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Some Comments",
   "main": "index.js",
   "scripts": {
@@ -23,14 +23,18 @@
     "markdown": "^0.5.0",
     "morgan": "^1.5.2",
     "nodemailer": "^1.3.4",
+    "orm": "^2.1.26",
+    "orm-timestamps": "^0.5.2",
     "passport": "^0.2.1",
     "passport-facebook": "^2.0.0",
     "passport-github": "^0.1.5",
     "passport-google-oauth2": "^0.1.6",
     "passport-openidconnect": "git+https://github.com/fiddur/passport-openidconnect.git",
     "q": "^1.2.0",
-    "q-sqlite3": "^0.1.2",
-    "sqlite3": "^3.0.5"
+    "q-orm": "github:fiddur/q-orm#master"
+  },
+  "optionalDependencies": {
+    "sqlite3": "2"
   },
   "devDependencies": {
     "coveralls": "^2.11.2",

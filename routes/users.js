@@ -19,12 +19,7 @@
 
 var express = require('express')
 
-/**
- * @param  UserFactory instance
- *
- * @return Router middleware
- */
-module.exports = function(userFactory) {
+module.exports = function(model) {
   var router = express.Router()
 
   router.get('/:id', function(req, res) {
@@ -40,14 +35,14 @@ module.exports = function(userFactory) {
     if (req.user.id !== parseInt(req.params.id)) {return res.sendStatus(401)}
 
     // Specific user ID
-    userFactory.getById(req.params.id)
+    model.User.qGet(req.params.id)
       .then(function (user) {
         if (!user) {return res.sendStatus(404)}
 
         res.json(user)
       })
       .done()
-  });
+  })
 
 
   return router

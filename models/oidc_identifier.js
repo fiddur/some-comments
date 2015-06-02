@@ -17,16 +17,12 @@
  * GNU-AGPL-3.0
  */
 
-var q = require('q')
-
-var configFile = process.argv[2] || 'config.js'
-var config = require('./' + configFile)
-var server = require('./server.js')
-
-var models = require('./models/')
-
-models(config.database, {})
-  .then(function(model) {
-    server.start(model, config)
+module.exports = function(db, Oidc) {
+  var OidcIdentifier = db.qDefine('oidcIdentifier', {
+    identifier: {type: 'text', unique: true}
   })
-  .done()
+
+  OidcIdentifier.qHasOne('oidc', Oidc, {key: true, required: true})
+
+  return OidcIdentifier
+}

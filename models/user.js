@@ -17,37 +17,12 @@
  * GNU-AGPL-3.0
  */
 
-/**
- * User
- */
-var UserFactoryPrototype = {}
-function UserFactory(db) {
-  var uf = Object.create(UserFactoryPrototype)
-  uf.db = db
-  return uf
-}
+module.exports = function(db) {
+  var User = db.qDefine('user', {
+    displayName: String,
+    avatar:      String,
+    email:       String,
+  })
 
-UserFactoryPrototype.getById = function(id) {
-  return this.db
-    .get('SELECT * FROM users WHERE id = ?', id)
-    .then(function(user) {
-      if (typeof user === 'undefined') {
-        throw 'No user with id: ' + id
-      }
-
-      return user
-    })
+  return User
 }
-UserFactoryPrototype.create = function(user) {
-  return this.db
-    .run(
-      'INSERT INTO users (displayName, avatar, email) VALUES(?,?,?)',
-      user.displayName, user.avatar, user.email
-    )
-    .then(function(db) {
-      user.id = db.lastID
-      return user
-    })
-}
-
-module.exports = UserFactory

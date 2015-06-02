@@ -25,56 +25,46 @@ var fs       = require('fs')
 var url      = require('url')
 var path     = require('path')
 var spawn    = require('child_process').spawn
-var q        = require('q')
-var qsqlite3 = require('q-sqlite3')
+var Q        = require('q')
 
-var CommentFactory = require('../models/comment')
-var SiteFactory    = require('../models/site')
-var UserFactory    = require('../models/user')
-
+var models = require('../models/')
 
 describe('Routing Integration', function() {
-  var serverProcess, baseUrl, db,
-  commentFactory, siteFactory, userFactory
-
+  var serverProcess, baseUrl, model
 
   before(function(done) {
-    // Start the server
-    var subEnv = process.env
-    subEnv.COVERAGE = true
-    serverProcess = spawn('node', ['index.js', 'config.js.test'], {env: subEnv})
+    this.timeout(15000) // Setting up things can take time if hd isn't quick
 
-    var serverDeferred = q.defer()
+    var serverDeferred = Q.defer()
 
-    var dbDone = qsqlite3.createDatabase(config.database.connection.filename)
-      .then(function(connectedDb) {
-        db = connectedDb
-        commentFactory = CommentFactory(db)
-        siteFactory    = SiteFactory(db)
-        userFactory    = UserFactory(db)
+    models(config.database, {drop: true})
+      .then(function(modelIn) {
+        model = modelIn
+        console.log('We have model.')
+
+        // Start the server
+        var subEnv = process.env
+        subEnv.COVERAGE = true
+        serverProcess = spawn('node', ['index.js', 'config.js.test'], {env: subEnv})
+        serverProcess.stdout.on('data', function (buffer) {
+          //console.log('Server output: ' + buffer)
+
+          var portRegex = /listening on port (\d+) in/g
+          var portMatch = portRegex.exec(buffer.toString())
+          if (portMatch) {
+            baseUrl = 'http://localhost:' + portMatch[1]
+            serverDeferred.resolve()
+          }
+        })
+        serverProcess.stderr.on('data', function (buffer) {console.log('Server error: "' + buffer)})
+        serverProcess.stdout.on('end', function() {throw new Error('Server died.')})
       })
-
-    serverProcess.stdout.on('data', function (buffer) {
-      //console.log('Server output: ' + buffer)
-
-      var portRegex = /listening on port (\d+) in/g
-      var portMatch = portRegex.exec(buffer.toString())
-      if (portMatch) {
-        baseUrl = 'http://localhost:' + portMatch[1]
-        serverDeferred.resolve()
-      }
-    })
-    serverProcess.stderr.on('data', function (buffer) {console.log('Server error: "' + buffer)})
-    serverProcess.stdout.on('end', function() {throw new Error('Server died.')})
+      .done()
 
     // Wait until both the server and database are ready.
-    q.all([serverDeferred.promise, dbDone]).then(function(){done()})
-
+    serverDeferred.promise.done(done)
   })
   after(function(done) {
-    // Clean the test database
-    fs.unlink(config.database.connection.filename)
-
     // Download the coverage
     var curlProcess = spawn(
       'curl', ['-o', path.resolve('build', 'coverage.zip'), baseUrl + '/coverage/download'],
@@ -122,24 +112,28 @@ describe('Routing Integration', function() {
       // Setup site, page, user and comments
       var admin, site, comment
 
-      userFactory.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
-        .then(function(adminIn) {
-          admin = adminIn
-          return siteFactory.create('mydomain')
+      model.User.qCreate([{displayName: 'Test User', avatar: 'http://my.avatar/jpg'}])
+        .then(function(admins) {
+          admin = admins[0]
+          return model.Site.qCreate([{domain: 'mydomain'}])
         })
-        .then(function(siteIn) {
-          site = siteIn
-          return commentFactory.create(site.id, 'testpage', admin.id, 'This is Some Comment.', null)
+        .then(function(sites) {
+          site = sites[0]
+          return model.Page.qCreate([{site: site, name: 'testpage'}])
         })
-        .then(function(comment) {
+        .then(function(pages) {
+          page = pages[0]
+          return model.Comment.qCreate([{page: page, user: admin, text: 'This is Some Comment.'}])
+        })
+        .then(function(comments) {
           request(baseUrl)
             .get('/sites/' + site.id + '/pages/testpage/comments/')
             .expect(200)
             .expect('Content-Type', /json/)
             .end(function(err, res) {
               should.not.exist(err)
-              res.body[0].id.should.equal(comment.id)
-              res.body[0].displayName.should.equal('Test User')
+              res.body[0].id.should.equal(comments[0].id)
+              res.body[0].user.displayName.should.equal('Test User')
               done()
             })
         })
@@ -147,10 +141,10 @@ describe('Routing Integration', function() {
     })
 
     it('should require auth to add comment', function(done) {
-      siteFactory.create('mydomain')
-        .then(function(site) {
+      model.Site.qCreate([{domain: 'my other domain'}])
+        .then(function(sites) {
           request(baseUrl)
-            .post('/sites/' + site.id + '/pages/testpage/comments/')
+            .post('/sites/' + sites[0].id + '/pages/testpage/comments/')
             .expect(401, done)
         })
         .done()
@@ -170,9 +164,9 @@ describe('Routing Integration', function() {
 
     before(function(done) {
       // Create a user and login with an agent
-      userFactory.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
-        .then(function(userIn) {
-          user = userIn
+      model.User.qCreate([{displayName: 'Test User', avatar: 'http://my.avatar/jpg'}])
+        .then(function(users) {
+          user = users[0]
 
           // Login
           agent = request.agent(baseUrl)
@@ -203,7 +197,7 @@ describe('Routing Integration', function() {
     })
 
     //it('should add comment if user is logged in', function(done) {
-    //  siteFactory.create('mydomain')
+    //  siteFactory.qCreate('mydomain')
     //    .then(function(site) {
     //      request(baseUrl)
     //        .post('/sites/' + site.id + '/pages/testpage/comments/')

@@ -17,13 +17,15 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function (app, CommentFactory) {
+var Q = require('q')
+
+module.exports = function (app, model) {
   app.get('/sites/:site/pages/:page/comments/', function(req, res) {
-    CommentFactory.getAllByPage(req.params.site, req.params.page)
-      .then(
-        function(comments) {res.send(comments)},
-        function(error)    {console.log(error); res.status(500).send(error)}
-      )
+    model.Page.qOne({site: req.params.site, name: req.params.page})
+      .done(function(page) {
+        if (page) {page.qGetComments().then(function(comments) {res.json(comments)})}
+        else {res.json([])}
+      })
   })
 
   app.post('/sites/:site/pages/:page/comments/', function(req, res) {
@@ -33,10 +35,24 @@ module.exports = function (app, CommentFactory) {
       return res.status(400).send('Bad Request: text is required')
     }
 
-    CommentFactory.create(req.params.site, req.params.page, req.user.id, req.body.text, null)
-      .then(
-        function(comment) {res.status(201).location(req.path + comment.id).send(comment)},
-        function(error)   {res.status(500).send(error)}
-      )
+    model.Page.qOne({site: req.params.site, name: req.params.page})
+      .then(function(page) {
+        if (page) {return page}
+        else {
+          return model.Page.qCreate([{site: req.params.site, name: req.params.page}])
+            .then(function(pages) {return pages[0]})
+        }
+      })
+      .then(function(page) {
+        return model.Comment.qCreate([{
+          site: req.params.site,
+          page: page,
+          user: req.user,
+          text: req.body.text
+        }])
+      })
+      .done(function(comments) {
+        res.status(201).location(req.path + comments[0].id).send(comments[0])
+      })
   })
 }

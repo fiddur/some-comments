@@ -281,10 +281,10 @@
 
     div.className = 'comment_row'
     div.innerHTML =
-      '<div class="user"><img alt="' + comment.displayName + '" src="' + comment.avatar
+      '<div class="user"><img alt="' + comment.user.displayName + '" src="' + comment.user.avatar
       + '" /></div><div class="comment_text">'
-      + markdown.toHTML('**' + comment.displayName + '**: ' + comment.text)
-      + '<div class="created">' + comment.created + '</div></div>'
+      + markdown.toHTML('**' + comment.user.displayName + '**: ' + comment.text)
+      + '<div class="created">' + comment.created_at + '</div></div>'
 
     return div
   }

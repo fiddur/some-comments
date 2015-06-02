@@ -17,23 +17,16 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function (app, SiteFactory, config) {
+module.exports = function (app, model, config) {
   app.get('/sites/', function(req, res) {
     var db = req.app.locals.db
 
     console.log('Listing sites.')
-    SiteFactory.getAll()
-      .then(function(sites) {
-        if (req.accepts('json', 'html') === 'json') {
-          console.log('Rendering JSON')
-          return res.json(sites)
-        }
+    model.Site.qAll()
+      .done(function(sites) {
+        if (req.accepts('json', 'html') === 'json') {return res.json(sites)}
 
-        console.log('Rendering HTML')
         res.render('sites/index', {sites: sites, server: config.server})
-      }, function(error) {
-        console.log('Error in site-list', error)
-        throw error
       })
   })
 
@@ -43,14 +36,18 @@ module.exports = function (app, SiteFactory, config) {
     }
 
     if (typeof req.user === 'undefined') {
-      console.log('Unauthorized', req.headers.host, req.url)
       return res.status(401).send('Unauthorized')
     }
 
-    SiteFactory.create(req.body.domain)
-      .then(function(site) {
-        SiteFactory.addAdmin(site, req.user) // No need to wait for it to finish.
+    model.Site.qCreate([{domain: req.body.domain}])
+      .done(function(sites) {
+        var site = sites[0]
+
+        console.log('Before add', site)
+        site.qAddAdmins([req.user]) // No need to wait for it to finish.
+          .then(function() { console.log('After add', site)})
+
         res.status(201).location('/sites/' + site.id).send(site)
-      }, function(error) {res.status(500).send(error)})
+      })
   })
 }

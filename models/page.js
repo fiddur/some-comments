@@ -17,16 +17,13 @@
  * GNU-AGPL-3.0
  */
 
-var q = require('q')
-
-var configFile = process.argv[2] || 'config.js'
-var config = require('./' + configFile)
-var server = require('./server.js')
-
-var models = require('./models/')
-
-models(config.database, {})
-  .then(function(model) {
-    server.start(model, config)
+module.exports = function(db, Site, User) {
+  var Page = db.qDefine('page', {
+    name: {type: 'text', size: 255, unique: true}
   })
-  .done()
+  Page.hasOne('site', Site, {key: true})
+  Page.hasMany('subscribers', User, {}, {reverse: 'subscriptions', key: true})
+
+  return Page
+}
+

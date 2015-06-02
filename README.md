@@ -153,7 +153,6 @@ Todo
 * Notify subscribers on new comments.
 * Display already logged in instead of "Foo Bar".
 * Database migrations and other db options.
-* Consistent factory naming (userFactory for instantiated, UserFactory for require).
 * Use express router consistently.
 * Reasonable logging.
 * Error handling.
