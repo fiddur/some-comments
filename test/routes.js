@@ -119,7 +119,7 @@ describe('Routing Integration', function() {
         })
         .then(function(sites) {
           site = sites[0]
-          return model.Page.qCreate([{site: site, name: 'testpage'}])
+          return model.Page.qCreate([{site: site, url: 'http://mydomain/testpage'}])
         })
         .then(function(pages) {
           page = pages[0]
@@ -127,7 +127,8 @@ describe('Routing Integration', function() {
         })
         .then(function(comments) {
           request(baseUrl)
-            .get('/sites/' + site.id + '/pages/testpage/comments/')
+            .get('/sites/' + site.id + '/pages/' + encodeURIComponent('http://mydomain/testpage') +
+                 '/comments/')
             .expect(200)
             .expect('Content-Type', /json/)
             .end(function(err, res) {

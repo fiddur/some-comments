@@ -20,7 +20,7 @@ describe('Models', function() {
       .then(function(sites) {
         site = sites[0]
 
-        return model.Page.qCreate([{name:'myPage'}])
+        return model.Page.qCreate([{url:'http://testdomain/myPage'}])
       })
       .then(function(pages) {
         page = pages[0]

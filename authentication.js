@@ -187,10 +187,8 @@ function setup(app, model, config) {
       .then(
         function(user)  {done(null, user)},
         function(error) {
-          /// @todo Remove user from session.
           console.log('Deserialize ', error)
           done(null, null)
-          //done(error, null)
         }
       )
   })

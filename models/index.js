@@ -71,12 +71,10 @@ module.exports = function(database, options) {
         'CREATE UNIQUE INDEX IF NOT EXISTS page_subscription ' +
           'ON page_subscribers (page_id, subscribers_id)',
         function(err, data) {
-          console.log(err, data)
+          if (err) {throw err}
         }
       )
 
-
-      //console.log(model);
       return model
     })
 }
