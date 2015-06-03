@@ -114,14 +114,20 @@
           element.appendChild(Comment.getElement(comments[i]))
         }
 
+        return User.get(sc.server, 'me')
+      })
+      .then(function (user) {
         // Add input field
         var newCommentDiv = document.createElement('div')
         newCommentDiv.className = 'comment_row'
-        user = {displayName: 'Foo Bar', avatar: 'nope'}
-        newCommentDiv.innerHTML =
-          '<div class="user">' +
+        var userHtml = user.avatar
+          ? '<div class="user">' +
           '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
-          '</div>' +
+          '</div>'
+          : '<div class="user unknown_user">?</div>'
+
+        newCommentDiv.innerHTML =
+          userHtml +
           '<div class="comment_text">' +
           '  <textarea id="comment_' + urlStr + '"' +
           '            placeholder="Type your comment and press enter…" ' +
@@ -146,8 +152,10 @@
         var someCommentInfo = document.createElement('div')
         someCommentInfo.className = 'some_comment_info'
         someCommentInfo.innerHTML =
-          '<p style="font-size: smallest">' +
-          '  Powered by <a href="https://github.com/fiddur/some-comments">Some Comments</a>.' +
+          '<p>' +
+          '  <a href="https://github.com/fiddur/some-comments">Some Comments</a>' +
+          '  ©Fredrik Liljegren' +
+          '  <a href="http://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL-3.0</a>' +
           '</p>'
         element.appendChild(someCommentInfo)
 
@@ -221,6 +229,16 @@
     console.log(iframe)
 
     return deferred.promise
+  }
+
+  User.get = function(server, id) {
+    return ajax.get(server + 'users/' + id)
+      .then(function(userJson) {
+        return JSON.parse(userJson)
+      }, function(error) {
+        // Probably not logged in then…
+        return {displayName: '?¿?¿?'}
+      })
   }
 
   ////////

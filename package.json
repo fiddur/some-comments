@@ -1,6 +1,6 @@
 {
   "name": "some-comments",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Some Comments",
   "main": "index.js",
   "scripts": {
@@ -46,5 +46,5 @@
     "supertest": "^0.15.0"
   },
   "author": "Fredrik Liljegren",
-  "license": "AGPL"
+  "license": "AGPL-3.0"
 }
