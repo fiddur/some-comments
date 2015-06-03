@@ -17,11 +17,15 @@
  * GNU-AGPL-3.0
  */
 
-var Q = require('q')
+var Q          = require('q')
+var Handlebars = require('handlebars')
+var FS         = require('fs')
+var path       = require('path')
+var markdown   = require('markdown').markdown
 
-module.exports = function (app, model) {
+module.exports = function (app, model, mailTransport, config) {
   app.get('/sites/:site/pages/:page/comments/', function(req, res) {
-    model.Page.qOne({site: req.params.site, name: req.params.page})
+    model.Page.qOne({site: req.params.site, url: req.params.page})
       .done(function(page) {
         if (page) {page.qGetComments().then(function(comments) {res.json(comments)})}
         else {res.json([])}
@@ -35,11 +39,11 @@ module.exports = function (app, model) {
       return res.status(400).send('Bad Request: text is required')
     }
 
-    model.Page.qOne({site: req.params.site, name: req.params.page})
+    model.Page.qOne({site: req.params.site, url: req.params.page})
       .then(function(page) {
         if (page) {return page}
         else {
-          return model.Page.qCreate([{site: req.params.site, name: req.params.page}])
+          return model.Page.qCreate([{site: req.params.site, url: req.params.page}])
             .then(function(pages) {return pages[0]})
         }
       })
@@ -52,7 +56,85 @@ module.exports = function (app, model) {
         }])
       })
       .done(function(comments) {
-        res.status(201).location(req.path + comments[0].id).send(comments[0])
+        var comment = comments[0]
+        res.status(201).location(req.path + comment.id).send(comment)
+
+        // Add subscription to this thread asynchronuously.
+        comment.page.qAddSubscribers([req.user])
+          .catch(function(error) {
+            console.log(
+              'Could not add subscription on page ' + page.id + ' for user ' + req.user.id,
+              error
+            )
+          })
+
+          // Notify subscribers.
+          notifySubscribers(comment)
       })
   })
+
+  function notifySubscribers(comment) {
+    var page = comment.page
+    var mailTxt, mailHtml, site, subscribers
+
+    return page.qGetSubscribers()
+      .then(function(subscribersIn) {
+        subscribers = subscribersIn
+        console.log('About to notify subscribers of new comment:', comment, subscribers)
+
+        return page.qGetSite()
+      })
+      .then(function(siteIn) {
+        site = siteIn
+
+        return Q.all([
+          Q.nfcall(
+            FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'),
+            'utf-8'
+          ).then(function (mailTxtHbs) {
+            var mailTxtTemplate = Handlebars.compile(mailTxtHbs);
+            mailTxt = mailTxtTemplate({
+              commentMarkdown: comment.text,
+              pageUrl:         page.url,
+              unsubscribeUrl:  'http://httpstatusdogs.com/wp-content/uploads/2011/12/501-300x230.jpg'
+            })
+          }),
+          Q.nfcall(
+            FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'),
+            'utf-8'
+          ).then(function (mailHtmlHbs) {
+            var mailHtmlTemplate = Handlebars.compile(mailHtmlHbs);
+            mailHtml = mailHtmlTemplate({
+              commentHtml:    markdown.toHTML(comment.text),
+              pageUrl:        page.url,
+              unsubscribeUrl: 'http://httpstatusdogs.com/wp-content/uploads/2011/12/501-300x230.jpg'
+            })
+          })
+        ])
+      }).then(function() {
+        var promises = []
+        for (var i = 0; i < subscribers.length; i++) {
+          if (subscribers[i].id === comment.user_id) {
+            console.log('Wont send notification to commenter!')
+          }
+          else if (subscribers[i].email) {
+            console.log('Notification to: ', subscribers[i].email)
+            promises.push(Q.ninvoke(mailTransport, 'sendMail', {
+              from:    config.email.address,
+              to:      subscribers[i].email,
+              subject: 'New comment on: ' + page.url,
+              text:    mailTxt,
+              html:    mailHtml,
+            }))
+          }
+          else {
+            console.log('No email?', subscribers[i])
+          }
+        }
+
+        return Q.all(promises)
+          .then(function(infos) {console.log('All mails are now sent.', infos)})
+      })
+      .done()
+  }
 }

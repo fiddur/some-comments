@@ -102,12 +102,13 @@
     return sc
   }
 
-  SomeCommentsPrototype.displayByPage = function(siteId, pageId, elementId) {
+  SomeCommentsPrototype.displayByPage = function(siteId, url, elementId) {
     var element = e(elementId)
     var sc      = this
     var site    = Site(sc.server, siteId)
+    var urlStr  = encodeURIComponent(url)
 
-    Comment.getAllByPage(site, pageId)
+    Comment.getAllByPage(site, urlStr)
       .then(function(comments) {
         for (var i = 0; i < comments.length; i++) {
           element.appendChild(Comment.getElement(comments[i]))
@@ -122,27 +123,35 @@
           '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
           '</div>' +
           '<div class="comment_text">' +
-          '  <textarea id="comment_' + pageId + '" placeholder="Comment…" ' +
-          '            oninput="this.editor.update()">' +
-          '  </textarea>' +
-          '  <div class="comment_preview" id="preview_' + pageId + '"></div>' +
+          '  <textarea id="comment_' + urlStr + '"' +
+          '            placeholder="Type your comment and press enter…" ' +
+          '            oninput="this.editor.update()"></textarea>' +
+          '  <div class="comment_preview" id="preview_' + urlStr + '"></div>' +
           '</div>'
         element.appendChild(newCommentDiv)
 
-        var input = e('comment_' + pageId)
+        var input = e('comment_' + urlStr)
         input.addEventListener('keypress', function(kp) {
           if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
             console.log('POST')
             var commentText = input.value
             input.value = ''
-            Comment.add(site, pageId, commentText)
+            Comment.add(site, urlStr, commentText)
               .then(function(comment) {
                 element.insertBefore(Comment.getElement(comment), newCommentDiv)
               })
           }
         })
 
-        new Editor(input, e('preview_' + pageId))
+        var someCommentInfo = document.createElement('div')
+        someCommentInfo.className = 'some_comment_info'
+        someCommentInfo.innerHTML =
+          '<p style="font-size: smallest">' +
+          '  Powered by <a href="https://github.com/fiddur/some-comments">Some Comments</a>.' +
+          '</p>'
+        element.appendChild(someCommentInfo)
+
+        new Editor(input, e('preview_' + urlStr))
       })
   }
 
@@ -238,23 +247,24 @@
    * Get all the comments from one page
    *
    * @param site    object  A site object
-   * @param pageId  string  The page ID
+   * @param urlStr  string  The page ID
    */
-  Comment.getAllByPage = function(site, pageId) {
-    return ajax.get(site.server + 'sites/' + site.id + '/pages/' + pageId + '/comments/')
-      .then(function(commentsJson) {
-        return JSON.parse(commentsJson)
-      })
+  Comment.getAllByPage = function(site, urlStr) {
+    return ajax.get(
+      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/'
+    ).then(function(commentsJson) {
+      return JSON.parse(commentsJson)
+    })
   }
 
   /**
    * @param site    object  A site object
-   * @param pageId  string  The page ID
+   * @param urlStr  string  The page ID
    * @param text    string  Comment text
    */
-  Comment.add = function(site, pageId, text) {
+  Comment.add = function(site, urlStr, text) {
     return ajax.post(
-      site.server + 'sites/' + site.id + '/pages/' + pageId + '/comments/', {text: text})
+      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/', {text: text})
       .then(
         function(commentJson) {
           var comment = JSON.parse(commentJson)

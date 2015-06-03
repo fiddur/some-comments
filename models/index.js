@@ -66,6 +66,16 @@ module.exports = function(database, options) {
     })
     .then(function() {return db.qSync()})
     .then(function() {
+      // Add unique index for page<->subscriber
+      db.driver.execQuery(
+        'CREATE UNIQUE INDEX IF NOT EXISTS page_subscription ' +
+          'ON page_subscribers (page_id, subscribers_id)',
+        function(err, data) {
+          console.log(err, data)
+        }
+      )
+
+
       //console.log(model);
       return model
     })

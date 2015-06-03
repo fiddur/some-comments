@@ -65,7 +65,7 @@ function start(model, config) {
   app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
   app.set('view engine', 'hbs')
 
-  var mailTransport = nodemailer.createTransport() /// @todo add config.mail
+  var mailTransport = nodemailer.createTransport(config.mailTransport)
 
   // Setup Cross-origin resource sharing
   app.use(cors({
@@ -95,7 +95,7 @@ function start(model, config) {
 
   // Setup routes
   SiteRoutes(app, model, config)
-  CommentRoutes(app, model)
+  CommentRoutes(app, model, mailTransport, config)
 
   // routes
   app.use('/users', require('./routes/users')(model))

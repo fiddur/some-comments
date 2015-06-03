@@ -33,9 +33,12 @@ module.exports = function(db, User) {
    * @param userData   Object of userdata
    */
   Account.getOrCreate = function(system, uid, userData) {
-    return Account.find({system: system, uid: uid}).qOne()
+    return Account.qOne({system: system, uid: uid})
       .then(function(account) {
+        console.log('Got account for ' + system + ':' + uid + '?', account)
         if (account) {return account}
+
+        console.log('No account for ' + system + ':' + uid)
 
         // Create user first.
         var user

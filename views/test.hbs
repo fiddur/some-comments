@@ -5,6 +5,6 @@
 <script src="{{config.host}}/node_modules/q/q.js"></script>
 <script src="{{config.host}}/client.js"></script>
 <script>
-  SomeComments('{{config.host}}/').displayByPage({{site}}, 'post-{{id}}', 'comments')
+  SomeComments('{{config.host}}/').displayByPage({{site}}, window.location.href, 'comments')
 </script>
 

@@ -19,6 +19,7 @@
     "cors": "^2.5.3",
     "express": "^4.12.3",
     "express-handlebars": "^2.0.1",
+    "handlebars": "^3.0.3",
     "jade": "^1.9.2",
     "markdown": "^0.5.0",
     "morgan": "^1.5.2",

@@ -6,6 +6,9 @@ var config = {
     domain:   'localhost',
     port:     1337,
   },
+  email: {
+    address: 'noreply@example.com',
+  },
   connectors: {
     facebook: {
       clientID:     'get_your_own',
@@ -24,13 +27,7 @@ var config = {
       }
     ],
   },
-  database: {
-    client: 'sqlite3',
-    connection: {
-      filename: path.join(__dirname, 'comments.db')
-    },
-    debug: false
-  }
+  database: 'sqlite://' + path.join(__dirname, 'comments.db'),
 }
 
 module.exports = config

@@ -1,6 +1,11 @@
 all:
 	npm install
 
+install: node_modules
+
+node_modules:
+	npm install
+
 test:
 	rm -fr build
 	mkdir build

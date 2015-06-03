@@ -19,10 +19,10 @@
 
 module.exports = function(db, Site, User) {
   var Page = db.qDefine('page', {
-    name: {type: 'text', size: 255, unique: true}
+    url: {type: 'text', size: 255, unique: true}
   })
-  Page.hasOne('site', Site, {key: true})
-  Page.hasMany('subscribers', User, {}, {reverse: 'subscriptions', key: true})
+  Page.qHasOne('site', Site, {key: true})
+  Page.qHasMany('subscribers', User, {}, {reverse: 'subscriptions', key: true})
 
   return Page
 }

@@ -16,26 +16,16 @@ name.  My working names were "restful comments" and "comment anything", but they
 taken.
 
 
-Install (server)
-----------------
-```
-git clone https://github.com/fiddur/some-comments.git
-cd some-comments
-npm install
-cp config.js.example config.js # Edit to add your API-keys for wanted services
-node index.js
-```
-
-To run in production I suggest using [forever](https://github.com/foreverjs/forever).
-
-node 0.10 seems to be easier to install; for me sqlite3 fails to build on 0.11.
-
-
 Client usage
 ------------
-Make sure you added your site (with Site.add(server, domain)). (No frontend yet.)
 
-Where you want to enable commenting, add something like (replacing site id and post id):
+Get your site ID on `http://somecomment.domain/sites/` (running your own node or using my example
+at [fredrik.liljegren.org:1337](http://fredrik.liljegren.org:1337/sites/)).
+
+Make sure you added your site (with Site.add(server, domain)) at installation `/sites/` and get
+your `site_id`.
+
+Where you want to enable commenting, add something like (replacing site id and url):
 
 ```html
 <div class="comments" id="comments"></div>
@@ -43,13 +33,34 @@ Where you want to enable commenting, add something like (replacing site id and p
 <script src="http://somecomment.domain/node_modules/q/q.js"></script>
 <script src="http://somecomment.domain/client.js"></script>
 <script>
-  SomeComments('http://somecomment.domain/').displayByPage(1, 'post-{{id}}', 'comments')
+  SomeComments('http://somecomment.domain/').displayByPage({{site_id}}, '{{url}}', 'comments')
 </script>
 ```
+
+The `url` should be the pages canonical URL and will be used in notification e-mails.
+
+
+Install (server)
+----------------
+This is tested on Node 0.10.
+
+```
+git clone https://github.com/fiddur/some-comments.git
+cd some-comments
+npm install
+cp config.js.example config.js # Edit to configure…
+node index.js
+```
+
+To run in production I suggest using [forever](https://github.com/foreverjs/forever).
+
 
 
 Configuration
 -------------
+
+Configuration is done in `config.js`, or by filename sent in as an argument like `node index.js
+myalternativeconfigpath.js`.
 
 ### Server
 
@@ -128,11 +139,59 @@ Callback URI will be `http(s)://domain/auth/facebook/callback`.
 
 ### Database
 
-Right now it uses sqlite3.  In the future this will be more configurable.
+Anything that [node-orm2](https://github.com/dresende/node-orm2) supports.
+
+To use a backend, simply install it:
+
+```bash
+npm install sqlite3
+```
+
+…and use it in your config:
+```javascript
+database: 'sqlite:///var/lib/some-comments.db'
+```
+
+Whatever is in `config.database` will be passed on to
+[orm.connect](https://github.com/dresende/node-orm2/wiki/Connecting-to-Database).
+
+
+### E-mail notifications
+
+```javascript
+email: {
+  address: 'noreply@example.com',
+  transport: {
+    host: 'smtp.example.com',
+    port: 25,
+    auth: {
+      user: 'username',
+      pass: 'password',
+    }
+  },
+}
+```
+
+`address` is the outgoing address used for notifications.
+
+By default, `transport` is your SMTP settings.  It will be sent directly to
+`nodemailer.createTransport`, so it can use what
+[Nodemailer](https://github.com/andris9/Nodemailer) can use.  To use a a non-builtin transport, you
+could for example `npm install nodemailer-sendmail-transport` and in config put `transport:
+require('nodemailer-sendmail-transport')(options)`.
+
 
 
 Changelog
 ---------
+
+### 0.2.0
+
+* Using [node-orm2](https://github.com/dresende/node-orm2) to get simple models, support different
+  backends and handle migrations.
+* Sending notifications of new comments with [Nodemailer](https://github.com/andris9/Nodemailer).
+* Using canonical URL to identify pages.
+
 
 ### 0.1.0
 
@@ -145,20 +204,6 @@ Working simple version.
 * Better code separation using factories, started using express router.
 
 Still no email notification…
-
-
-Todo
-----
-* Make real subscription model and endpoints to configure.
-* Notify subscribers on new comments.
-* Display already logged in instead of "Foo Bar".
-* Database migrations and other db options.
-* Use express router consistently.
-* Reasonable logging.
-* Error handling.
-* Add more login-services from node-passport.
-* Admin frontend for adding/managing a site.
-* User page to see/remove comments on all sites on a server.
 
 
 License
