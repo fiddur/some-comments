@@ -1,6 +1,7 @@
 var path = require('path')
 
 var config = {
+  secret: 'verysecret',
   server: {
     protocol: 'http'
     domain:   'localhost',

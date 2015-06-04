@@ -22,6 +22,7 @@ var Handlebars = require('handlebars')
 var FS         = require('fs')
 var path       = require('path')
 var markdown   = require('markdown').markdown
+var jwt        = require('jsonwebtoken')
 
 module.exports = function (app, model, mailTransport, config) {
   app.get('/sites/:site/pages/:page/comments/', function(req, res) {
@@ -75,7 +76,7 @@ module.exports = function (app, model, mailTransport, config) {
 
   function notifySubscribers(comment) {
     var page = comment.page
-    var mailTxt, mailHtml, site, subscribers
+    var mailTxtTemplate, mailHtmlTemplate, site, subscribers
 
     return page.qGetSubscribers()
       .then(function(subscribersIn) {
@@ -92,23 +93,13 @@ module.exports = function (app, model, mailTransport, config) {
             FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'),
             'utf-8'
           ).then(function (mailTxtHbs) {
-            var mailTxtTemplate = Handlebars.compile(mailTxtHbs);
-            mailTxt = mailTxtTemplate({
-              commentMarkdown: comment.text,
-              pageUrl:         page.url,
-              unsubscribeUrl:  'http://httpstatusdogs.com/wp-content/uploads/2011/12/501-300x230.jpg'
-            })
+            mailTxtTemplate = Handlebars.compile(mailTxtHbs);
           }),
           Q.nfcall(
             FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'),
             'utf-8'
           ).then(function (mailHtmlHbs) {
-            var mailHtmlTemplate = Handlebars.compile(mailHtmlHbs);
-            mailHtml = mailHtmlTemplate({
-              commentHtml:    markdown.toHTML(comment.text),
-              pageUrl:        page.url,
-              unsubscribeUrl: 'http://httpstatusdogs.com/wp-content/uploads/2011/12/501-300x230.jpg'
-            })
+            mailHtmlTemplate = Handlebars.compile(mailHtmlHbs);
           })
         ])
       }).then(function() {
@@ -118,7 +109,22 @@ module.exports = function (app, model, mailTransport, config) {
             console.log('Wont send notification to commenter!')
           }
           else if (subscribers[i].email) {
-            console.log('Notification to: ', subscribers[i].email)
+            var unsubscribeUrl =
+              config.host + '/users/unsubscribe?jwt=' + getUnsubscribeJwt(page, subscribers[i])
+
+            var mailTxt = mailTxtTemplate({
+              commentMarkdown: comment.text,
+              pageUrl:         page.url,
+              unsubscribeUrl:  unsubscribeUrl
+            })
+            var mailHtml = mailHtmlTemplate({
+              commentHtml:    markdown.toHTML(comment.text),
+              pageUrl:        page.url,
+              unsubscribeUrl: unsubscribeUrl
+            })
+
+            console.log('Notification to: ', subscribers[i].email, mailTxt)
+
             promises.push(Q.ninvoke(mailTransport, 'sendMail', {
               from:    config.email.address,
               to:      subscribers[i].email,
@@ -136,5 +142,9 @@ module.exports = function (app, model, mailTransport, config) {
           .then(function(infos) {console.log('All mails are now sent.', infos)})
       })
       .done()
+  }
+
+  function getUnsubscribeJwt(page, user) {
+    return jwt.sign({page: page.id, user: user.id}, config.secret, {subject: 'unsubscribe'})
   }
 }

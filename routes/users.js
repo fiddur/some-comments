@@ -18,9 +18,30 @@
  */
 
 var express = require('express')
+var jwt     = require('jsonwebtoken')
 
-module.exports = function(model) {
+module.exports = function(model, config) {
   var router = express.Router()
+
+  router.get('/unsubscribe', function(req, res) {
+    var unsubscribeJwt = req.query.jwt
+
+    if (jwt.verify(unsubscribeJwt, config.secret)) {
+      var unsubscribe = jwt.decode(unsubscribeJwt)
+      return model.User.qGet(unsubscribe.user)
+        .then(function(user) {
+          return user.qRemoveSubscriptions([model.Page(unsubscribe.page)])
+        })
+        .then(function(foo) {
+          res.send('You are now unsubscribed to comments on that page.')
+          console.log(unsubscribe, foo)
+        })
+        .done()
+    }
+    else {
+      res.status(500)
+    }
+  })
 
   router.get('/:id', function(req, res) {
     // Not logged in
@@ -43,7 +64,6 @@ module.exports = function(model) {
       })
       .done()
   })
-
 
   return router
 }

@@ -98,7 +98,7 @@ function start(model, config) {
   CommentRoutes(app, model, mailTransport, config)
 
   // routes
-  app.use('/users', require('./routes/users')(model))
+  app.use('/users', require('./routes/users')(model, config))
   app.get('/', function(req, res) {res.render('index')})
 
   app.get('/ping', function(req, res) {res.send('pong')})
