@@ -28,13 +28,17 @@ module.exports = function(model, config) {
 
     if (jwt.verify(unsubscribeJwt, config.secret)) {
       var unsubscribe = jwt.decode(unsubscribeJwt)
+
       return model.User.qGet(unsubscribe.user)
-        .then(function(user) {
+        .then(function(userIn) {
+          user = userIn
           return user.qRemoveSubscriptions([model.Page(unsubscribe.page)])
         })
-        .then(function(foo) {
-          res.send('You are now unsubscribed to comments on that page.')
-          console.log(unsubscribe, foo)
+        .then(function() {
+          return model.Page.qGet(unsubscribe.page)
+        })
+        .then(function(page) {
+          res.render('unsubscribe', {page: page, user: user})
         })
         .done()
     }
