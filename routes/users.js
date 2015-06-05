@@ -18,7 +18,6 @@
  */
 
 var express = require('express')
-var jwt     = require('jsonwebtoken')
 
 module.exports = function(model, config) {
   var router = express.Router()

@@ -22,7 +22,6 @@ var Handlebars = require('handlebars')
 var FS         = require('fs')
 var path       = require('path')
 var markdown   = require('markdown').markdown
-var jwt        = require('jsonwebtoken')
 
 module.exports = function (app, model, mailTransport, config) {
   app.get('/sites/:site/pages/:page/comments/', function(req, res) {
@@ -105,12 +104,14 @@ module.exports = function (app, model, mailTransport, config) {
       }).then(function() {
         var promises = []
         for (var i = 0; i < subscribers.length; i++) {
-          if (subscribers[i].id === comment.user_id) {
+          var user = subscribers[i]
+
+          if (user.id === comment.user_id) {
             console.log('Wont send notification to commenter!')
           }
-          else if (subscribers[i].email) {
+          else if (user.email) {
             var unsubscribeUrl =
-              config.host + '/users/unsubscribe?jwt=' + getUnsubscribeJwt(page, subscribers[i])
+              config.host + '/users/unsubscribe?jwt=' + user.getUnsubscribeToken(page)
 
             var mailTxt = mailTxtTemplate({
               commentMarkdown: comment.text,
@@ -123,18 +124,18 @@ module.exports = function (app, model, mailTransport, config) {
               unsubscribeUrl: unsubscribeUrl
             })
 
-            console.log('Notification to: ', subscribers[i].email, mailTxt)
+            console.log('Notification to: ', user.email, mailTxt)
 
             promises.push(Q.ninvoke(mailTransport, 'sendMail', {
               from:    config.email.address,
-              to:      subscribers[i].email,
+              to:      user.email,
               subject: 'New comment on: ' + page.url,
               text:    mailTxt,
               html:    mailHtml,
             }))
           }
           else {
-            console.log('No email?', subscribers[i])
+            console.log('No email?', user)
           }
         }
 
@@ -142,9 +143,5 @@ module.exports = function (app, model, mailTransport, config) {
           .then(function(infos) {console.log('All mails are now sent.', infos)})
       })
       .done()
-  }
-
-  function getUnsubscribeJwt(page, user) {
-    return jwt.sign({page: page.id, user: user.id}, config.secret, {subject: 'unsubscribe'})
   }
 }

@@ -37,7 +37,7 @@ describe('Routing Integration', function() {
 
     var serverDeferred = Q.defer()
 
-    models(config.database, {drop: true})
+    models(config, {drop: true})
       .then(function(modelIn) {
         model = modelIn
         console.log('We have model.')

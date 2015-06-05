@@ -17,12 +17,36 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function(db) {
+var jwt = require('jsonwebtoken')
+
+module.exports = function(db, config) {
   var User = db.qDefine('user', {
     displayName: String,
     avatar:      String,
     email:       String,
+  }, {
+    methods: {
+      /**
+       * Get an unsubscribe token for a page
+       */
+      unsubscribeToken: function (pageId) {
+        return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
+      }
+    }
   })
+
+  /**
+   * @return Promise for a user
+   *
+   * @exception Error  If token is not valid
+   */
+  User.unsubscribe = function(unsubscribeToken) {
+    if (!jwt.verify(unsubscribeJwt, config.secret)) {
+      throw new Error('Unsubscribe token is invalid.')
+    }
+
+    /// @todo...
+  }
 
   return User
 }

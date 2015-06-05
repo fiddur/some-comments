@@ -25,7 +25,7 @@ var server = require('./server.js')
 
 var models = require('./models/')
 
-models(config.database, {})
+models(config, {})
   .then(function(model) {
     server.start(model, config)
   })

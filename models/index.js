@@ -28,18 +28,18 @@ var oidc_identifier = require('./oidc_identifier')
 var qOrm  = require('q-orm')
 var modts = require('orm-timestamps')
 
-module.exports = function(database, options) {
+module.exports = function(config, options) {
   var model = {}
   var db
 
-  return qOrm.qConnect(database)
+  return qOrm.qConnect(config.database)
     .then(function(dbIn) {
       db = dbIn
 
       // Use timestamps in all models.
       db.use(modts, {persist: true})
 
-      var User           = user(db)
+      var User           = user(db, config)
       var Site           = site(db, User)
       var Account        = account(db, User)
       var Page           = page(db, Site, User)

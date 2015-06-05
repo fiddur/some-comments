@@ -4,13 +4,17 @@ var assert = require('assert')
 var config = require('../config.js.test')
 var models = require('../models/')
 
+var config = {
+  database: {protocol: 'sqlite'} // In memory sqlite.
+}
+
 describe('Models', function() {
   var model, site, page, user, comments = []
 
   before(function(done) {
     this.timeout(15000)
 
-    models({protocol: 'sqlite'}, {})
+    models(config, {})
       .then(function(modelIn) {
         model = modelIn
 
@@ -75,5 +79,11 @@ describe('Models', function() {
         })
     })
   })
+
+  //describe('Users', function() {
+  //  it('should produce a valid unsubscribe token', function(done) {
+  //  it('should return user from valid unsubscribe token', function(done) {
+  //  it('should throw error on invalid unsubscribe token', function(done) {
+  //})
 })
 
