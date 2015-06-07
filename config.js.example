@@ -2,7 +2,7 @@ var path = require('path')
 
 var config = {
   server: {
-    protocol: 'http'
+    protocol: 'http',
     domain:   'localhost',
     port:     1337,
   },
