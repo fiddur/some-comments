@@ -25,10 +25,11 @@ var comment         = require('./comment')
 var oidc            = require('./oidc')
 var oidc_identifier = require('./oidc_identifier')
 
-var qOrm  = require('q-orm')
-var modts = require('orm-timestamps')
+var Q           = require('q')
+var qOrm        = require('q-orm')
+var modts       = require('orm-timestamps')
 
-module.exports = function(config, options) {
+module.exports = function(config) {
   var model = {}
   var db
 
@@ -61,20 +62,18 @@ module.exports = function(config, options) {
       model.Superadmin = db.qDefine('superadmin', {})
       model.Superadmin.hasOne('user', model.User, {key: true})
 
-
-      if ('drop' in options) {return db.qDrop()}
-    })
-    .then(function() {return db.qSync()})
-    .then(function() {
-      // Add unique index for page<->subscriber
-      db.driver.execQuery(
-        'CREATE UNIQUE INDEX IF NOT EXISTS page_subscription ' +
-          'ON page_subscribers (page_id, subscribers_id)',
-        function(err, data) {
-          if (err) {throw err}
-        }
-      )
-
       return model
     })
+    //.then(function(model) {
+    //  // Add unique index for page<->subscriber
+    //  db.driver.execQuery(
+    //    'CREATE UNIQUE INDEX IF NOT EXISTS page_subscription ' +
+    //      'ON page_subscribers (page_id, subscribers_id)',
+    //    function(err, data) {
+    //      if (err) {throw err}
+    //    }
+    //  )
+    //
+    //  return model
+    //})
 }

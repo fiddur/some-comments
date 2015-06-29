@@ -86,4 +86,3 @@ describe('Models', function() {
   //  it('should throw error on invalid unsubscribe token', function(done) {
   //})
 })
-
