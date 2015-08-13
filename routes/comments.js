@@ -17,13 +17,19 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function (app, CommentFactory) {
+var Q          = require('q')
+var Handlebars = require('handlebars')
+var FS         = require('fs')
+var path       = require('path')
+var markdown   = require('markdown').markdown
+
+module.exports = function (app, model, mailTransport, config) {
   app.get('/sites/:site/pages/:page/comments/', function(req, res) {
-    CommentFactory.getAllByPage(req.params.site, req.params.page)
-      .then(
-        function(comments) {res.send(comments)},
-        function(error)    {console.log(error); res.status(500).send(error)}
-      )
+    model.Page.qOne({site: req.params.site, url: req.params.page})
+      .done(function(page) {
+        if (page) {page.qGetComments().then(function(comments) {res.json(comments)})}
+        else {res.json([])}
+      })
   })
 
   app.post('/sites/:site/pages/:page/comments/', function(req, res) {
@@ -33,10 +39,109 @@ module.exports = function (app, CommentFactory) {
       return res.status(400).send('Bad Request: text is required')
     }
 
-    CommentFactory.create(req.params.site, req.params.page, req.user.id, req.body.text, null)
-      .then(
-        function(comment) {res.status(201).location(req.path + comment.id).send(comment)},
-        function(error)   {res.status(500).send(error)}
-      )
+    model.Page.qOne({site: req.params.site, url: req.params.page})
+      .then(function(page) {
+        if (page) {return page}
+        else {
+          return model.Page.qCreate([{site: req.params.site, url: req.params.page}])
+            .then(function(pages) {return pages[0]})
+        }
+      })
+      .then(function(page) {
+        return model.Comment.qCreate([{
+          site: req.params.site,
+          page: page,
+          user: req.user,
+          text: req.body.text
+        }])
+      })
+      .done(function(comments) {
+        var comment = comments[0]
+        res.status(201).location(req.path + comment.id).send(comment)
+
+        // Add subscription to this thread asynchronuously.
+        comment.page.qAddSubscribers([req.user])
+          .catch(function(error) {
+            console.log(
+              'Could not add subscription on page ' + page.id + ' for user ' + req.user.id,
+              error
+            )
+          })
+
+          // Notify subscribers.
+          notifySubscribers(comment)
+      })
   })
+
+  function notifySubscribers(comment) {
+    var page = comment.page
+    var mailTxtTemplate, mailHtmlTemplate, site, subscribers
+
+    return page.qGetSubscribers()
+      .then(function(subscribersIn) {
+        subscribers = subscribersIn
+        console.log('About to notify subscribers of new comment:', comment, subscribers)
+
+        return page.qGetSite()
+      })
+      .then(function(siteIn) {
+        site = siteIn
+
+        return Q.all([
+          Q.nfcall(
+            FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'),
+            'utf-8'
+          ).then(function (mailTxtHbs) {
+            mailTxtTemplate = Handlebars.compile(mailTxtHbs);
+          }),
+          Q.nfcall(
+            FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'),
+            'utf-8'
+          ).then(function (mailHtmlHbs) {
+            mailHtmlTemplate = Handlebars.compile(mailHtmlHbs);
+          })
+        ])
+      }).then(function() {
+        var promises = []
+        for (var i = 0; i < subscribers.length; i++) {
+          var user = subscribers[i]
+
+          if (user.id === comment.user_id) {
+            console.log('Wont send notification to commenter!')
+          }
+          else if (user.email) {
+            var unsubscribeUrl =
+              config.host + '/users/unsubscribe?jwt=' + user.getUnsubscribeToken(page)
+
+            var mailTxt = mailTxtTemplate({
+              commentMarkdown: comment.text,
+              pageUrl:         page.url,
+              unsubscribeUrl:  unsubscribeUrl
+            })
+            var mailHtml = mailHtmlTemplate({
+              commentHtml:    markdown.toHTML(comment.text),
+              pageUrl:        page.url,
+              unsubscribeUrl: unsubscribeUrl
+            })
+
+            console.log('Notification to: ', user.email, mailTxt)
+
+            promises.push(Q.ninvoke(mailTransport, 'sendMail', {
+              from:    config.email.address,
+              to:      user.email,
+              subject: 'New comment on: ' + page.url,
+              text:    mailTxt,
+              html:    mailHtml,
+            }))
+          }
+          else {
+            console.log('No email?', user)
+          }
+        }
+
+        return Q.all(promises)
+          .then(function(infos) {console.log('All mails are now sent.', infos)})
+      })
+      .done()
+  }
 }

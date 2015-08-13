@@ -17,49 +17,20 @@
  * GNU-AGPL-3.0
  */
 
-var q = require('q')
+module.exports = function(db, User) {
+  var Site = db.qDefine('site', {
+    domain:    {type: 'text',    unique: true},
+    maxLevels: {type: 'integer', size: 2, defaultValue: 0},
+  })
 
-var SiteFactoryPrototype = {}
-function SiteFactory(db) {
-  var sf = Object.create(SiteFactoryPrototype)
-  sf.db = db
-  return sf
+  Site.qHasMany('admins', User, {}, {reverse: 'sites', key: true, autoFetch: true})
+
+  /**
+   * Get a Site by http origin header string.
+   */
+  Site.getByOrigin = function(origin) {
+    return this.qOne({domain: origin.split('//')[1]})
+  }
+
+  return Site
 }
-
-SiteFactoryPrototype.getAll = function() {
-  return this.db.all(
-    'SELECT s.id, s.domain, u.displayName, u.avatar ' +
-      'FROM sites s ' +
-      '  LEFT JOIN siteadmins sa ON sa.site = s.id ' +
-      '  LEFT JOIN users u ON u.id = sa.user ' +
-      'ORDER BY s.id'
-  )
-}
-
-SiteFactoryPrototype.create = function(domain) {
-  return this.db
-    .run('INSERT INTO sites (domain) VALUES (?)', domain)
-    .then(function(db) {
-      return {id: db.lastID, domain: domain}
-    })
-}
-
-SiteFactoryPrototype.getByOrigin = function(origin) {
-  var domain = origin.split('//')[1]
-  var deferred = q.defer()
-  this.db
-    .get('SELECT * FROM sites WHERE domain = ?', domain)
-    .then(function(site) {
-      if (typeof site === 'undefined') {return deferred.reject('No site with domain ' + domain)}
-      deferred.resolve(site)
-    }, function(error) {deferred.reject(error)})
-
-  return deferred.promise
-}
-
-SiteFactoryPrototype.addAdmin = function(site, user) {
-  return this.db
-    .run('INSERT INTO siteadmins (site, user) VALUES (?,?)', site.id, user.id)
-}
-
-module.exports = SiteFactory

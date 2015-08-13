@@ -1,10 +1,14 @@
 var path = require('path')
 
 var config = {
+  secret: 'verysecret',
   server: {
-    protocol: 'http'
+    protocol: 'http',
     domain:   'localhost',
     port:     1337,
+  },
+  email: {
+    address: 'noreply@example.com',
   },
   connectors: {
     facebook: {
@@ -24,13 +28,7 @@ var config = {
       }
     ],
   },
-  database: {
-    client: 'sqlite3',
-    connection: {
-      filename: path.join(__dirname, 'comments.db')
-    },
-    debug: false
-  }
+  database: 'sqlite://' + path.join(__dirname, 'comments.db'),
 }
 
 module.exports = config

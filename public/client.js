@@ -102,47 +102,64 @@
     return sc
   }
 
-  SomeCommentsPrototype.displayByPage = function(siteId, pageId, elementId) {
+  SomeCommentsPrototype.displayByPage = function(siteId, url, elementId) {
     var element = e(elementId)
     var sc      = this
     var site    = Site(sc.server, siteId)
+    var urlStr  = encodeURIComponent(url)
 
-    Comment.getAllByPage(site, pageId)
+    Comment.getAllByPage(site, urlStr)
       .then(function(comments) {
         for (var i = 0; i < comments.length; i++) {
           element.appendChild(Comment.getElement(comments[i]))
         }
 
+        return User.get(sc.server, 'me')
+      })
+      .then(function (user) {
         // Add input field
         var newCommentDiv = document.createElement('div')
         newCommentDiv.className = 'comment_row'
-        user = {displayName: 'Foo Bar', avatar: 'nope'}
-        newCommentDiv.innerHTML =
-          '<div class="user">' +
+        var userHtml = user.avatar
+          ? '<div class="user">' +
           '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
-          '</div>' +
+          '</div>'
+          : '<div class="user unknown_user">?</div>'
+
+        newCommentDiv.innerHTML =
+          userHtml +
           '<div class="comment_text">' +
-          '  <textarea id="comment_' + pageId + '" placeholder="Comment…" ' +
-          '            oninput="this.editor.update()">' +
-          '  </textarea>' +
-          '  <div class="comment_preview" id="preview_' + pageId + '"></div>' +
+          '  <textarea id="comment_' + urlStr + '"' +
+          '            placeholder="Type your comment and press enter…" ' +
+          '            oninput="this.editor.update()"></textarea>' +
+          '  <div class="comment_preview" id="preview_' + urlStr + '"></div>' +
           '</div>'
         element.appendChild(newCommentDiv)
 
-        var input = e('comment_' + pageId)
+        var input = e('comment_' + urlStr)
         input.addEventListener('keypress', function(kp) {
           if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
             console.log('POST')
             var commentText = input.value
             input.value = ''
-            Comment.add(site, pageId, commentText)
+            Comment.add(site, urlStr, commentText)
               .then(function(comment) {
                 element.insertBefore(Comment.getElement(comment), newCommentDiv)
               })
           }
         })
 
-        new Editor(input, e('preview_' + pageId))
+        var someCommentInfo = document.createElement('div')
+        someCommentInfo.className = 'some_comment_info'
+        someCommentInfo.innerHTML =
+          '<p>' +
+          '  <a href="https://github.com/fiddur/some-comments">Some Comments</a>' +
+          '  ©Fredrik Liljegren' +
+          '  <a href="http://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL-3.0</a>' +
+          '</p>'
+        element.appendChild(someCommentInfo)
+
+        new Editor(input, e('preview_' + urlStr))
       })
   }
 
@@ -214,6 +231,16 @@
     return deferred.promise
   }
 
+  User.get = function(server, id) {
+    return ajax.get(server + 'users/' + id)
+      .then(function(userJson) {
+        return JSON.parse(userJson)
+      }, function(error) {
+        // Probably not logged in then…
+        return {displayName: '?¿?¿?'}
+      })
+  }
+
   ////////
   // Site
   //
@@ -238,23 +265,24 @@
    * Get all the comments from one page
    *
    * @param site    object  A site object
-   * @param pageId  string  The page ID
+   * @param urlStr  string  The page ID
    */
-  Comment.getAllByPage = function(site, pageId) {
-    return ajax.get(site.server + 'sites/' + site.id + '/pages/' + pageId + '/comments/')
-      .then(function(commentsJson) {
-        return JSON.parse(commentsJson)
-      })
+  Comment.getAllByPage = function(site, urlStr) {
+    return ajax.get(
+      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/'
+    ).then(function(commentsJson) {
+      return JSON.parse(commentsJson)
+    })
   }
 
   /**
    * @param site    object  A site object
-   * @param pageId  string  The page ID
+   * @param urlStr  string  The page ID
    * @param text    string  Comment text
    */
-  Comment.add = function(site, pageId, text) {
+  Comment.add = function(site, urlStr, text) {
     return ajax.post(
-      site.server + 'sites/' + site.id + '/pages/' + pageId + '/comments/', {text: text})
+      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/', {text: text})
       .then(
         function(commentJson) {
           var comment = JSON.parse(commentJson)
@@ -281,10 +309,10 @@
 
     div.className = 'comment_row'
     div.innerHTML =
-      '<div class="user"><img alt="' + comment.displayName + '" src="' + comment.avatar
+      '<div class="user"><img alt="' + comment.user.displayName + '" src="' + comment.user.avatar
       + '" /></div><div class="comment_text">'
-      + markdown.toHTML('**' + comment.displayName + '**: ' + comment.text)
-      + '<div class="created">' + comment.created + '</div></div>'
+      + markdown.toHTML('**' + comment.user.displayName + '**: ' + comment.text)
+      + '<div class="created">' + comment.created_at + '</div></div>'
 
     return div
   }

@@ -17,46 +17,39 @@
  * GNU-AGPL-3.0
  */
 
-var AccountFactoryPrototype = {}
-function AccountFactory(db) {
-  var af = Object.create(AccountFactoryPrototype)
-  af.db = db
-  af.UserFactory = require('./user.js')(db)
-  return af
-}
+module.exports = function(db, User) {
+  var Account = db.qDefine('account', {
+    uid:    {type: 'text', unique: 'system_uid'},
+    system: {type: 'text', unique: 'system_uid'},
+  })
 
-/**
- * Account - representing a login account at a connected service like Google, Facebook, Openid etc.
- *
- * - system  The authentication system - normally the passport strategy used.
- * - uid     The unique identifier on the connected system
- * - user    The User ID.
- */
-AccountFactoryPrototype.getOrCreate = function(system, uid, data) {
-  var self = this
+  Account.qHasOne('user', User, {autoFetch: true, key: true})
 
-  return this.db
-    .get('SELECT * FROM accounts WHERE system = ? AND uid = ?', system, uid)
-    .then(function(account_data) {
-      if (typeof account_data === 'undefined') {
+  /**
+   * Find an account by system and UID, or create it along with it's user.
+   *
+   * @param system
+   * @param uid
+   * @param userData   Object of userdata
+   */
+  Account.getOrCreate = function(system, uid, userData) {
+    return Account.qOne({system: system, uid: uid})
+      .then(function(account) {
+        if (account) {return account}
 
-        console.log('There is no account.  Creating user and account.', system, uid)
+        // Create user first.
+        var user
 
-        return self.UserFactory.create(data.displayName, data.avatar)
-          .then(function(user) {
-            console.log('Created user.  Now creating account.')
-            return self.db.run(
-              'INSERT INTO accounts (uid, system, user) VALUES (?,?,?)', uid, system, user.id
-            ).then(function(db) {
-              console.log('Created account.  Authentication should be done.', user)
-              return {id: db.lastID, uid: uid, system: system, user: user.id}
-            })
+        return User.qCreate([userData])
+          .then(function(users) {
+            user = users[0]
+            return Account.qCreate([{system: system, uid: uid, user: user}])
           })
-      }
-      else {
-        return {id: account_data.id, uid: uid, system: system, user: account_data.user}
-      }
-    })
-}
+          .then(function(accounts) {
+            return accounts[0]
+          })
+      })
+  }
 
-module.exports = AccountFactory
+  return Account
+}

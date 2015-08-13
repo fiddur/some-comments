@@ -1,10 +1,10 @@
 <h1>Some Comments testpage</h1>
 
 <div class="comments" id="comments"></div>
-<script src="http://localhost:1337/node_modules/markdown/lib/markdown.js"></script>
-<script src="http://localhost:1337/node_modules/q/q.js"></script>
-<script src="http://localhost:1337/client.js"></script>
+<script src="{{config.host}}/node_modules/markdown/lib/markdown.js"></script>
+<script src="{{config.host}}/node_modules/q/q.js"></script>
+<script src="{{config.host}}/client.js"></script>
 <script>
-  SomeComments('{{config.host}}/').displayByPage({{site}}, 'post-{{id}}', 'comments')
+  SomeComments('{{config.host}}/').displayByPage({{site}}, window.location.href, 'comments')
 </script>
 

@@ -22,11 +22,8 @@ var FacebookStrategy = require('passport-facebook').Strategy
 var GithubStrategy   = require('passport-github').Strategy
 var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var OpenIdConnect    = require('passport-openidconnect')
-var AccountFactory   = require('./models/account.js')
-var UserFactory      = require('./models/user.js')
 
-
-function openIdConnectDynamic(db, app, config) {
+function openIdConnectDynamic(model, app, config) {
   var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
 
   var oidc_strategy = new OpenIdConnect.Strategy({
@@ -35,11 +32,12 @@ function openIdConnectDynamic(db, app, config) {
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
     /// @todo Save identifier -> oidc  connection.
 
-    AccountFactory(db).getOrCreate('OpenID Connect:' + iss, sub, {
+    model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
       displayName: userInfo.displayName,
-      avatar:      userInfo.picture || '',
+      avatar:      userInfo.picture,
+      email:       userInfo.email,
     })
-      .then(function(account) {return UserFactory(db).getById(account.user)})
+      .then(function(account) {return account.qGetUser()})
       .then(function(user)    {done(null, user)})
       .done()
   })
@@ -47,23 +45,20 @@ function openIdConnectDynamic(db, app, config) {
   passport.use(oidc_strategy)
 
   oidc_strategy.configure(function(identifier, done) {
-    db.get(
-      'SELECT oidc.* FROM oidc ' +
-        'LEFT JOIN oidc_identifiers oi ON oi.oidc = oidc.id ' +
-        'WHERE identifier=?',
-      identifier)
-      .then(function(oidc) {
-        if (oidc) {done(null, oidc)}
-        else      {done(null, null)}
-      }, function(error) {done(error, null)})
+    model.OidcIdentifier.qOne({identifier: identifier})
+      .then(function(oidcIdentifier) {
+        if (oidcIdentifier) {oidcIdentifier.qGetOidc().done(function(oidc) {done(null, oidc)})}
+        else {done(null, null)}
+      })
+      .catch(function(error) {done(error, null)})
       .done()
   })
 
   OpenIdConnect.config(function(issuer, done) {
-    db.get('SELECT * FROM oidc WHERE issuer=?', issuer)
+    model.Oidc.qOne({issuer: issuer})
       .then(function(oidc) {
         if (oidc) {done(null, oidc)}
-        else      {done(null, null)}//'No oidc found by ' + issuer, null)}
+        else      {done(null, null)}
       }, function(error) {done(error, null)})
       .done()
   })
@@ -73,16 +68,17 @@ function openIdConnectDynamic(db, app, config) {
     redirectURI: host + '/auth/oidc/callback',
   }, function(provider, reg, next) {
     console.log('Saving info for provider', provider, 'reg', reg)
-    db.run(
-      'INSERT INTO oidc ' +
-        '(issuer, authorizationURL, tokenURL, userInfoURL, registrationURL, clientID, ' +
-        ' clientSecret, expiresAt) ' +
-        'VALUES(?,?,?,?,?,?,?,?)',
-      provider.issuer, provider.authorizationURL, provider.tokenURL, provider.userInfoURL,
-      provider.registrationURL, reg.clientID, reg.clientSecret, reg.expiresAt
-    )
-      .then(function(db) {next()})
-      .done()
+    model.Oidc.create([{
+      issuer:           provider.issuer,
+      authorizationURL: provider.authorizationURL,
+      tokenURL:         provider.tokenURL,
+      userInfoURL:      provider.userInfoURL,
+      registrationURL:  provider.registrationURL,
+      clientID:         reg.clientID,
+      clientSecret:     reg.clientSecret,
+      expiresAt:        reg.expiresAt
+    }])
+      .done(function(oidcs) {next()})
   }))
 
   app.get(
@@ -102,7 +98,7 @@ function openIdConnectDynamic(db, app, config) {
   )
 }
 
-function openIdConnectProvider(app, db, host, provider) {
+function openIdConnectProvider(app, model, host, provider) {
   var oidc_strategy = new OpenIdConnect.Strategy({
     name:             provider.shortName,
     authorizationURL: provider.authorizationURL,
@@ -112,11 +108,13 @@ function openIdConnectProvider(app, db, host, provider) {
     clientSecret:     provider.clientSecret,
     scope:            'openid profile email',
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
-    AccountFactory(db).getOrCreate(provider.shortName, sub, {
+    console.log('Got userinfo from provider:', userInfo)
+    model.Account.getOrCreate(provider.shortName, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture || '',
+      email:       userInfo.email,
     })
-      .then(function(account) {return UserFactory(db).getById(account.user)})
+      .then(function(account) {return account.qGetUser()})
       .then(function(user)    {done(null, user)})
       .done()
   })
@@ -140,7 +138,7 @@ function openIdConnectProvider(app, db, host, provider) {
   )
 }
 
-function facebook(app, provider, db, host) {
+function facebook(app, provider, model, host) {
   passport.use(new FacebookStrategy(
     {
       clientID:     provider.clientId,
@@ -148,17 +146,19 @@ function facebook(app, provider, db, host) {
       callbackURL:  host + '/auth/facebook/callback',
     },
     function(accessToken, refreshToken, profile, done) {
-      AccountFactory(db).getOrCreate('Facebook', profile._json.id, {
+      console.log('Got facebook data:', profile)
+      model.Account.getOrCreate('Facebook', profile._json.id, {
         displayName: profile.displayName,
         avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
+        email:       profile._json.email,
       })
-        .then(function(account) {return UserFactory(db).getById(account.user)})
+        .then(function(account) {return account.qGetUser()})
         .then(function(user) {done(null, user)})
         .done()
     }
   ))
 
-  app.get('/auth/facebook', passport.authenticate('facebook'))
+  app.get('/auth/facebook', passport.authenticate('facebook', {scope: ['public_profile','email']}))
   app.get(
     '/auth/facebook/callback',
     passport.authenticate('facebook', {failureRedirect: '/login'}),
@@ -172,7 +172,7 @@ function ensureAuthenticated(req, res, next) {
   res.sendStatus(403)
 }
 
-function setup(app, db, config) {
+function setup(app, model, config) {
   var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
 
   app.use(passport.initialize())
@@ -183,12 +183,12 @@ function setup(app, db, config) {
     done(null, user.id)
   })
   passport.deserializeUser(function(id, done) {
-    UserFactory(db).getById(id)
+    model.User.qGet(id)
       .then(
         function(user)  {done(null, user)},
         function(error) {
-          /// @todo Remove user from session.
-          done(error, null)
+          console.log('Deserialize ', error)
+          done(null, null)
         }
       )
   })
@@ -198,6 +198,16 @@ function setup(app, db, config) {
     res.render('account', {user: req.user})
   })
 
+  if (config.testMode) {
+    app.get('/login/:id', function(req, res, next) {
+      var user = {id: req.params.id}
+      req.logIn(user, function(err) {
+        if (err) {return next(err)}
+        res.json('done')
+      })
+    })
+  }
+
   app.get('/logout', function(req, res) {
     req.logout()
     res.redirect('/')
@@ -205,23 +215,15 @@ function setup(app, db, config) {
 
   // Setup OpenID Connect authentication
   if ('openidconnect' in config.connectors) {
-    openIdConnectDynamic(db, app, config)
+    openIdConnectDynamic(model, app, config)
 
     for (var i = 0, len = config.connectors.openidconnect.length; i < len; i++) {
-      openIdConnectProvider(app, db, host, config.connectors.openidconnect[i])
+      openIdConnectProvider(app, model, host, config.connectors.openidconnect[i])
     }
   }
 
   // Setup Facebook authentication
-  if ('facebook' in config.connectors) {facebook(app, config.connectors.facebook, db, host)}
+  if ('facebook' in config.connectors) {facebook(app, config.connectors.facebook, model, host)}
 }
 
 exports.setup = setup
-
-/**
- * @todo
- *
- * * Don't initiate factories deep in the code!  Inject AccountFactory into setup.
- * * Use account.getUser rather than UserFactory.getById(account.user)
- *
- */
