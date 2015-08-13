@@ -17,6 +17,16 @@
  * GNU-AGPL-3.0
  */
 
+/**
+ * This file contains all that is needed on the actual commenting page except two dependencies:
+ *  * q.js
+ *  * markdown.js
+ *
+ * Code design is meant to keep dependencies down to a minimum, and disregard deprecated browsers -
+ * commenting is hardly a critical service.  When IE12 is rolled out we can skip Q and use native
+ * promises…
+ */
+
 (function(window) {
   /************************************************************************************************
    * A few simple utility helpers
