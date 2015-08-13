@@ -126,8 +126,8 @@ Todo
 * User page to see/remove comments on all sites on a server.
 
 
-License
--------
+License ([GNU AGPLv3](http://www.gnu.org/licenses/agpl-3.0.html))
+-----------------------------------------------------------------
 
 Copyright (C) 2015 Fredrik Liljegren <fredrik@liljegren.org>
 
