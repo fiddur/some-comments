@@ -62,6 +62,15 @@ Configuration
 Configuration is done in `config.js`, or by filename sent in as an argument like `node index.js
 myalternativeconfigpath.js`.
 
+### Secret
+
+Used for symmetric encryption of JSON Web Tokens.
+
+```javascript
+secret: 'aRandomString',
+```
+
+
 ### Server
 
 State protocol, domain and port.  If you use a proxy, this should be the proxies values; used for
@@ -191,6 +200,7 @@ Changelog
   backends and handle migrations.
 * Sending notifications of new comments with [Nodemailer](https://github.com/andris9/Nodemailer).
 * Using canonical URL to identify pages.
+* Adding configurations: `secret`, `email`.
 
 
 ### 0.1.0
