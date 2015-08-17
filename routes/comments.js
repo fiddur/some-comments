@@ -112,14 +112,16 @@ module.exports = function (app, model, mailTransport, config) {
           }
           else if (user.email) {
             var unsubscribeUrl =
-              config.host + '/users/unsubscribe?jwt=' + user.unsubscribeToken(page.id)
+                config.baseUrl + 'users/unsubscribe?jwt=' + user.unsubscribeToken(page.id)
 
             var mailTxt = mailTxtTemplate({
+              commenter:       comment.user.displayName,
               commentMarkdown: comment.text,
               pageUrl:         page.url,
               unsubscribeUrl:  unsubscribeUrl
             })
             var mailHtml = mailHtmlTemplate({
+              commenter:      comment.user.displayName,
               commentHtml:    markdown.toHTML(comment.text),
               pageUrl:        page.url,
               unsubscribeUrl: unsubscribeUrl

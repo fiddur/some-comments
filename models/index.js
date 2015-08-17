@@ -64,6 +64,6 @@ module.exports = function(config) {
       model.Superadmin = db.qDefine('superadmin', {})
       model.Superadmin.hasOne('user', model.User.orm, {key: true})
 
-      return model
+      return config.model = model
     })
 }

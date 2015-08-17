@@ -32,6 +32,8 @@ module.exports = function(db, config) {
     methods: {
       /**
        * Get an unsubscribe token for a page
+       *
+       * @todo Make this async as well (for maximum performance).
        */
       unsubscribeToken: function (pageId) {
         return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
@@ -50,26 +52,25 @@ module.exports = function(db, config) {
     }
   })
 
+  User.get = function(id) {return User.orm.qGet(id)}
+
   User.create = function(data) {
     return User.orm.qCreate([data]).then(function(users) {return users[0]})
   }
 
-  User.get = function(id) {
-    return User.orm.qGet(id)
-  }
-
   /**
-   * @return Promise for a user
+   * @return Promise for [user, page]
    *
    * @exception Error  If token is not valid
    */
   User.unsubscribe = function(unsubscribeToken) {
-    if (!jwt.verify(unsubscribeJwt, config.secret)) {
-      throw new Error('Unsubscribe token is invalid.')
-    }
-
-    /// @todo...
-    console.log('TODO: Unsubscribe…')
+    return Q.ninvoke(jwt, 'verify', unsubscribeToken, config.secret)
+      .then(function(token) {
+        if (token.sub !== 'unsubscribe') {throw new Error('Not an unsubscribe token')}
+        return [User.get(token.user), config.model.Page.get(token.page)]
+      }).spread(function(user, page) {
+        return Q.ninvoke(page, 'removeSubscribers', user).then(function() {return [user, page]})
+      })
   }
 
   return User

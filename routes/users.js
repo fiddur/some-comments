@@ -23,27 +23,10 @@ module.exports = function(model, config) {
   var router = express.Router()
 
   router.get('/unsubscribe', function(req, res) {
-    var unsubscribeJwt = req.query.jwt
-
-    if (jwt.verify(unsubscribeJwt, config.secret)) {
-      var unsubscribe = jwt.decode(unsubscribeJwt)
-
-      return model.User.get(unsubscribe.user)
-        .then(function(userIn) {
-          user = userIn
-          return user.qRemoveSubscriptions([model.Page(unsubscribe.page)])
-        })
-        .then(function() {
-          return model.Page.qGet(unsubscribe.page)
-        })
-        .then(function(page) {
-          res.render('unsubscribe', {page: page, user: user})
-        })
-        .done()
-    }
-    else {
-      res.status(500)
-    }
+    model.User.unsubscribe(req.query.jwt)
+      .spread(function(user, page) {
+        res.render('unsubscribe', {page: page, user: user})
+      }).done()
   })
 
   router.get('/:id', function(req, res) {

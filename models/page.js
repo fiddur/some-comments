@@ -33,6 +33,8 @@ module.exports = function(db, Site, User) {
     key:          true
   })
 
+  Page.get = function(id) {return Page.orm.qGet(id)}
+
   Page.create = function(data) {
     if (data.site) data.site_id = data.site.id
     return Page.orm.qCreate([data]).then(function(pages) {return pages[0]})
