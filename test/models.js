@@ -1,3 +1,5 @@
+var crypto = require('crypto')
+
 var Q      = require('q')
 var should = require('should')
 var assert = require('assert')
@@ -122,6 +124,20 @@ describe('Models', function() {
           return Q.ninvoke(user2, 'hasSubscriptions', page2)
         }).then(function(isSubscribed) {
           assert.ok(!isSubscribed, 'User should NOT be subscribed to page.')
+          done()
+        }).done()
+    })
+
+    it('should create an anonymous user with monster gravatars', function(done) {
+      model.User.createAnonymous('127.0.0.1')
+        .then(function(user) {
+          var hash = crypto.createHash('md5')
+          hash.update(user.id + ': 127.0.0.1')
+
+          assert.equal(
+            user.avatar,
+            'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=monster'
+          )
           done()
         }).done()
     })

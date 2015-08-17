@@ -2,8 +2,8 @@
 
 <script>
   console.log('Sending message to:', window.parent, window.opener)
-  window.opener.postMessage({authenticated: true}, '*')
-  window.parent.postMessage({authenticated: true}, '*')
+  if (window.opener) {window.opener.postMessage({authenticated: true}, '*')}
+  if (window.parent) {window.parent.postMessage({authenticated: true}, '*')}
   console.log('Sent message to:', window.parent, window.opener)
   window.close()
 </script>

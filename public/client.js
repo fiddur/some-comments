@@ -114,6 +114,23 @@
     return sc
   }
 
+  function getNewCommentDivInnerHtml(user, urlStr) {
+    var userHtml = user.avatar ?
+        '<div class="user">' +
+        '  <img title="' + user.displayName + '" alt="' + user.displayName + '" ' +
+        ' src="' + user.avatar + '" />' +
+        '</div>'
+        : '<div class="user unknown_user">?</div>'
+
+    return userHtml +
+      '<div class="comment_text">' +
+      '  <textarea id="comment_' + urlStr + '"' +
+      '            placeholder="Type your comment and press enter…" ' +
+      '            oninput="this.editor.update()"></textarea>' +
+      '  <div class="comment_preview" id="preview_' + urlStr + '"></div>' +
+      '</div>'
+  }
+
   SomeCommentsPrototype.displayByPage = function(siteId, url, elementId) {
     var element = e(elementId)
     var sc      = this
@@ -132,20 +149,8 @@
         // Add input field
         var newCommentDiv = document.createElement('div')
         newCommentDiv.className = 'comment_row'
-        var userHtml = user.avatar
-          ? '<div class="user">' +
-          '  <img alt="' + user.displayName + '" src="' + user.avatar + '" />' +
-          '</div>'
-          : '<div class="user unknown_user">?</div>'
-
-        newCommentDiv.innerHTML =
-          userHtml +
-          '<div class="comment_text">' +
-          '  <textarea id="comment_' + urlStr + '"' +
-          '            placeholder="Type your comment and press enter…" ' +
-          '            oninput="this.editor.update()"></textarea>' +
-          '  <div class="comment_preview" id="preview_' + urlStr + '"></div>' +
-          '</div>'
+        newCommentDiv.innerHTML = getNewCommentDivInnerHtml(user, urlStr)
+        console.log(newCommentDiv, getNewCommentDivInnerHtml(user, urlStr))
         element.appendChild(newCommentDiv)
 
         var input = e('comment_' + urlStr)
@@ -156,6 +161,10 @@
             Comment.add(site, urlStr, commentText)
               .then(function(comment) {
                 element.insertBefore(Comment.getElement(comment), newCommentDiv)
+
+                // Re-get the new comment div html, since user might have logged in.
+                /// @todo Bind this to users/me instead.
+                newCommentDiv.innerHtml = getNewCommentDivInnerHtml(comment.user)
               })
           }
         })

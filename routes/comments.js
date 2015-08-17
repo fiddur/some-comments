@@ -64,7 +64,7 @@ module.exports = function (app, model, mailTransport, config) {
         res.status(201).location(req.path + comment.id).send(comment)
 
         // Add subscription to this thread asynchronuously.
-        req.user.subscribe(page).done()
+        if (req.user.anonymousIp !== null) {req.user.subscribe(page).done()}
 
         // Notify subscribers.
         notifySubscribers(comment)

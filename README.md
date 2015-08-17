@@ -12,6 +12,14 @@ All the commenters have to authenticate via 3rd party authentication like openid
 etc; currently anything that "passport" supports.
 
 
+Features
+--------
+
+* External authentication.
+* Plugged into any page with javascript.
+* E-mail notification to commenters (with unsubscribe-link).
+
+
 Client usage
 ------------
 
@@ -45,6 +53,7 @@ git clone https://github.com/fiddur/some-comments.git
 cd some-comments
 npm install
 cp config.js.example config.js # Edit to configure…
+DB_URL=sqlite://data/comments.db ./node_modules/.bin/migrate up
 node index.js
 ```
 

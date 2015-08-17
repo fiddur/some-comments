@@ -17,6 +17,8 @@
  * GNU-AGPL-3.0
  */
 
+var crypto = require('crypto')
+
 var jwt = require('jsonwebtoken')
 var Q   = require('q')
 
@@ -28,6 +30,7 @@ module.exports = function(db, config) {
     displayName: {type: 'text'},
     avatar:      {type: 'text'},
     email:       {type: 'text'},
+    anonymousIp: {type: 'text', defaultValue: null},
   }, {
     methods: {
       /**
@@ -56,6 +59,37 @@ module.exports = function(db, config) {
 
   User.create = function(data) {
     return User.orm.qCreate([data]).then(function(users) {return users[0]})
+  }
+
+  /**
+   * Create an anonymous user from IP address.
+   *
+   */
+  User.createAnonymous = function(ip) {
+    if (!('anonymous' in config.authenticators)) {
+      throw new Error('Anonymous users are not enabled in config.')
+    }
+
+    var userData = {
+      anonymousIp: ip,
+      displayName: config.authenticators.anonymous.displayName || 'Anonymous',
+      avatar:      config.authenticators.anonymous.avatar || 'gravatar(monster)',
+    }
+
+    return User.create(userData)
+      .then(function(user) {
+        var gravatarMatches
+        if (gravatarMatches = user.avatar.match(/^gravatar\((.*)\)$/)) {
+          var hash = crypto.createHash('md5')
+          hash.update(user.id + ': ' + user.anonymousIp)
+
+          user.avatar =
+            'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=' + gravatarMatches[1]
+
+          return user.save()
+        }
+        return user
+      })
   }
 
   /**

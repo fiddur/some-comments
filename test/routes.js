@@ -42,7 +42,6 @@ describe('Routing Integration', function() {
     models(config, {drop: true})
       .then(function(modelIn) {
         model = modelIn
-        console.log('We have model.')
 
         // Start the server
         var subEnv = process.env

@@ -17,11 +17,30 @@
  * GNU-AGPL-3.0
  */
 
+var Q                = require('q')
 var passport         = require('passport')
 var FacebookStrategy = require('passport-facebook').Strategy
 var GithubStrategy   = require('passport-github').Strategy
 var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var OpenIdConnect    = require('passport-openidconnect')
+
+function setupAnonymous(model, app, anonConfig) {
+  app.get(
+    '/auth/anonymous',
+    function(req, res) {
+      // Should not be used when already logged in.
+      if (req.user) {res.sendStatus(400)}
+
+      // Create an anonymous user.
+      model.User.createAnonymous(req.ip)
+        .then(function(user) {
+          return Q.ninvoke(req, 'login', user)
+        }).then(function(foo) {
+          res.redirect('/account')
+        }).done()
+    }
+  )
+}
 
 function openIdConnectDynamic(model, app, config) {
   var oidcStrategy = new OpenIdConnect.Strategy({
@@ -216,6 +235,11 @@ function setup(app, model, config) {
     req.logout()
     res.redirect('/')
   })
+
+  // Setup anonymous "authentication" :)
+  if ('anonymous' in config.authenticators) {
+    setupAnonymous(model, app, config.authenticators.anonymous)
+  }
 
   // Setup OpenID Connect authentication
   if ('openidconnect' in config.authenticators) {

@@ -4,7 +4,7 @@ var config = {
   secret: 'verysecret',
   testMode: true,
   baseUrl: 'http://localhost/',
-  authenticators: {},
+  authenticators: {anonymous: {}}, // Using defaults.
   database: 'sqlite://' + path.join(__dirname, 'build', 'comments-test.db'),
 }
 
