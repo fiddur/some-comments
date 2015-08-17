@@ -25,59 +25,60 @@ var markdown   = require('markdown').markdown
 
 module.exports = function (app, model, mailTransport, config) {
   app.get('/sites/:site/pages/:page/comments/', function(req, res) {
-    model.Page.qOne({site: req.params.site, url: req.params.page})
+    model.Page.getBySiteUrl(req.params.site, req.params.page)
       .done(function(page) {
-        if (page) {page.qGetComments().then(function(comments) {res.json(comments)})}
-        else {res.json([])}
+        if (page) {
+          page.qGetComments().then(function(comments) {res.json(comments)})
+        }
+        else {
+          res.json([])
+        }
       })
   })
 
   app.post('/sites/:site/pages/:page/comments/', function(req, res) {
+    var page
+
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
 
     if (typeof req.body.text === 'undefined') {
       return res.status(400).send('Bad Request: text is required')
     }
 
-    model.Page.qOne({site: req.params.site, url: req.params.page})
-      .then(function(page) {
-        if (page) {return page}
+    model.Page.getBySiteUrl(req.params.site, req.params.page)
+      .then(function(pageIn) {
+        if (pageIn) {return pageIn}
         else {
-          return model.Page.qCreate([{site: req.params.site, url: req.params.page}])
-            .then(function(pages) {return pages[0]})
+          return model.Page.create({site: req.params.site, url: req.params.page})
         }
       })
-      .then(function(page) {
-        return model.Comment.qCreate([{
-          site: req.params.site,
+      .then(function(pageIn) {
+        page = pageIn
+        return model.Comment.create({
           page: page,
           user: req.user,
           text: req.body.text
-        }])
+        })
       })
-      .done(function(comments) {
-        var comment = comments[0]
+      .done(function(comment) {
         res.status(201).location(req.path + comment.id).send(comment)
 
         // Add subscription to this thread asynchronuously.
-        comment.page.qAddSubscribers([req.user])
-          .catch(function(error) {
-            console.log(
-              'Could not add subscription on page ' + page.id + ' for user ' + req.user.id,
-              error
-            )
-          })
+        req.user.subscribe(page).done()
 
-          // Notify subscribers.
-          notifySubscribers(comment)
+        // Notify subscribers.
+        notifySubscribers(comment)
       })
   })
 
   function notifySubscribers(comment) {
-    var page = comment.page
-    var mailTxtTemplate, mailHtmlTemplate, site, subscribers
+    var page, mailTxtTemplate, mailHtmlTemplate, site, subscribers
 
-    return page.qGetSubscribers()
+    comment.qGetPage()
+      .then(function(pageIn) {
+        page = pageIn
+        return page.qGetSubscribers()
+      })
       .then(function(subscribersIn) {
         subscribers = subscribersIn
         console.log('About to notify subscribers of new comment:', comment, subscribers)
@@ -111,7 +112,7 @@ module.exports = function (app, model, mailTransport, config) {
           }
           else if (user.email) {
             var unsubscribeUrl =
-              config.host + '/users/unsubscribe?jwt=' + user.getUnsubscribeToken(page)
+              config.host + '/users/unsubscribe?jwt=' + user.unsubscribeToken(page.id)
 
             var mailTxt = mailTxtTemplate({
               commentMarkdown: comment.text,

@@ -4,12 +4,12 @@ var assert = require('assert')
 var config = require('../config.js.test')
 var models = require('../models/')
 
-var config = {
-  database: {protocol: 'sqlite'} // In memory sqlite.
-}
+//var config = {
+//  database: {protocol: 'sqlite'} // In memory sqlite.
+//}
 
 describe('Models', function() {
-  var model, site, page, user, comments = []
+  var model, site, page, comments = []
 
   before(function(done) {
     this.timeout(15000)
@@ -19,22 +19,21 @@ describe('Models', function() {
         model = modelIn
 
         // Setup some test data
-        return model.Site.qCreate([{domain: 'testdomain'}])
+        return model.Site.create([{domain: 'testdomain'}])
       })
       .then(function(sites) {
         site = sites[0]
 
-        return model.Page.qCreate([{url:'http://testdomain/myPage'}])
+        return model.Page.create([{url:'http://testdomain/myPage'}])
       })
-      .then(function(pages) {
-        page = pages[0]
+      .then(function(pageIn) {
+        page = pageIn
 
-        return model.User.qCreate([{displayName: 'Foo Bar'}])
+        return model.User.create({displayName: 'Foo Bar'})
       })
-      .then(function(users) {
-        user = users[0]
+      .then(function(user) {
 
-        return model.Comment.qCreate([
+        return model.Comment.createMulti([
           {
             text: 'This is a comment',
             user: user,
@@ -80,9 +79,26 @@ describe('Models', function() {
     })
   })
 
-  //describe('Users', function() {
+  describe('Users', function() {
   //  it('should produce a valid unsubscribe token', function(done) {
   //  it('should return user from valid unsubscribe token', function(done) {
   //  it('should throw error on invalid unsubscribe token', function(done) {
-  //})
+
+    it('should add subscription', function(done) {
+      var user
+
+      model.User.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
+        .then(function(userIn) {
+          user = userIn
+          return user.subscribe(page)
+        }).then(function(foo) {
+          // Make sure user is subscribed
+          return Q.ninvoke(user, 'hasSubscriptions', page)
+        }).then(function(has) {
+          assert.ok(has)
+          done()
+        }).done()
+
+    })
+  })
 })

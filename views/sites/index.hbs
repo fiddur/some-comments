@@ -1,4 +1,4 @@
-<h1>Sites at {{server.domain}}:{{server.port}}</h1>
+<h1>Sites at {{baseUrl}}</h1>
 
 <p>
   Here might some day be a nice list with links and supearmin functionality to remove unwanted
@@ -21,7 +21,7 @@
 <script src="/node_modules/q/q.js"></script>
 <script src="/client.js"></script>
 <script>
-  var sc = SomeComments('http://{{server.domain}}:{{server.port}}/')
+  var sc = SomeComments('{{baseUrl}}')
 
   function addSite() {
     console.log('Adding site.')

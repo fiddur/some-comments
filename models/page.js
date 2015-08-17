@@ -18,12 +18,29 @@
  */
 
 module.exports = function(db, Site, User) {
-  var Page = db.qDefine('page', {
+  var Page = {}
+
+  Page.orm = db.qDefine('pages', {
+    id:  {type: 'serial', key: true},
     url: {type: 'text', size: 255, unique: true}
   })
-  Page.qHasOne('site', Site, {key: true})
-  Page.qHasMany('subscribers', User, {}, {reverse: 'subscriptions', key: true})
+  Page.orm.qHasOne('site', Site.orm, {key: true})
+  Page.orm.qHasMany('subscribers', User.orm, {}, {
+    mergeTable:   'subscriptions',
+    mergeId:      'pageId',
+    mergeAssocId: 'userId',
+    reverse:      'subscriptions',
+    key:          true
+  })
+
+  Page.create = function(data) {
+    if (data.site) data.site_id = data.site.id
+    return Page.orm.qCreate([data]).then(function(pages) {return pages[0]})
+  }
+
+  Page.getBySiteUrl = function(site, url) {
+    return Page.orm.qOne({site: site, url: url})
+  }
 
   return Page
 }
-

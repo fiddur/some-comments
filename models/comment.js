@@ -17,16 +17,38 @@
  * GNU-AGPL-3.0
  */
 
+'use strict'
+
 module.exports = function(db, User, Page) {
-  var Comment = db.qDefine('comment', {
-    text:       {type: 'text'},
-    deleted_at: {type: 'date', time: true},
+  var Comment = {}
+
+  Comment.orm = db.qDefine('comments', {
+    id:        {type: 'serial', key: true},
+    text:      {type: 'text'},
+    deletedAt: {type: 'date', time: true},
   }, {
-    timestamp: true
+    timestamp: {
+      createdProperty:  'createdAt',
+      modifiedProperty: 'modifiedAt',
+    }
   })
-  Comment.qHasOne('user',   User,    {autoFetch: true, key: true})
-  Comment.qHasOne('page',   Page,    {key: true, reverse: 'comments'})
-  Comment.qHasOne('parent', Comment, {key: true})
+  Comment.orm.qHasOne('user',   User.orm,    {autoFetch: true, key: true})
+  Comment.orm.qHasOne('page',   Page.orm,    {key: true, reverse: 'comments'})
+  Comment.orm.qHasOne('parent', Comment.orm, {index: true})
+
+  Comment.createMulti = function(datas) {
+    var l = datas.length
+    for (var i = 0; i < l; i++) {
+      if (datas[i].page) {datas[i].page_id = datas[i].page.id}
+      if (datas[i].user) {datas[i].user_id = datas[i].user.id}
+    }
+
+    return Comment.orm.qCreate(datas)
+  }
+
+  Comment.create = function(data) {
+    return Comment.createMulti([data]).then(function(comments) {return comments[0]})
+  }
 
   return Comment
 }

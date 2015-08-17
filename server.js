@@ -17,6 +17,8 @@
  * GNU-AGPL-3.0
  */
 
+var url = require('url')
+
 var istanbulMiddleware = require('istanbul-middleware')
 var coverage = (process.env.COVERAGE == 'true')
 if (coverage) {
@@ -33,8 +35,8 @@ var expressHbs       = require('express-handlebars')
 var nodemailer       = require('nodemailer')
 
 var Authentication   = require('./authentication')
-var SiteRoutes       = require('./routes/sites.js')
-var CommentRoutes    = require('./routes/comments.js')
+var SiteRoutes       = require('./routes/sites')
+var CommentRoutes    = require('./routes/comments')
 
 function start(model, config) {
   var app = express()
@@ -72,23 +74,26 @@ function start(model, config) {
     origin: function(origin, callback) {
       console.log('Checking if cors is allowed by', origin)
       if (typeof origin === 'undefined') {return callback(null, true)}
-      model.site.getByOrigin(origin)
+      model.Site.getByOrigin(origin)
         .done(function(site) {
-          if (site) {callback(null, true)}
-          else      {callback(null, false)}
+          if (site) {
+            callback(null, true)
+          }
+          else {
+            callback(null, false)
+          }
         })
     },
     credentials: true
   }))
 
-  var port   = process.env.PORT || config.server.port || null
+  config.baseUrl = url.parse(config.baseUrl)
+  config.baseUrl.toString = function() {return url.format(this)}
+  var port   = process.env.PORT || config.baseUrl.port || null
   var server = app.listen(port)
 
   // Store port in config, if it wasn't there already.
-  config.server.port = server.address().port
-
-  // Store the complete host in config as shortcut.
-  config.host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
+  config.baseUrl.port = server.address().port
 
   // Authentication strategies
   Authentication.setup(app, model, config)
@@ -104,11 +109,11 @@ function start(model, config) {
   app.get('/ping', function(req, res) {res.send('pong')})
 
   app.get('/test', function(req, res) {
-    model.Site.qOne({domain: config.server.domain})
+    model.Site.getByDomain(config.baseUrl.host)
       .then(function(site) {
         if (site) {return site} // Chain it for creation below
 
-        return model.Site.qCreate([{domain: config.server.domain}])
+        return model.Site.qCreate([{domain: config.baseUrl.host}])
           .then(function(sites) {return sites[0]})
       })
       .then(function(site) {
@@ -118,7 +123,7 @@ function start(model, config) {
       .done()
   })
 
-  console.log('Express server listening on port %d in %s mode', config.server.port,
+  console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
               app.settings.env)
 }
 exports.start = start

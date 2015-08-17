@@ -17,13 +17,15 @@
  * GNU-AGPL-3.0
  */
 
-var user            = require('./user')
-var site            = require('./site')
-var account         = require('./account')
-var page            = require('./page')
-var comment         = require('./comment')
-var oidc            = require('./oidc')
-var oidc_identifier = require('./oidc_identifier')
+var url = require('url')
+
+var user           = require('./user')
+var site           = require('./site')
+var account        = require('./account')
+var page           = require('./page')
+var comment        = require('./comment')
+var oidc           = require('./oidc')
+var oidcIdentifier = require('./oidc_identifier')
 
 var Q           = require('q')
 var qOrm        = require('q-orm')
@@ -46,7 +48,7 @@ module.exports = function(config) {
       var Page           = page(db, Site, User)
       var Comment        = comment(db, User, Page)
       var Oidc           = oidc(db)
-      var OidcIdentifier = oidc_identifier(db, Oidc)
+      var OidcIdentifier = oidcIdentifier(db, Oidc)
 
       model = {
         User:           User,
@@ -60,20 +62,8 @@ module.exports = function(config) {
 
       // Superadmins
       model.Superadmin = db.qDefine('superadmin', {})
-      model.Superadmin.hasOne('user', model.User, {key: true})
+      model.Superadmin.hasOne('user', model.User.orm, {key: true})
 
       return model
     })
-    //.then(function(model) {
-    //  // Add unique index for page<->subscriber
-    //  db.driver.execQuery(
-    //    'CREATE UNIQUE INDEX IF NOT EXISTS page_subscription ' +
-    //      'ON page_subscribers (page_id, subscribers_id)',
-    //    function(err, data) {
-    //      if (err) {throw err}
-    //    }
-    //  )
-    //
-    //  return model
-    //})
 }

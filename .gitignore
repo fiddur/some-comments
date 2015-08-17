@@ -1,5 +1,4 @@
 /build
-/comments.db
-/comments-test.db
+/data/comments.db
 /config.js
 /node_modules

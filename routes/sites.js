@@ -22,11 +22,11 @@ module.exports = function (app, model, config) {
     var db = req.app.locals.db
 
     console.log('Listing sites.')
-    model.Site.qAll()
+    model.Site.all()
       .done(function(sites) {
         if (req.accepts('json', 'html') === 'json') {return res.json(sites)}
 
-        res.render('sites/index', {sites: sites, server: config.server})
+        res.render('sites/index', {sites: sites, baseUrl: config.baseUrl})
       })
   })
 
@@ -39,7 +39,7 @@ module.exports = function (app, model, config) {
       return res.status(401).send('Unauthorized')
     }
 
-    model.Site.qCreate([{domain: req.body.domain}])
+    model.Site.create({domain: req.body.domain})
       .done(function(sites) {
         var site = sites[0]
 

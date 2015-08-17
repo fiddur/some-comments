@@ -18,32 +18,33 @@
  */
 
 module.exports = function(db, User) {
-  var Account = db.qDefine('account', {
-    uid:    {type: 'text', unique: 'system_uid'},
-    system: {type: 'text', unique: 'system_uid'},
-  })
+  var Account = {}
 
-  Account.qHasOne('user', User, {autoFetch: true, key: true})
+  Account.orm = db.qDefine('accounts', {
+    id:            {type: 'serial', key: true},
+    uid:           {type: 'text', unique: 'authenticator_uid'},
+    authenticator: {type: 'text', unique: 'authenticator_uid'},
+  })
+  Account.orm.qHasOne('user', User.orm, {autoFetch: true, key: true})
 
   /**
-   * Find an account by system and UID, or create it along with it's user.
+   * Find an account by authenticator and UID, or create it along with it's user.
    *
-   * @param system
+   * @param authenticator
    * @param uid
    * @param userData   Object of userdata
    */
-  Account.getOrCreate = function(system, uid, userData) {
-    return Account.qOne({system: system, uid: uid})
+  Account.getOrCreate = function(authenticator, uid, userData) {
+    return Account.orm.qOne({authenticator: authenticator, uid: uid})
       .then(function(account) {
         if (account) {return account}
 
         // Create user first.
         var user
 
-        return User.qCreate([userData])
-          .then(function(users) {
-            user = users[0]
-            return Account.qCreate([{system: system, uid: uid, user: user}])
+        return User.create(userData)
+          .then(function(user) {
+            return Account.orm.qCreate([{authenticator: authenticator, uid: uid, user: user}])
           })
           .then(function(accounts) {
             return accounts[0]

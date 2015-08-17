@@ -28,6 +28,8 @@
  */
 
 (function(window) {
+  'use strict'
+
   /************************************************************************************************
    * A few simple utility helpers
    ************************************************************************************************/
@@ -38,7 +40,7 @@
   var e = function (id) {return document.getElementById(id)}
 
   function ForbiddenError(req, call) {
-    this.name = "Forbidden"
+    this.name = 'Forbidden'
     this.call = call
     this.req  = req
     this.message = ''
@@ -75,9 +77,9 @@
     return ajax.call('GET', url, {}, '')
   }
   ajax.post = function(url, data) {
-    headers = {}
+    var headers = {}
     headers['content-type'] = 'application/json'
-    body = JSON.stringify(data)
+    var body = JSON.stringify(data)
     return ajax.call('POST', url, headers, body)
   }
 
@@ -149,7 +151,6 @@
         var input = e('comment_' + urlStr)
         input.addEventListener('keypress', function(kp) {
           if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
-            console.log('POST')
             var commentText = input.value
             input.value = ''
             Comment.add(site, urlStr, commentText)
@@ -186,7 +187,6 @@
       sc.server + 'sites/', {domain: domain})
       .then(
         function(response) {
-          console.log('Added site', response)
         }, function(error) {
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
@@ -210,22 +210,17 @@
    * Display a login iframe, promise to fulfil the original request.
    */
   User.offerLogin = function(server, call) {
-    console.log('SomeComments: User is not logged in.  Offering login in iframe.')
-
     var iframe = document.createElement('iframe')
     iframe.src = server + 'login'
     iframe.className = 'login'
 
     var deferred = Q.defer()
 
-    window.addEventListener("message", function(event) {
+    window.addEventListener('message', function(event) {
       var origUrl   = parseUrl(event.origin)
       var serverUrl = parseUrl(server)
 
-      if (origUrl.hostname !== serverUrl.hostname) {
-        console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
-        return
-      }
+      if (origUrl.hostname !== serverUrl.hostname) {return }
 
       if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
 
@@ -235,8 +230,6 @@
     }, false);
 
     document.body.appendChild(iframe)
-
-    console.log(iframe)
 
     return deferred.promise
   }
@@ -296,16 +289,13 @@
       .then(
         function(commentJson) {
           var comment = JSON.parse(commentJson)
-          console.log('Added comment', comment)
           return comment
         }, function(error) {
-          console.log('Got error', error)
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
             return User.offerLogin(site.server, error.call)
               .then(function (commentJson) {
                 var comment = JSON.parse(commentJson)
-                console.log('After auth: Added comment', comment)
                 return comment
               })
           }
@@ -317,12 +307,16 @@
   Comment.getElement = function(comment) {
     var div = document.createElement('div')
 
+    var displayName = comment.user.displayName || ''
+    var avatar      = comment.user.avatar      || ''
+    var createdAt   = comment.createdAt        || ''
+
     div.className = 'comment_row'
     div.innerHTML =
-      '<div class="user"><img alt="' + comment.user.displayName + '" src="' + comment.user.avatar
+      '<div class="user"><img alt="' + displayName + '" src="' + avatar
       + '" /></div><div class="comment_text">'
-      + markdown.toHTML('**' + comment.user.displayName + '**: ' + comment.text)
-      + '<div class="created">' + comment.created_at + '</div></div>'
+      + markdown.toHTML('**' + displayName + '**: ' + comment.text)
+      + '<div class="created">' + createdAt + '</div></div>'
 
     return div
   }

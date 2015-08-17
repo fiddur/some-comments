@@ -17,15 +17,18 @@
  * GNU-AGPL-3.0
  */
 
+/// @todo Refactor away public ORM.
+
 module.exports = function(db) {
   return db.qDefine('oidc', {
-    issuer:           {type: 'text', unique: true},
-    authorizationURL: String,
-    tokenURL:         String,
-    userInfoURL:      String,
-    registrationURL:  String,
-    clientID:         String,
-    clientSecret:     String,
+    id:               {type: 'serial', key:    true},
+    issuer:           {type: 'text',   unique: true},
+    authorizationURL: {type: 'text'},
+    tokenURL:         {type: 'text'},
+    userInfoURL:      {type: 'text'},
+    registrationURL:  {type: 'text'},
+    clientID:         {type: 'text'},
+    clientSecret:     {type: 'text'},
     expiresAt:        {type: 'integer', size: 8}
   })
 }

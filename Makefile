@@ -6,14 +6,15 @@ install: node_modules
 node_modules:
 	npm install
 
-test:
+test-prepare:
 	rm -fr build
 	mkdir build
+	@DB_URL=sqlite://build/comments-test.db ./node_modules/.bin/migrate up
+
+test: test-prepare
 	@./node_modules/.bin/mocha
 
-test-cov:
-	rm -fr build
-	mkdir build
+test-cov: test-prepare
 	./node_modules/.bin/istanbul cover --report json --dir build ./node_modules/.bin/_mocha
 	unzip -p build/coverage.zip coverage.json > build/route-coverage.json
 	node mergeCoverage.js

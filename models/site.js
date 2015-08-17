@@ -18,18 +18,35 @@
  */
 
 module.exports = function(db, User) {
-  var Site = db.qDefine('site', {
-    domain:    {type: 'text',    unique: true},
-    maxLevels: {type: 'integer', size: 2, defaultValue: 0},
-  })
+  var Site = {}
 
-  Site.qHasMany('admins', User, {}, {reverse: 'sites', key: true, autoFetch: true})
+  Site.orm = db.qDefine('sites', {
+    id:        {type: 'serial',  key:    true},
+    domain:    {type: 'text',    unique: true},
+    maxLevels: {type: 'integer', size:   2, defaultValue: 0},
+  })
+  Site.orm.qHasMany('admins', User.orm, {}, {reverse: 'sites', key: true, autoFetch: true})
+
+  /**
+   * List all sites.
+   */
+  Site.all = function() {
+    return Site.orm.qAll()
+  }
+
+  Site.create = function(data) {
+    return Site.orm.qCreate([data]).then(function(sites) {return sites[0]})
+  }
 
   /**
    * Get a Site by http origin header string.
    */
   Site.getByOrigin = function(origin) {
-    return this.qOne({domain: origin.split('//')[1]})
+    return Site.orm.qOne({domain: origin.split('//')[1]})
+  }
+
+  Site.getByDomain = function(domain) {
+    return Site.orm.qOne({domain: domain})
   }
 
   return Site

@@ -7,13 +7,13 @@
 </form>
 
 <ul>
-  {{#config.connectors.openidconnect}}
+  {{#config.authenticators.openidconnect}}
     <li><a href="/auth/{{shortName}}" target="_blank">{{title}}</a></li>
-  {{/config.connectors.openidconnect}}
+  {{/config.authenticators.openidconnect}}
 
-  {{#config.connectors.facebook}}
+  {{#config.authenticators.facebook}}
     <li><a href="/auth/facebook" target="_blank">Facebook</a></li>
-  {{/config.connectors.facebook}}
+  {{/config.authenticators.facebook}}
 </ul>
 
 <script>

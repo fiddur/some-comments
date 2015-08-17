@@ -67,20 +67,16 @@ secret: 'aRandomString',
 ```
 
 
-### Server
+### BaseUrl
 
 State protocol, domain and port.  If you use a proxy, this should be the proxies values; used for
 URLs in redirect etc.
 
 ```javascript
-server: {
-  protocol: 'http'
-  domain:   'localhost',
-  port:     1337,
-}
+baseUrl: 'http://example.net:1337/',
 ```
 
-### Connectors
+### Authenticators
 
 These are the ways the user can authenticat.  *Some Comments* have no authentication of it's own,
 but relies solely on other systems.
@@ -91,7 +87,7 @@ but relies solely on other systems.
 To use Dynamic OpenID, simply include `openidconnect` with an empty array:
 
 ```javascript
-connectors: {
+authenticators: {
   openidconnect: []
 }
 ```
@@ -105,7 +101,7 @@ For OpenID Connect endpoints that haven't implemented Dynamic Client Registratio
 supply API credentials.  For example:
 
 ```javascript
-connectors: {
+authenticators: {
   openidconnect: [
     {
       title:            'Google OpenID Connect',
@@ -129,7 +125,7 @@ is needed to separate the callback URIs for each openidconnect issuer.
 #### Facebook
 
 ```javascript
-connectors: {
+authenticators: {
   facebook: [
     {
       clientId:     'get your own',
@@ -197,6 +193,8 @@ Changelog
 * Sending notifications of new comments with [Nodemailer](https://github.com/andris9/Nodemailer).
 * Using canonical URL to identify pages.
 * Adding configurations: `secret`, `email`.
+* Changed configuration `connector` into `authenticator`.
+* Changed configuration `server` into `baseUrl`.
 
 
 ### 0.1.0

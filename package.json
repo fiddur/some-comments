@@ -27,6 +27,7 @@
     "morgan": "^1.5.2",
     "nodemailer": "^1.3.4",
     "orm": "^2.1.26",
+    "orm-migrate": "^1.0.5",
     "orm-timestamps": "^0.5.2",
     "passport": "^0.2.1",
     "passport-facebook": "^2.0.0",

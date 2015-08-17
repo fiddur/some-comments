@@ -24,9 +24,7 @@ var GoogleOauth2     = require('passport-google-oauth2').Strategy
 var OpenIdConnect    = require('passport-openidconnect')
 
 function openIdConnectDynamic(model, app, config) {
-  var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
-
-  var oidc_strategy = new OpenIdConnect.Strategy({
+  var oidcStrategy = new OpenIdConnect.Strategy({
     identifierField:   'oidci',
     scope:             'openid profile email',
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
@@ -42,13 +40,17 @@ function openIdConnectDynamic(model, app, config) {
       .done()
   })
 
-  passport.use(oidc_strategy)
+  passport.use(oidcStrategy)
 
-  oidc_strategy.configure(function(identifier, done) {
+  oidcStrategy.configure(function(identifier, done) {
     model.OidcIdentifier.qOne({identifier: identifier})
       .then(function(oidcIdentifier) {
-        if (oidcIdentifier) {oidcIdentifier.qGetOidc().done(function(oidc) {done(null, oidc)})}
-        else {done(null, null)}
+        if (oidcIdentifier) {
+          oidcIdentifier.qGetOidc().done(function(oidc) {done(null, oidc)})
+        }
+        else {
+          done(null, null)
+        }
       })
       .catch(function(error) {done(error, null)})
       .done()
@@ -57,15 +59,19 @@ function openIdConnectDynamic(model, app, config) {
   OpenIdConnect.config(function(issuer, done) {
     model.Oidc.qOne({issuer: issuer})
       .then(function(oidc) {
-        if (oidc) {done(null, oidc)}
-        else      {done(null, null)}
+        if (oidc) {
+          done(null, oidc)
+        }
+        else {
+          done(null, null)
+        }
       }, function(error) {done(error, null)})
       .done()
   })
 
   OpenIdConnect.register(OpenIdConnect.registration({
     name:        'Some Comments',
-    redirectURI: host + '/auth/oidc/callback',
+    redirectURI: config.baseUrl + 'auth/oidc/callback',
   }, function(provider, reg, next) {
     console.log('Saving info for provider', provider, 'reg', reg)
     model.Oidc.create([{
@@ -84,22 +90,22 @@ function openIdConnectDynamic(model, app, config) {
   app.get(
     '/auth/oidc',
     passport.authenticate('openidconnect', {
-      callbackURL:      host + '/auth/oidc/callback',
+      callbackURL:      config.baseUrl + 'auth/oidc/callback',
       failureRedirect:  '/login',
     })
   )
   app.get(
     '/auth/oidc/callback',
     passport.authenticate('openidconnect', {
-      callbackURL:      host + '/auth/oidc/callback',
+      callbackURL:      config.baseUrl + 'auth/oidc/callback',
       failureRedirect:  '/login',
     }),
     function(req, res) {res.redirect('/account')}
   )
 }
 
-function openIdConnectProvider(app, model, host, provider) {
-  var oidc_strategy = new OpenIdConnect.Strategy({
+function openIdConnectProvider(app, model, baseUrl, provider) {
+  var oidcStrategy = new OpenIdConnect.Strategy({
     name:             provider.shortName,
     authorizationURL: provider.authorizationURL,
     tokenURL:         provider.tokenURL,
@@ -119,31 +125,31 @@ function openIdConnectProvider(app, model, host, provider) {
       .done()
   })
 
-  passport.use(oidc_strategy)
+  passport.use(oidcStrategy)
 
   app.get(
     '/auth/' + provider.shortName,
     passport.authenticate(provider.shortName, {
-      callbackURL:      host + '/auth/' + provider.shortName + '/callback',
+      callbackURL:      baseUrl + 'auth/' + provider.shortName + '/callback',
       failureRedirect:  '/login',
     })
   )
   app.get(
     '/auth/' + provider.shortName + '/callback',
     passport.authenticate(provider.shortName, {
-      callbackURL:      host + '/auth/' + provider.shortName + '/callback',
+      callbackURL:      baseUrl + 'auth/' + provider.shortName + '/callback',
       failureRedirect:  '/login',
     }),
     function(req, res) {res.redirect('/account')}
   )
 }
 
-function facebook(app, provider, model, host) {
+function facebook(app, provider, model, baseUrl) {
   passport.use(new FacebookStrategy(
     {
       clientID:     provider.clientId,
       clientSecret: provider.clientSecret,
-      callbackURL:  host + '/auth/facebook/callback',
+      callbackURL:  baseUrl + 'auth/facebook/callback',
     },
     function(accessToken, refreshToken, profile, done) {
       console.log('Got facebook data:', profile)
@@ -173,8 +179,6 @@ function ensureAuthenticated(req, res, next) {
 }
 
 function setup(app, model, config) {
-  var host = config.server.protocol + '://' + config.server.domain + ':' + config.server.port
-
   app.use(passport.initialize())
   app.use(passport.session())
 
@@ -183,7 +187,7 @@ function setup(app, model, config) {
     done(null, user.id)
   })
   passport.deserializeUser(function(id, done) {
-    model.User.qGet(id)
+    model.User.get(id)
       .then(
         function(user)  {done(null, user)},
         function(error) {
@@ -214,16 +218,20 @@ function setup(app, model, config) {
   })
 
   // Setup OpenID Connect authentication
-  if ('openidconnect' in config.connectors) {
+  if ('openidconnect' in config.authenticators) {
     openIdConnectDynamic(model, app, config)
 
-    for (var i = 0, len = config.connectors.openidconnect.length; i < len; i++) {
-      openIdConnectProvider(app, model, host, config.connectors.openidconnect[i])
+    for (var i = 0, len = config.authenticators.openidconnect.length; i < len; i++) {
+      openIdConnectProvider(
+        app, model, config.baseUrl.toString(), config.authenticators.openidconnect[i]
+      )
     }
   }
 
   // Setup Facebook authentication
-  if ('facebook' in config.connectors) {facebook(app, config.connectors.facebook, model, host)}
+  if ('facebook' in config.authenticators) {
+    facebook(app, config.authenticators.facebook, model, config.baseUrl.toString())
+  }
 }
 
 exports.setup = setup

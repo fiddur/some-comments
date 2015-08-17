@@ -18,12 +18,16 @@
  */
 
 var jwt = require('jsonwebtoken')
+var Q   = require('q')
 
 module.exports = function(db, config) {
-  var User = db.qDefine('user', {
-    displayName: String,
-    avatar:      String,
-    email:       String,
+  var User = {}
+
+  User.orm = db.qDefine('users', {
+    id:          {type: 'serial', key: true},
+    displayName: {type: 'text'},
+    avatar:      {type: 'text'},
+    email:       {type: 'text'},
   }, {
     methods: {
       /**
@@ -31,9 +35,28 @@ module.exports = function(db, config) {
        */
       unsubscribeToken: function (pageId) {
         return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
+      },
+
+      subscribe: function(page) {
+        var self = this
+
+        // Check if already subscribed.
+        return Q.ninvoke(this, 'hasSubscriptions', page)
+          .then(function(isSubscribed) {
+            if (isSubscribed) {return true}
+            return Q.ninvoke(self, 'addSubscriptions', page)
+          })
       }
     }
   })
+
+  User.create = function(data) {
+    return User.orm.qCreate([data]).then(function(users) {return users[0]})
+  }
+
+  User.get = function(id) {
+    return User.orm.qGet(id)
+  }
 
   /**
    * @return Promise for a user
@@ -46,6 +69,7 @@ module.exports = function(db, config) {
     }
 
     /// @todo...
+    console.log('TODO: Unsubscribe…')
   }
 
   return User

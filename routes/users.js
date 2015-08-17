@@ -28,7 +28,7 @@ module.exports = function(model, config) {
     if (jwt.verify(unsubscribeJwt, config.secret)) {
       var unsubscribe = jwt.decode(unsubscribeJwt)
 
-      return model.User.qGet(unsubscribe.user)
+      return model.User.get(unsubscribe.user)
         .then(function(userIn) {
           user = userIn
           return user.qRemoveSubscriptions([model.Page(unsubscribe.page)])
@@ -59,7 +59,7 @@ module.exports = function(model, config) {
     if (req.user.id !== parseInt(req.params.id)) {return res.sendStatus(401)}
 
     // Specific user ID
-    model.User.qGet(req.params.id)
+    model.User.get(req.params.id)
       .then(function (user) {
         if (!user) {return res.sendStatus(404)}
 
