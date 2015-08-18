@@ -146,6 +146,13 @@ describe('Routing Integration', function() {
       ).done()
     })
 
+    it('should require domain', function(done) {
+      request(baseUrl)
+        .post('/sites/')
+        .send({})
+        .expect(400, done)
+    })
+
     it('should require auth', function(done) {
       request(baseUrl)
         .post('/sites/')
@@ -178,13 +185,12 @@ describe('Routing Integration', function() {
       agentAnonymous
         .post('/sites/')
         .send({domain: 'example.org'})
-        .expect(401, done)
+        .expect(403, done)
     })
   })
 
   describe('Page comments', function() {
     it('should give comments with user info', function(done) {
-      this.timeout(5000) // Setting up things can take time if hd isn't quick
       // Setup site, page, user and comments
       var admin, site, comment
 
@@ -214,6 +220,19 @@ describe('Routing Integration', function() {
             })
         })
         .done()
+    })
+
+    it('should give empty list of comments for unknown page', function(done) {
+      request(baseUrl)
+        .get('/sites/9999/pages/' + encodeURIComponent('http://myother/testpage') +
+             '/comments/')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .end(function(err, res) {
+          should.not.exist(err)
+          assert.deepEqual(res.body, [])
+          done()
+        })
     })
 
     it('should require auth to add comment', function(done) {
@@ -270,6 +289,13 @@ describe('Routing Integration', function() {
           should.not.exist(res.body.email)
           done()
         })
+    })
+
+    it('should give no user info for other users', function(done) {
+      agent
+        .get('/users/9999')
+        .set('Accept', 'application/json')
+        .expect(401, done)
     })
 
     //it('should add comment if user is logged in', function(done) {
