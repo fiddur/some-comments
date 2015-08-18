@@ -1,15 +1,16 @@
-var orm        = require('orm')
+var orm           = require('orm')
 var MigrationTask = require('migrate-orm2')
 
-var configFile = /*process.argv[2] ||*/ 'config.js'
-var config = require('./' + configFile)
+var configFile = 'config.js'
+var config     = require('./' + configFile)
 
 runMigration = function (operation, grunt, done) {
   orm.settings.set('connection.debug', true)
   orm.connect(config.database, function (err, connection) {
     if (err) throw(err)
 
-    var migrationTask = new MigrationTask(connection.driver)
+    console.log('Running on db:', config.database)
+    var migrationTask = new MigrationTask(connection.driver, {dir: 'data/migrations'})
     migrationTask[operation](grunt.option('file'), done)
   })
 }
