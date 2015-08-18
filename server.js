@@ -112,8 +112,7 @@ function start(model, config) {
       .then(function(site) {
         if (site) {return site} // Chain it for creation below
 
-        return model.Site.qCreate([{domain: config.baseUrl.host}])
-          .then(function(sites) {return sites[0]})
+        return model.Site.create({domain: config.baseUrl.host})
       })
       .then(function(site) {
         res.render('test', {config: config, site: site.id})
