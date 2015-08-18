@@ -126,13 +126,14 @@ supply API credentials.  For example:
 authenticators: {
   openidconnect: [
     {
-      title:            'Google OpenID Connect',
+      title:            'Google,
       shortName:        'google',
       authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
       tokenURL:         'https://www.googleapis.com/oauth2/v4/token',
       userInfoURL:      'https://www.googleapis.com/oauth2/v3/userinfo',
       clientID:         'get your own',
       clientSecret:     'get your own',
+      icon:             'https://upload.wikimedia.org/wikipedia/commons/4/4d/Google_Icon.svg',
     }
   ]
 }
@@ -142,6 +143,8 @@ For Google, you get your API credentials at [the Developers
 Console](https://console.developers.google.com/).  Add an Oauth Client, with redirect URIs in the
 form: `http(s)://yourdomain.org/auth/<shortName>/callback`.  The `shortName` is a URL fragment and
 is needed to separate the callback URIs for each openidconnect issuer.
+
+Note: It's only the `icon` that is displayed in the login list on default login frame.
 
 
 #### Facebook

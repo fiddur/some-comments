@@ -64,3 +64,11 @@ iframe.login {
   font-size:   50%;
   font-family: sans-serif;
 }
+
+.login_list {
+  list-style-type: none;
+}
+
+.login_list li {
+  display: inline;
+}

@@ -72,7 +72,6 @@ function start(model, config) {
   // Setup Cross-origin resource sharing
   app.use(cors({
     origin: function(origin, callback) {
-      console.log('Checking if cors is allowed by', origin)
       if (typeof origin === 'undefined') {return callback(null, true)}
       model.Site.getByOrigin(origin)
         .done(function(site) {
@@ -117,7 +116,6 @@ function start(model, config) {
           .then(function(sites) {return sites[0]})
       })
       .then(function(site) {
-        console.log('NOW we have site.', site)
         res.render('test', {config: config, site: site.id})
       })
       .done()

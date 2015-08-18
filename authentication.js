@@ -162,6 +162,9 @@ function openIdConnectProvider(app, model, baseUrl, provider) {
 }
 
 function facebook(app, provider, model, baseUrl) {
+  var defaultIcon = 'https://upload.wikimedia.org/wikipedia/commons/c/c2/F_icon.svg'
+  provider.icon = provider.icon || defaultIcon
+
   passport.use(new FacebookStrategy(
     {
       clientID:     provider.clientId,

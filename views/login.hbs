@@ -6,33 +6,25 @@
   <input name="oidci" /><input type="submit" />
 </form>
 
-<ul>
+<ul class="login_list">
   {{#config.authenticators.openidconnect}}
-    <li><a href="/auth/{{shortName}}" target="_blank">{{title}}</a></li>
+    <li><a href="/auth/{{shortName}}" target="_blank"><img src="{{icon}}" style="max-width: 2em" alt="{{title}}" /></a></li>
   {{/config.authenticators.openidconnect}}
 
   {{#config.authenticators.facebook}}
-    <li><a href="/auth/facebook" target="_blank">Facebook</a></li>
+    <li><a href="/auth/facebook" target="_blank"><img src="{{icon}}" style="max-width: 2em" alt="{{title}}" /></a></li>
   {{/config.authenticators.facebook}}
 
-  {{#config.authenticators.anonymous}}
-    <li><a href="/auth/anonymous">Comment anonymously</a></li>
-  {{/config.authenticators.anonymous}}
 </ul>
 
+{{#config.authenticators.anonymous}}
+  <p>
+    Or <a href="/auth/anonymous">Comment anonymously</a></li>…
+  </p>
+{{/config.authenticators.anonymous}}
+
 <script>
-  console.log('Parent:', window.parent)
-
   window.addEventListener("message", function(event) {
-    console.log('Got event.', event)
-    //var origUrl   = parseUrl(event.origin)
-    //var serverUrl = parseUrl(site.server)
-    //
-    //if (origUrl.hostname !== serverUrl.hostname) {
-    //  console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
-    //  return
-    //}
-
     if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
 
     // Forward to parent.
