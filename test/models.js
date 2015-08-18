@@ -89,43 +89,66 @@ describe('Models', function() {
     it('should add subscription', function(done) {
       var user
 
-      model.User.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
-        .then(function(userIn) {
-          user = userIn
-          return user.subscribe(page)
-        }).then(function(foo) {
-          // Make sure user is subscribed
-          return Q.ninvoke(user, 'hasSubscriptions', page)
-        }).then(function(has) {
-          assert.ok(has, 'User should have a subscription.')
-          done()
-        }).done()
+      model.User.create({
+        displayName: 'Test User',
+        avatar:      'http://my.avatar/jpg',
+        email:       'foo@bar.com'
+      }).then(function(userIn) {
+        user = userIn
+        return user.subscribe(page)
+      }).then(function(foo) {
+        // Make sure user is subscribed
+        return Q.ninvoke(user, 'hasSubscriptions', page)
+      }).then(function(has) {
+        assert.ok(has, 'User should have a subscription.')
+        done()
+      }).done()
+    })
 
+    it('should not add subscription without email', function(done) {
+      var user
+
+      model.User.create({
+        displayName: 'Test User',
+        avatar:      'http://my.avatar/jpg',
+      }).then(function(userIn) {
+        user = userIn
+        return user.subscribe(page)
+      }).then(function(foo) {
+        // Make sure user is subscribed
+        return Q.ninvoke(user, 'hasSubscriptions', page)
+      }).then(function(isSubscribed) {
+        assert.ok(!isSubscribed, 'User should have a subscription.')
+        done()
+      }).done()
     })
 
     it('should give a working unsubscription token', function(done) {
-      model.User.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
-        .then(function(user) {
-          // Subscribe the user.
-          return [user, user.subscribe(page)]
-        }).spread(function(user, foo) {
-          // Middle check: Make sure user is subscribed
-          return [user, Q.ninvoke(user, 'hasSubscriptions', page)]
-        }).spread(function(user, isSubscribed) {
-          assert.ok(isSubscribed, 'User should have a subscription.')
+      model.User.create({
+        displayName: 'Test User',
+        avatar:      'http://my.avatar/jpg',
+        email:       'foo@bar.com',
+      }).then(function(user) {
+        // Subscribe the user.
+        return [user, user.subscribe(page)]
+      }).spread(function(user, foo) {
+        // Middle check: Make sure user is subscribed
+        return [user, Q.ninvoke(user, 'hasSubscriptions', page)]
+      }).spread(function(user, isSubscribed) {
+        assert.ok(isSubscribed, 'User should have a subscription.')
 
-          // Get an unsubscribe token (normally sent by mail)
-          var unsubscribeToken = user.unsubscribeToken(page.id)
+        // Get an unsubscribe token (normally sent by mail)
+        var unsubscribeToken = user.unsubscribeToken(page.id)
 
-          // Use the unsubscribe token!
-          return model.User.unsubscribe(unsubscribeToken)
-        }).spread(function(user2, page2) {
-          // Check that subscription is gone!
-          return Q.ninvoke(user2, 'hasSubscriptions', page2)
-        }).then(function(isSubscribed) {
-          assert.ok(!isSubscribed, 'User should NOT be subscribed to page.')
-          done()
-        }).done()
+        // Use the unsubscribe token!
+        return model.User.unsubscribe(unsubscribeToken)
+      }).spread(function(user2, page2) {
+        // Check that subscription is gone!
+        return Q.ninvoke(user2, 'hasSubscriptions', page2)
+      }).then(function(isSubscribed) {
+        assert.ok(!isSubscribed, 'User should NOT be subscribed to page.')
+        done()
+      }).done()
     })
 
     it('should create an anonymous user with monster gravatars', function(done) {

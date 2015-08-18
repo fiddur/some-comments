@@ -45,6 +45,9 @@ module.exports = function(db, config) {
       subscribe: function(page) {
         var self = this
 
+        // Don't subscribe if there's no e-mail address.
+        if (!this.email) {return Q(false)}
+
         // Check if already subscribed.
         return Q.ninvoke(this, 'hasSubscriptions', page)
           .then(function(isSubscribed) {

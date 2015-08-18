@@ -18,6 +18,7 @@ Features
 * External authentication.
 * Plugged into any page with javascript.
 * E-mail notification to commenters (with unsubscribe-link).
+* Anonymous commenting, if configured to allow.
 
 
 Client usage
@@ -46,6 +47,7 @@ The `url` should be the pages canonical URL and will be used in notification e-m
 
 Install (server)
 ----------------
+
 This is tested on Node 0.10.
 
 ```
@@ -58,7 +60,6 @@ node index.js
 ```
 
 To run in production I suggest using [forever](https://github.com/foreverjs/forever).
-
 
 
 Configuration
@@ -89,6 +90,18 @@ baseUrl: 'http://example.net:1337/',
 
 These are the ways the user can authenticat.  *Some Comments* have no authentication of it's own,
 but relies solely on other systems.
+
+
+#### Anonymous
+
+To allow anonymous commenting, include anonymous in authenticators.  It could be as `{}`, but you
+could also configure default displayName (default: 'Anonymous') and default avatar (could be a URL
+or `gravatar(method)` where method is one of the defaults in
+[Gravatar](https://en.gravatar.com/site/implement/images/https://en.gravatar.com/site/implement/images/);
+defaults to `gravatar(monsterid)`.
+
+When commenting anonymously, you will get an automatically created user.  Further comments will be
+as that user until your session ends.
 
 
 #### Dynamic [OpenID Connect](http://openid.net/connect/) (NOT older OpenID 2.0 or less)
@@ -162,6 +175,11 @@ npm install sqlite3
 database: 'sqlite:///var/lib/some-comments.db'
 ```
 
+…and run the migrations:
+```
+DB_URL=sqlite:///var/lib/some-comments.db ./node_modules/.bin/migrate up
+```
+
 Whatever is in `config.database` will be passed on to
 [orm.connect](https://github.com/dresende/node-orm2/wiki/Connecting-to-Database).
 
@@ -191,11 +209,15 @@ could for example `npm install nodemailer-sendmail-transport` and in config put 
 require('nodemailer-sendmail-transport')(options)`.
 
 
-
 Changelog
 ---------
 
 ### 0.2.0
+
+**There is no automatic upgrade from 0.1 to 0.2**
+
+To updgrade, you need to create the new tables with migration scripts, and transfer the data
+accordingly.  The new db-structure needs data that isn't available in 0.1.
 
 * Using [node-orm2](https://github.com/dresende/node-orm2) to get simple models, support different
   backends and handle migrations.
@@ -204,6 +226,7 @@ Changelog
 * Adding configurations: `secret`, `email`.
 * Changed configuration `connector` into `authenticator`.
 * Changed configuration `server` into `baseUrl`.
+* Added anonymous commenting.
 
 
 ### 0.1.0

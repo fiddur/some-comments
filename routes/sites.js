@@ -35,17 +35,13 @@ module.exports = function (app, model, config) {
       return res.status(400).send('Bad Request: domain is required')
     }
 
-    if (typeof req.user === 'undefined') {
-      return res.status(401).send('Unauthorized')
-    }
+    if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
+    if (req.user.anonymousIp !== null)   {return res.status(403).send('Forbidden'   )}
 
     model.Site.create({domain: req.body.domain})
-      .done(function(sites) {
-        var site = sites[0]
-
-        console.log('Before add', site)
+      .done(function(site) {
         site.qAddAdmins([req.user]) // No need to wait for it to finish.
-          .then(function() { console.log('After add', site)})
+          .then(function() {console.log('After add', site)}).done()
 
         res.status(201).location('/sites/' + site.id).send(site)
       })

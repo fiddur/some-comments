@@ -67,22 +67,20 @@ module.exports = function (app, model, mailTransport, config) {
         if (req.user.anonymousIp !== null) {req.user.subscribe(page).done()}
 
         // Notify subscribers.
-        notifySubscribers(comment)
+        notifySubscribers(comment).done()
       })
   })
 
   function notifySubscribers(comment) {
     var page, mailTxtTemplate, mailHtmlTemplate, site, subscribers
 
-    comment.qGetPage()
+    return comment.qGetPage()
       .then(function(pageIn) {
         page = pageIn
         return page.qGetSubscribers()
       })
       .then(function(subscribersIn) {
         subscribers = subscribersIn
-        console.log('About to notify subscribers of new comment:', comment, subscribers)
-
         return page.qGetSite()
       })
       .then(function(siteIn) {
@@ -107,10 +105,7 @@ module.exports = function (app, model, mailTransport, config) {
         for (var i = 0; i < subscribers.length; i++) {
           var user = subscribers[i]
 
-          if (user.id === comment.user_id) {
-            console.log('Wont send notification to commenter!')
-          }
-          else if (user.email) {
+          if (user.id !== comment.user_id && user.email) {
             var unsubscribeUrl =
                 config.baseUrl + 'users/unsubscribe?jwt=' + user.unsubscribeToken(page.id)
 
@@ -127,8 +122,6 @@ module.exports = function (app, model, mailTransport, config) {
               unsubscribeUrl: unsubscribeUrl
             })
 
-            console.log('Notification to: ', user.email, mailTxt)
-
             promises.push(Q.ninvoke(mailTransport, 'sendMail', {
               from:    config.email.address,
               to:      user.email,
@@ -137,14 +130,10 @@ module.exports = function (app, model, mailTransport, config) {
               html:    mailHtml,
             }))
           }
-          else {
-            console.log('No email?', user)
-          }
         }
 
         return Q.all(promises)
           .then(function(infos) {console.log('All mails are now sent.', infos)})
       })
-      .done()
   }
 }

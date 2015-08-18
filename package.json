@@ -4,6 +4,7 @@
   "description": "Some Comments",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "make test-coveralls"
   },
   "repository": {

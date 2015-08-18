@@ -99,8 +99,83 @@ describe('Routing Integration', function() {
   })
 
   describe('Site creation', function() {
+    var agentLoggedIn, agentAnonymous
+
+    before(function(done) {
+      var agentLoggedInDeferred  = Q.defer()
+      var agentAnonymousDeferred = Q.defer()
+
+      // Create a user and login with an agent
+      model.User.create({
+        displayName: 'Test User 42',
+        avatar: 'blah'
+      }).then(function(user) {
+        // Login
+        var agent = request.agent(baseUrl)
+
+        agent
+          .get('/login/' + user.id)
+          .end(function(err, res) {
+            agent.saveCookies(res)
+            agentLoggedInDeferred.resolve(agent)
+          })
+      }).then(function(foo) {
+        // Create a an anonymous user and login with an agent
+        return model.User.createAnonymous(
+          '127.0.0.2'
+        )
+      }).then(function(user) {
+        // Login
+        var agent = request.agent(baseUrl)
+
+        agent
+          .get('/login/' + user.id)
+          .end(function(err, res) {
+            agent.saveCookies(res)
+            agentAnonymousDeferred.resolve(agent)
+          })
+      }).done()
+
+      Q.spread(
+        [agentLoggedInDeferred.promise, agentAnonymousDeferred.promise],
+        function(agentLoggedInIn, agentAnonymousIn) {
+          agentLoggedIn  = agentLoggedInIn
+          agentAnonymous = agentAnonymousIn
+          done()
+        }
+      ).done()
+    })
+
     it('should require auth', function(done) {
       request(baseUrl)
+        .post('/sites/')
+        .send({domain: 'example.org'})
+        .expect(401, done)
+    })
+
+    it('should add a site if authed', function(done) {
+      agentLoggedIn
+        .post('/sites/')
+        .send({domain: 'example.org'})
+        .end(function(err, res) {
+          assert.equal(err, null)
+
+          model.Site.getByDomain('example.org')
+            .then(
+              function(site) {
+                // Make sure the site is created.
+                assert.ok(site)
+                done()
+              },
+              function(err) {
+                assert.fail(err)
+                done()
+              }).done()
+        })
+    })
+
+    it('should NOT add a site if authed as anonymous', function(done) {
+      agentAnonymous
         .post('/sites/')
         .send({domain: 'example.org'})
         .expect(401, done)

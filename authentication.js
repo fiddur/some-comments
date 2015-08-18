@@ -29,7 +29,7 @@ function setupAnonymous(model, app, anonConfig) {
     '/auth/anonymous',
     function(req, res) {
       // Should not be used when already logged in.
-      if (req.user) {res.sendStatus(400)}
+      if (req.user) {return res.sendStatus(400)}
 
       // Create an anonymous user.
       model.User.createAnonymous(req.ip)
@@ -92,7 +92,6 @@ function openIdConnectDynamic(model, app, config) {
     name:        'Some Comments',
     redirectURI: config.baseUrl + 'auth/oidc/callback',
   }, function(provider, reg, next) {
-    console.log('Saving info for provider', provider, 'reg', reg)
     model.Oidc.create([{
       issuer:           provider.issuer,
       authorizationURL: provider.authorizationURL,
@@ -133,7 +132,6 @@ function openIdConnectProvider(app, model, baseUrl, provider) {
     clientSecret:     provider.clientSecret,
     scope:            'openid profile email',
   }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
-    console.log('Got userinfo from provider:', userInfo)
     model.Account.getOrCreate(provider.shortName, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture || '',
@@ -171,7 +169,6 @@ function facebook(app, provider, model, baseUrl) {
       callbackURL:  baseUrl + 'auth/facebook/callback',
     },
     function(accessToken, refreshToken, profile, done) {
-      console.log('Got facebook data:', profile)
       model.Account.getOrCreate('Facebook', profile._json.id, {
         displayName: profile.displayName,
         avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
@@ -209,10 +206,7 @@ function setup(app, model, config) {
     model.User.get(id)
       .then(
         function(user)  {done(null, user)},
-        function(error) {
-          console.log('Deserialize ', error)
-          done(null, null)
-        }
+        function(error) {done(null, null)}
       )
   })
 

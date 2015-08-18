@@ -25,7 +25,14 @@ module.exports = function(db, User) {
     domain:    {type: 'text',    unique: true},
     maxLevels: {type: 'integer', size:   2, defaultValue: 0},
   })
-  Site.orm.qHasMany('admins', User.orm, {}, {reverse: 'sites', key: true, autoFetch: true})
+  Site.orm.qHasMany('admins', User.orm, {}, {
+    mergeTable:   'siteadmins',
+    mergeId:      'site_id',
+    mergeAssocId: 'user_id',
+    reverse:      'sites',
+    key:          true,
+    autoFetch:    true,
+  })
 
   /**
    * List all sites.

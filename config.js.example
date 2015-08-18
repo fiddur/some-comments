@@ -1,12 +1,13 @@
 var path = require('path')
 
 var config = {
-  secret: 'verysecret',
+  secret:  'verysecret',
   baseUrl: 'http://localhost:1337/',
   email: {
     address: 'noreply@example.com',
   },
   authenticators: {
+    anonymous: {},
     facebook: {
       clientID:     'get_your_own',
       clientSecret: 'get_your_own',

@@ -150,7 +150,6 @@
         var newCommentDiv = document.createElement('div')
         newCommentDiv.className = 'comment_row'
         newCommentDiv.innerHTML = getNewCommentDivInnerHtml(user, urlStr)
-        console.log(newCommentDiv, getNewCommentDivInnerHtml(user, urlStr))
         element.appendChild(newCommentDiv)
 
         var input = e('comment_' + urlStr)
