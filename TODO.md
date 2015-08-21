@@ -1,8 +1,7 @@
 Todo
 ====
 
-* Finish unsubscription code!
-* Allow anonymous comments (configurably).
+* Display error message when trying to add site as "Anonymous".
 * Use express router consistently.
 * Reasonable logging.
 * Error handling.

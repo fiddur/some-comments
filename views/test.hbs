@@ -1,5 +1,31 @@
 <h1>Some Comments testpage</h1>
 
+<p>
+  This is a test page for the installation of <a href="">Some Comments</a>
+  on <a href="{{config.baseUrl}}">{{config.baseUrl}}</a>.
+</p>
+
+<p>
+  It uses the following code for inclusion:
+</p>
+
+<pre>
+&lt;link href="{{config.baseUrl}}comments.css" rel="stylesheet" /&gt;
+
+&lt;div class="comments" id="comments"&gt;&lt;/div&gt;
+
+&lt;script src="{{config.baseUrl}}node_modules/markdown/lib/markdown.js"&gt;&lt;/script&gt;
+&lt;script src="{{config.baseUrl}}node_modules/q/q.js"&gt;&lt;/script&gt;
+&lt;script src="{{config.baseUrl}}client.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  SomeComments('{{config.baseUrl}}').displayByPage({{site}}, window.location.href, 'comments')
+&lt;/script&gt;
+</pre>
+
+<p>
+  Remember to add your domain on <a href="sites">the sites page</a>.
+</p>
+
 <div class="comments" id="comments"></div>
 <script src="{{config.baseUrl}}node_modules/markdown/lib/markdown.js"></script>
 <script src="{{config.baseUrl}}node_modules/q/q.js"></script>
@@ -7,4 +33,3 @@
 <script>
   SomeComments('{{config.baseUrl}}').displayByPage({{site}}, window.location.href, 'comments')
 </script>
-
