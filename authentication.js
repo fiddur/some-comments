@@ -167,7 +167,7 @@ function facebook(app, provider, model, baseUrl) {
 
   passport.use(new FacebookStrategy(
     {
-      clientID:     provider.clientId,
+      clientID:     provider.clientID,
       clientSecret: provider.clientSecret,
       callbackURL:  baseUrl + 'auth/facebook/callback',
     },

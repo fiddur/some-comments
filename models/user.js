@@ -76,7 +76,7 @@ module.exports = function(db, config) {
     var userData = {
       anonymousIp: ip,
       displayName: config.authenticators.anonymous.displayName || 'Anonymous',
-      avatar:      config.authenticators.anonymous.avatar || 'gravatar(monster)',
+      avatar:      config.authenticators.anonymous.avatar || 'gravatar(monsterid)',
     }
 
     return User.create(userData)
