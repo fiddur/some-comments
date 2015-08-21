@@ -159,7 +159,7 @@ describe('Models', function() {
 
           assert.equal(
             user.avatar,
-            'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=monster'
+            'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=monsterid'
           )
           done()
         }).done()

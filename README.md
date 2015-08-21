@@ -44,6 +44,11 @@ Where you want to enable commenting, add something like (replacing site id and u
 
 The `url` should be the pages canonical URL and will be used in notification e-mails.
 
+And, add the css:
+```html
+<link href="http://somecomment.domain/comments.css" rel="stylesheet" />
+```
+
 
 Install (server)
 ----------------
