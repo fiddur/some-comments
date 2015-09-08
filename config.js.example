@@ -9,7 +9,7 @@ var config = {
   authenticators: {
     anonymous: {},
     facebook: {
-      clientID:     'get_your_own',
+      clientId:     'get_your_own',
       clientSecret: 'get_your_own',
       callbackURL:  'http://localhost:1337/auth/facebook/callback',
     },

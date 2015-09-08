@@ -2,17 +2,15 @@
 
 <h2>Authenticate with:</h2>
 
-<form action="/auth/oidc" target="_blank">
-  <input name="oidci" /><input type="submit" />
-</form>
-
 <ul class="login_list">
   {{#config.authenticators.openidconnect}}
-    <li><a href="/auth/{{shortName}}" target="_blank"><img src="{{icon}}" style="max-width: 2em" alt="{{title}}" /></a></li>
+    <li><a href="/auth/{{shortName}}" target="_blank"><img src="{{icon}}" style="max-width: 2em"
+                                                           alt="{{title}}" /></a></li>
   {{/config.authenticators.openidconnect}}
 
   {{#config.authenticators.facebook}}
-    <li><a href="/auth/facebook" target="_blank"><img src="{{icon}}" style="max-width: 2em" alt="{{title}}" /></a></li>
+    <li><a href="/auth/facebook" target="_blank"><img src="{{icon}}" style="max-width: 2em"
+                                                      alt="{{title}}" /></a></li>
   {{/config.authenticators.facebook}}
 
 </ul>
@@ -22,6 +20,13 @@
     Or <a href="/auth/anonymous">Comment anonymously</a></li>…
   </p>
 {{/config.authenticators.anonymous}}
+
+<form action="/auth/oidc" target="_blank">
+  <p>
+    Or login with an OpenID Connect account:
+    <span class="oidc"><input name="oidci" /></span><input type="submit" />
+  </p>
+</form>
 
 <script>
   window.addEventListener("message", function(event) {

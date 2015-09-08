@@ -72,3 +72,14 @@ iframe.login {
 .login_list li {
   display: inline;
 }
+
+.oidc {
+  background: url(https://upload.wikimedia.org/wikipedia/en/c/c8/OpenID_logo.svg) no-repeat;
+  background-size: contain;
+}
+.oidc input {
+  background: transparent;
+}
+.oidc input:focus {
+  background: white;
+}

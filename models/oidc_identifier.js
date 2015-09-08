@@ -18,8 +18,8 @@
  */
 
 module.exports = function(db, Oidc) {
-  var OidcIdentifier = db.qDefine('oidcIdentifier', {
-    identifier: {type: 'text', unique: true}
+  var OidcIdentifier = db.qDefine('oidcIdentifiers', {
+    identifier: {type: 'text', unique: true, key: true},
   })
 
   OidcIdentifier.qHasOne('oidc', Oidc, {key: true, required: true})

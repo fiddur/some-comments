@@ -131,7 +131,7 @@ supply API credentials.  For example:
 authenticators: {
   openidconnect: [
     {
-      title:            'Google,
+      title:            'Google',
       shortName:        'google',
       authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
       tokenURL:         'https://www.googleapis.com/oauth2/v4/token',
