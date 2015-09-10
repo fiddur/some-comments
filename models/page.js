@@ -17,6 +17,8 @@
  * GNU-AGPL-3.0
  */
 
+var Q = require('q')
+
 module.exports = function(db, Site, User) {
   var Page = {}
 
@@ -37,7 +39,18 @@ module.exports = function(db, Site, User) {
 
   Page.create = function(data) {
     if (data.site) data.site_id = data.site.id
-    return Page.orm.qCreate([data]).then(function(pages) {return pages[0]})
+
+    return Page.orm.qCreate([data])
+      .then(function(pages) {
+        var page = pages[0]
+
+        return [page, page.qGetSite().then(function(site) {return site.qGetAdmins()})]
+      })
+      .spread(function(page, admins) {
+        // Subscribe all admins to comments on this new page.
+        return Q.all(admins.map(function (admin) {return admin.subscribe(page)}))
+          .then(function() {return page})
+      })
   }
 
   Page.getBySiteUrl = function(site, url) {
