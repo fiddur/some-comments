@@ -42,9 +42,7 @@ module.exports = function(db, Site, User) {
 
     return Page.orm.qCreate([data])
       .then(function(pages) {
-        var page = pages[0]
-
-        return [page, page.qGetSite().then(function(site) {return site.qGetAdmins()})]
+        return [pages[0], pages[0].qGetSite().then(function(site) {return site.qGetAdmins()})]
       })
       .spread(function(page, admins) {
         // Subscribe all admins to comments on this new page.

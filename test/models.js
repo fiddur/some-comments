@@ -91,11 +91,7 @@ describe('Models', function() {
           email:       'foo@bar.com',
         })
         .then(function(admin) {
-          var siteQ = model.Site.create({
-            domain: 'example.net'
-          })
-
-          return [admin, siteQ]
+          return [admin, model.Site.create({domain: 'example.net'})]
         })
         .spread(function(admin, site) {
           var qAdded = site.qAddAdmins([admin])//Q.ninvoke(site, 'addAdmins', [admin])
@@ -110,8 +106,8 @@ describe('Models', function() {
         })
         .spread(function(admin, site, page) {
           return Q.ninvoke(admin, 'hasSubscriptions', page)
-        }).then(function(has) {
-          assert.ok(has, 'Page admin should have a subscription.')
+        }).then(function(hasSubscription) {
+          assert.ok(hasSubscription, 'Page admin should have a subscription.')
           done()
         }).done()
     })
