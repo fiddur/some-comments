@@ -19,6 +19,9 @@
 
 var crypto = require('crypto')
 
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 var jwt = require('jsonwebtoken')
 var Q   = require('q')
 
@@ -42,27 +45,29 @@ module.exports = function(db, config) {
         return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
       },
 
-      subscribe: function(page) {
+      subscribe: async(function(page) {
         var self = this
 
         // Don't subscribe if there's no e-mail address.
-        if (!this.email) {return Q(false)}
+        if (!this.email) {return false}
 
         // Check if already subscribed.
-        return Q.ninvoke(this, 'hasSubscriptions', page)
-          .then(function(isSubscribed) {
-            if (isSubscribed) {return true}
-            return Q.ninvoke(self, 'addSubscriptions', page)
-          })
-      }
+        if (await(Q.ninvoke(this, 'hasSubscriptions', page))) {
+          return true
+        }
+        else {
+          return Q.ninvoke(self, 'addSubscriptions', page)
+        }
+      })
     }
   })
 
   User.get = function(id) {return User.orm.qGet(id)}
 
-  User.create = function(data) {
-    return User.orm.qCreate([data]).then(function(users) {return users[0]})
-  }
+  User.create = async(function(data) {
+    var users = await(User.orm.qCreate([data]))
+    return users[0]
+  })
 
   /**
    * Create an anonymous user from IP address.
@@ -100,15 +105,22 @@ module.exports = function(db, config) {
    *
    * @exception Error  If token is not valid
    */
-  User.unsubscribe = function(unsubscribeToken) {
-    return Q.ninvoke(jwt, 'verify', unsubscribeToken, config.secret)
-      .then(function(token) {
-        if (token.sub !== 'unsubscribe') {throw new Error('Not an unsubscribe token')}
-        return [User.get(token.user), config.model.Page.get(token.page)]
-      }).spread(function(user, page) {
-        return Q.ninvoke(page, 'removeSubscribers', user).then(function() {return [user, page]})
-      })
-  }
+  User.unsubscribe = async(function(unsubscribeToken) {
+    var token = await(Q.ninvoke(jwt, 'verify', unsubscribeToken, config.secret))
+
+    if (token.sub !== 'unsubscribe') {
+      throw new Error('Not an unsubscribe token')
+    }
+
+    var data = await({
+      user: User.get(token.user),
+      page: config.model.Page.get(token.page)
+    })
+
+    await(Q.ninvoke(data.page, 'removeSubscribers', data.user))
+
+    return [data.user, data.page]
+  })
 
   return User
 }

@@ -1,5 +1,8 @@
 var crypto = require('crypto')
 
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 var Q      = require('q')
 var should = require('should')
 var assert = require('assert')
@@ -11,7 +14,7 @@ var models = require('../models/')
 //}
 
 describe('Models', function() {
-  var model, site, page, comments = []
+  var model, site, page, page2, comments = []
 
   before(function(done) {
     this.timeout(15000)
@@ -32,7 +35,7 @@ describe('Models', function() {
         })
       })
       .then(function(pageIn) {
-        page = pageIn
+        page = page2 = pageIn
 
         return model.User.create({displayName: 'Foo Bar'})
       })
@@ -94,7 +97,7 @@ describe('Models', function() {
           return [admin, model.Site.create({domain: 'example.net'})]
         })
         .spread(function(admin, site) {
-          var qAdded = site.qAddAdmins([admin])//Q.ninvoke(site, 'addAdmins', [admin])
+          var qAdded = site.qAddAdmins([admin])
           return [admin, site, qAdded]
         })
         .spread(function(admin, site, added) {
@@ -111,6 +114,24 @@ describe('Models', function() {
           done()
         }).done()
     })
+
+    it('should subscribe siteadmins to new pages', function(done) {async (function() {
+      var admin = await (model.User.create({
+        displayName: 'Page Admin',
+        email:       'foo@bar.com',
+      }))
+
+      var site = await (model.Site.create({domain: 'example.net'}))
+      await (site.qAddAdmins([admin]))
+
+      var page = await (model.Page.create({
+        site: site,
+        url:  'http://testdomain/myPage',
+      }))
+
+      var hasSubscription = await (Q.ninvoke(admin, 'hasSubscriptions', page))
+      assert.ok(hasSubscription, 'Page admin should have a subscription.')
+    })().done(done)})
   })
 
   describe('Users', function() {
@@ -127,6 +148,8 @@ describe('Models', function() {
         email:       'foo@bar.com'
       }).then(function(userIn) {
         user = userIn
+        return [user, user.subscribe(page)]
+      }).spread(function(user, foo) {
         return user.subscribe(page)
       }).then(function(foo) {
         // Make sure user is subscribed
