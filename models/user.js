@@ -73,7 +73,7 @@ module.exports = function(db, config) {
    * Create an anonymous user from IP address.
    *
    */
-  User.createAnonymous = function(ip) {
+  User.createAnonymous = async(function(ip) {
     if (!('anonymous' in config.authenticators)) {
       throw new Error('Anonymous users are not enabled in config.')
     }
@@ -84,21 +84,21 @@ module.exports = function(db, config) {
       avatar:      config.authenticators.anonymous.avatar || 'gravatar(monsterid)',
     }
 
-    return User.create(userData)
-      .then(function(user) {
-        var gravatarMatches
-        if (gravatarMatches = user.avatar.match(/^gravatar\((.*)\)$/)) {
-          var hash = crypto.createHash('md5')
-          hash.update(user.id + ': ' + user.anonymousIp)
+    var user = await(User.create(userData))
 
-          user.avatar =
-            'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=' + gravatarMatches[1]
+    var gravatarMatches
+    if (gravatarMatches = user.avatar.match(/^gravatar\((.*)\)$/)) {
+      var hash = crypto.createHash('md5')
+      hash.update(user.id + ': ' + user.anonymousIp)
 
-          return user.save()
-        }
-        return user
-      })
-  }
+      user.avatar =
+        'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=' + gravatarMatches[1]
+
+      return user.save()
+    }
+
+    return user
+  })
 
   /**
    * @return Promise for [user, page]
