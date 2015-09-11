@@ -21,12 +21,15 @@ describe('Models', function() {
         model = modelIn
 
         // Setup some test data
-        return model.Site.create([{domain: 'testdomain'}])
+        return model.Site.create({domain: 'testdomain'})
       })
-      .then(function(sites) {
-        site = sites[0]
+      .then(function(siteIn) {
+        site = siteIn
 
-        return model.Page.create([{url:'http://testdomain/myPage'}])
+        return model.Page.create({
+          site: site,
+          url:  'http://testdomain/myPage'
+        })
       })
       .then(function(pageIn) {
         page = pageIn
@@ -34,7 +37,6 @@ describe('Models', function() {
         return model.User.create({displayName: 'Foo Bar'})
       })
       .then(function(user) {
-
         return model.Comment.createMulti([
           {
             text: 'This is a comment',
@@ -78,6 +80,36 @@ describe('Models', function() {
           pageComments.length.should.equal(3)
           done()
         })
+    })
+  })
+
+  describe('Pages', function() {
+    it('should subscribe siteadmins to new pages', function(done) {
+      model.User
+        .create({
+          displayName: 'Page Admin',
+          email:       'foo@bar.com',
+        })
+        .then(function(admin) {
+          return [admin, model.Site.create({domain: 'example.net'})]
+        })
+        .spread(function(admin, site) {
+          var qAdded = site.qAddAdmins([admin])//Q.ninvoke(site, 'addAdmins', [admin])
+          return [admin, site, qAdded]
+        })
+        .spread(function(admin, site, added) {
+          var pageQ = model.Page.create({
+            site: site,
+            url:  'http://testdomain/myPage',
+          })
+          return [admin, site, pageQ]
+        })
+        .spread(function(admin, site, page) {
+          return Q.ninvoke(admin, 'hasSubscriptions', page)
+        }).then(function(hasSubscription) {
+          assert.ok(hasSubscription, 'Page admin should have a subscription.')
+          done()
+        }).done()
     })
   })
 
