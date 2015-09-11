@@ -220,6 +220,16 @@ require('nodemailer-sendmail-transport')(options)`.
 Changelog
 ---------
 
+### 0.3.0
+
+**Upgrade from 0.2**: `grunt migrate:up`
+
+* #4: Subscribing site admin to new pages.
+* Nicer looking OpenID Connect input.
+* More verbose test-page.
+* Bugfix: oidcIdentifiers had wrong table name.
+
+
 ### 0.2.0
 
 **There is no automatic upgrade from 0.1 to 0.2**
