@@ -161,6 +161,7 @@ describe('Routing Integration', function() {
     })
 
     it('should add a site if authed', function(done) {
+      this.timeout(5000)
       agentLoggedIn
         .post('/sites/')
         .send({domain: 'example.org'})

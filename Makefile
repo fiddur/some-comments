@@ -9,7 +9,7 @@ node_modules:
 test-prepare:
 	rm -fr build
 	mkdir build
-	@DB_URL=sqlite://build/comments-test.db ./node_modules/.bin/migrate up
+	grunt --config ./config.js.test migrate:up
 
 test: test-prepare
 	@./node_modules/.bin/mocha

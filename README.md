@@ -53,14 +53,15 @@ And, add the css:
 Install (server)
 ----------------
 
-This is tested on Node 0.10.
+This is tested on Node 0.10, 0.12, and v4.0.0, and io.js.
 
 ```
 git clone https://github.com/fiddur/some-comments.git
 cd some-comments
 npm install
 cp config.js.example config.js # Edit to configure…
-grunt migrate:up # Or… DB_URL=sqlite://data/comments.db ./node_modules/.bin/migrate up
+npm install -g grunt-cli       # if you don't already have it…
+grunt migrate:up
 node index.js
 ```
 
