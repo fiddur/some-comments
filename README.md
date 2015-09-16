@@ -53,7 +53,7 @@ And, add the css:
 Install (server)
 ----------------
 
-This is tested on Node 0.10.
+This is tested on Node 0.10, 0.12, and v4.0.0, and io.js.
 
 ```
 git clone https://github.com/fiddur/some-comments.git
