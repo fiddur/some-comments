@@ -1,8 +1,8 @@
 var orm           = require('orm')
 var MigrationTask = require('migrate-orm2')
 
-var configFile = 'config.js'
-var config     = require('./' + configFile)
+
+var config
 
 runMigration = function (operation, grunt, done) {
   orm.settings.set('connection.debug', true)
@@ -16,6 +16,13 @@ runMigration = function (operation, grunt, done) {
 }
 
 module.exports = function(grunt) {
+
+  if (grunt.option('config')) {
+    config = require(grunt.option('config'))
+  }
+  else {
+    config = require('./config.js')
+  }
 
   grunt.registerTask('migrate:generate', '', function () {
     var done = this.async()
