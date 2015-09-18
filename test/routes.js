@@ -19,10 +19,12 @@
 
 'use strict'
 
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 var should   = require('should')
 var assert   = require('assert')
 var request  = require('supertest')
-var config   = require('../config.js.test')
 var fs       = require('fs')
 var url      = require('url')
 var path     = require('path')
@@ -31,40 +33,38 @@ var Q        = require('q')
 
 var models = require('../models/')
 
+var config = {
+  secret:         'verysecret',
+  testMode:       true,
+  baseUrl:        'http://localhost/',
+  authenticators: {anonymous: {}},     // Using defaults.
+  database:       {protocol: 'sqlite'} // In memory sqlite.
+}
+
 describe('Routing Integration', function() {
-  var serverProcess, baseUrl, model
+  var serverProcess, baseUrl
 
-  before(function(done) {
-    this.timeout(15000) // Setting up things can take time if hd isn't quick
+  before(function(done) {this.timeout(5000); async(function() {
+    await(Q.Promise(function(resolve, reject, notify) {
+      // Start the server
+      var subEnv = process.env
+      subEnv.COVERAGE = true
+      serverProcess = spawn('node', ['index.js', 'config.js.test'], {env: subEnv})
+      serverProcess.stdout.on('data', function (buffer) {
+        //console.log('Server output: ' + buffer)
 
-    var serverDeferred = Q.defer()
-
-    models(config, {drop: true})
-      .then(function(modelIn) {
-        model = modelIn
-
-        // Start the server
-        var subEnv = process.env
-        subEnv.COVERAGE = true
-        serverProcess = spawn('node', ['index.js', 'config.js.test'], {env: subEnv})
-        serverProcess.stdout.on('data', function (buffer) {
-          //console.log('Server output: ' + buffer)
-
-          var portRegex = /listening on port (\d+) in/g
-          var portMatch = portRegex.exec(buffer.toString())
-          if (portMatch) {
-            baseUrl = 'http://localhost:' + portMatch[1]
-            serverDeferred.resolve()
-          }
-        })
-        serverProcess.stderr.on('data', function (buffer) {console.log('Server error: "' + buffer)})
-        serverProcess.stdout.on('end', function() {throw new Error('Server died.')})
+        var portRegex = /listening on port (\d+) in/g
+        var portMatch = portRegex.exec(buffer.toString())
+        if (portMatch) {
+          baseUrl = 'http://localhost:' + portMatch[1]
+          resolve()
+        }
       })
-      .done()
+      serverProcess.stderr.on('data', function (buffer) {console.log('Server error: "' + buffer)})
+      serverProcess.stdout.on('end', function() {throw new Error('Server died.')})
+    }))
+  })().done(done)})
 
-    // Wait until both the server and database are ready.
-    serverDeferred.promise.done(done)
-  })
   after(function(done) {
     // Download the coverage
     var curlProcess = spawn(
@@ -98,54 +98,43 @@ describe('Routing Integration', function() {
     })
   })
 
-  describe('Site creation', function() {
-    var agentLoggedIn, agentAnonymous
+  describe('Anonymous user', function() {
+    var agent
 
-    before(function(done) {
-      var agentLoggedInDeferred  = Q.defer()
-      var agentAnonymousDeferred = Q.defer()
+    before(async(function() {
+      agent = request.agent(baseUrl)
+      var authRes = await(Q.ninvoke(agent.get('/auth/anonymous'), 'end'))
+      agent.saveCookies(authRes)
+    }))
 
-      // Create a user and login with an agent
-      model.User.create({
-        displayName: 'Test User 42',
-        avatar: 'blah'
-      }).then(function(user) {
-        // Login
-        var agent = request.agent(baseUrl)
-
+    it('should see his name as Anonymous', async(function() {
+      var meRes = await(Q.ninvoke(
         agent
-          .get('/login/' + user.id)
-          .end(function(err, res) {
-            agent.saveCookies(res)
-            agentLoggedInDeferred.resolve(agent)
-          })
-      }).then(function(foo) {
-        // Create a an anonymous user and login with an agent
-        return model.User.createAnonymous(
-          '127.0.0.2'
-        )
-      }).then(function(user) {
-        // Login
-        var agent = request.agent(baseUrl)
+          .get('/users/me')
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect('Content-Type', /json/),
+        'end'
+      ))
+      assert.equal(meRes.body.displayName, 'Anonymous')
+    }))
 
-        agent
-          .get('/login/' + user.id)
-          .end(function(err, res) {
-            agent.saveCookies(res)
-            agentAnonymousDeferred.resolve(agent)
-          })
-      }).done()
-
-      Q.spread(
-        [agentLoggedInDeferred.promise, agentAnonymousDeferred.promise],
-        function(agentLoggedInIn, agentAnonymousIn) {
-          agentLoggedIn  = agentLoggedInIn
-          agentAnonymous = agentAnonymousIn
-          done()
-        }
-      ).done()
+    it('should be denied access to /users/X', function(done) {
+      request(baseUrl)
+        .get('/users/9999')
+        .expect(401, done)
     })
 
+    it('should NOT be allowed to add a site', function(done) {
+      agent
+        .post('/sites/')
+        .send({domain: 'example.org'})
+        .expect(403, done)
+    })
+
+  })
+
+  describe('Site creation', function() {
     it('should require domain', function(done) {
       request(baseUrl)
         .post('/sites/')
@@ -160,6 +149,7 @@ describe('Routing Integration', function() {
         .expect(401, done)
     })
 
+/*
     it('should add a site if authed', function(done) {
       this.timeout(5000)
       agentLoggedIn
@@ -180,18 +170,11 @@ describe('Routing Integration', function() {
                 done()
               }).done()
         })
-    })
-
-    it('should NOT add a site if authed as anonymous', function(done) {
-      agentAnonymous
-        .post('/sites/')
-        .send({domain: 'example.org'})
-        .expect(403, done)
-    })
+*/
   })
 
   describe('Page comments', function() {
-    it('should give comments with user info', function(done) {
+/*    it('should give comments with user info', function(done) {
       // Setup site, page, user and comments
       var admin, site, comment
 
@@ -221,7 +204,7 @@ describe('Routing Integration', function() {
             })
         })
         .done()
-    })
+    }) */
 
     it('should give empty list of comments for unknown page', function(done) {
       request(baseUrl)
@@ -236,7 +219,7 @@ describe('Routing Integration', function() {
         })
     })
 
-    it('should require auth to add comment', function(done) {
+/*    it('should require auth to add comment', function(done) {
       model.Site.create({domain: 'my other domain'})
         .then(function(site) {
           request(baseUrl)
@@ -244,18 +227,10 @@ describe('Routing Integration', function() {
             .expect(401, done)
         })
         .done()
-    })
+    })*/
   })
 
-  describe('Anonymous user', function() {
-    it('should be denied access to /users/X', function(done) {
-      request(baseUrl)
-        .get('/users/1')
-        .expect(401, done)
-    })
-  })
-
-  describe('Logged in user', function() {
+/*  describe('Logged in user', function() {
     var user, agent
 
     before(function(done) {
@@ -307,5 +282,5 @@ describe('Routing Integration', function() {
     //        .expect(401, done)
     //    })
     //})
-  })
+  })*/
 })

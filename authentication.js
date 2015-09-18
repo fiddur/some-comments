@@ -17,6 +17,9 @@
  * GNU-AGPL-3.0
  */
 
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 var Q                = require('q')
 var passport         = require('passport')
 var FacebookStrategy = require('passport-facebook').Strategy
@@ -27,18 +30,15 @@ var OpenIdConnect    = require('passport-openidconnect')
 function setupAnonymous(model, app, anonConfig) {
   app.get(
     '/auth/anonymous',
-    function(req, res) {
+    async(function(req, res) {
       // Should not be used when already logged in.
       if (req.user) {return res.sendStatus(400)}
 
       // Create an anonymous user.
-      model.User.createAnonymous(req.ip)
-        .then(function(user) {
-          return Q.ninvoke(req, 'login', user)
-        }).then(function(foo) {
-          res.redirect('/account')
-        }).done()
-    }
+      var user = await(model.User.createAnonymous(req.ip))
+      await(Q.ninvoke(req, 'login', user))
+      res.redirect('/account')
+    })
   )
 }
 
