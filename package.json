@@ -37,8 +37,7 @@
     "passport-google-oauth2": "^0.1.6",
     "passport-openidconnect": "git+https://github.com/fiddur/passport-openidconnect.git",
     "q": "^1.2.0",
-    "q-orm": "fiddur/q-orm",
-    "supertest-as-promised": "^2.0.2"
+    "q-orm": "fiddur/q-orm"
   },
   "optionalDependencies": {
     "sqlite3": "3"
