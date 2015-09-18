@@ -9,7 +9,6 @@ node_modules:
 test-prepare:
 	rm -fr build
 	mkdir build
-	grunt --config ./config.js.test migrate:up
 
 test: test-prepare
 	@./node_modules/.bin/mocha

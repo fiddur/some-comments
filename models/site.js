@@ -17,6 +17,11 @@
  * GNU-AGPL-3.0
  */
 
+'use strict'
+
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 module.exports = function(db, User) {
   var Site = {}
 
@@ -41,9 +46,9 @@ module.exports = function(db, User) {
     return Site.orm.qAll()
   }
 
-  Site.create = function(data) {
-    return Site.orm.qCreate([data]).then(function(sites) {return sites[0]})
-  }
+  Site.create = async(function(data) {
+    return await(Site.orm.qCreate([data]))[0]
+  })
 
   /**
    * Get a Site by http origin header string.

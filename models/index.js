@@ -19,6 +19,9 @@
 
 var url = require('url')
 
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 var user           = require('./user')
 var site           = require('./site')
 var account        = require('./account')
@@ -31,39 +34,40 @@ var Q           = require('q')
 var qOrm        = require('q-orm')
 var modts       = require('orm-timestamps')
 
-module.exports = function(config) {
+module.exports = async(function(config) {
   var model = {}
-  var db
+  var db = await(qOrm.qConnect(config.database))
 
-  return qOrm.qConnect(config.database)
-    .then(function(dbIn) {
-      db = dbIn
+  // Use timestamps in all models.
+  db.use(modts, {persist: true})
 
-      // Use timestamps in all models.
-      db.use(modts, {persist: true})
+  var User           = user(db, config)
+  var Site           = site(db, User)
+  var Account        = account(db, User)
+  var Page           = page(db, Site, User)
+  var Comment        = comment(db, User, Page)
+  var Oidc           = oidc(db)
+  var OidcIdentifier = oidcIdentifier(db, Oidc)
 
-      var User           = user(db, config)
-      var Site           = site(db, User)
-      var Account        = account(db, User)
-      var Page           = page(db, Site, User)
-      var Comment        = comment(db, User, Page)
-      var Oidc           = oidc(db)
-      var OidcIdentifier = oidcIdentifier(db, Oidc)
+  model = {
+    User:           User,
+    Site:           Site,
+    Account:        Account,
+    Page:           Page,
+    Comment:        Comment,
+    Oidc:           Oidc,
+    OidcIdentifier: OidcIdentifier,
+  }
 
-      model = {
-        User:           User,
-        Site:           Site,
-        Account:        Account,
-        Page:           Page,
-        Comment:        Comment,
-        Oidc:           Oidc,
-        OidcIdentifier: OidcIdentifier,
-      }
+  // Superadmins
+  model.Superadmin = db.qDefine('superadmin', {})
+  model.Superadmin.hasOne('user', model.User.orm, {key: true})
 
-      // Superadmins
-      model.Superadmin = db.qDefine('superadmin', {})
-      model.Superadmin.hasOne('user', model.User.orm, {key: true})
+  if (config.testMode) {
+    var MigrationTask = require('migrate-orm2')
+    var migrationTask = new MigrationTask(db.driver, {dir: 'data/migrations'})
+    await(Q.ninvoke(migrationTask, 'up', null))
+  }
 
-      return config.model = model
-    })
-}
+  return config.model = model
+})
