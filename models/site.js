@@ -39,6 +39,8 @@ module.exports = function(db, User) {
     autoFetch:    true,
   })
 
+  Site.get = function(id) {return Site.orm.qGet(id)}
+
   /**
    * List all sites.
    */

@@ -30,6 +30,7 @@ var url      = require('url')
 var path     = require('path')
 var spawn    = require('child_process').spawn
 var Q        = require('q')
+var rp       = require('request-promise')
 
 var models = require('../models/')
 
@@ -42,9 +43,10 @@ var config = {
 }
 
 describe('Routing Integration', function() {
-  var serverProcess, baseUrl
+  var serverProcess, baseUrl, agentLoggedIn, jarLoggedIn
 
-  before(function(done) {this.timeout(5000); async(function() {
+  before(async(function() {
+    this.timeout(5000)
     await(Q.Promise(function(resolve, reject, notify) {
       // Start the server
       var subEnv = process.env
@@ -56,19 +58,27 @@ describe('Routing Integration', function() {
         var portRegex = /listening on port (\d+) in/g
         var portMatch = portRegex.exec(buffer.toString())
         if (portMatch) {
-          baseUrl = 'http://localhost:' + portMatch[1]
+          baseUrl = 'http://localhost:' + portMatch[1] + '/'
           resolve()
         }
       })
       serverProcess.stderr.on('data', function (buffer) {console.log('Server error: "' + buffer)})
       serverProcess.stdout.on('end', function() {throw new Error('Server died.')})
     }))
-  })().done(done)})
+
+    agentLoggedIn = request.agent(baseUrl)
+    var authRes = await(Q.ninvoke(agentLoggedIn.get('auth/anonymous'), 'end'))
+    agentLoggedIn.saveCookies(authRes)
+
+    // Another jar for logged in (to use request-promise instead).
+    jarLoggedIn = rp.jar()
+    await(rp({uri: baseUrl + 'auth/anonymous', jar: jarLoggedIn}))
+  }))
 
   after(function(done) {
     // Download the coverage
     var curlProcess = spawn(
-      'curl', ['-o', path.resolve('build', 'coverage.zip'), baseUrl + '/coverage/download'],
+      'curl', ['-o', path.resolve('build', 'coverage.zip'), baseUrl + 'coverage/download'],
       {cwd: __dirname}
     )
     curlProcess.stdout.on('end', function() {
@@ -83,7 +93,7 @@ describe('Routing Integration', function() {
   describe('Site access', function() {
     it('should list in JSON if preferred', function(done) {
       request(baseUrl)
-        .get('/sites/')
+        .get('sites/')
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(200, done)
@@ -91,7 +101,7 @@ describe('Routing Integration', function() {
 
     it('should list in HTML if preferred', function(done) {
       request(baseUrl)
-        .get('/sites/')
+        .get('sites/')
         .set('Accept', 'text/html,application/json')
         .expect('Content-Type', /html/)
         .expect(200, done)
@@ -99,18 +109,10 @@ describe('Routing Integration', function() {
   })
 
   describe('Anonymous user', function() {
-    var agent
-
-    before(async(function() {
-      agent = request.agent(baseUrl)
-      var authRes = await(Q.ninvoke(agent.get('/auth/anonymous'), 'end'))
-      agent.saveCookies(authRes)
-    }))
-
     it('should see his name as Anonymous', async(function() {
       var meRes = await(Q.ninvoke(
-        agent
-          .get('/users/me')
+        agentLoggedIn
+          .get('users/me')
           .set('Accept', 'application/json')
           .expect(200)
           .expect('Content-Type', /json/),
@@ -121,94 +123,77 @@ describe('Routing Integration', function() {
 
     it('should be denied access to /users/X', function(done) {
       request(baseUrl)
-        .get('/users/9999')
+        .get('users/9999')
         .expect(401, done)
     })
-
-    it('should NOT be allowed to add a site', function(done) {
-      agent
-        .post('/sites/')
-        .send({domain: 'example.org'})
-        .expect(403, done)
-    })
-
   })
 
   describe('Site creation', function() {
     it('should require domain', function(done) {
       request(baseUrl)
-        .post('/sites/')
+        .post('sites/')
         .send({})
         .expect(400, done)
     })
 
     it('should require auth', function(done) {
       request(baseUrl)
-        .post('/sites/')
+        .post('sites/')
         .send({domain: 'example.org'})
         .expect(401, done)
     })
 
-/*
-    it('should add a site if authed', function(done) {
-      this.timeout(5000)
-      agentLoggedIn
-        .post('/sites/')
-        .send({domain: 'example.org'})
-        .end(function(err, res) {
-          assert.equal(err, null)
+    it('should add a site if authed', async(function() {
+      var createRes = await(Q.ninvoke(
+        agentLoggedIn.post('sites/').send({domain: 'example.org'}),
+        'end'
+      ))
 
-          model.Site.getByDomain('example.org')
-            .then(
-              function(site) {
-                // Make sure the site is created.
-                assert.ok(site)
-                done()
-              },
-              function(err) {
-                assert.fail(err)
-                done()
-              }).done()
-        })
-*/
+      var sitesRegex = new RegExp('^' + baseUrl + 'sites/')
+      assert(
+        createRes.headers.location.match(sitesRegex),
+        'Site location "' + createRes.headers.location + '"should match ' + sitesRegex
+      )
+
+      // Get the created site to confirm the domain.
+      assert.equal(JSON.parse(await(rp(createRes.headers.location))).domain, 'example.org')
+    }))
   })
 
   describe('Page comments', function() {
-/*    it('should give comments with user info', function(done) {
+    it('should give comments with user info', async(function() {
       // Setup site, page, user and comments
       var admin, site, comment
 
-      model.User.create({displayName: 'Test User', avatar: 'http://my.avatar/jpg'})
-        .then(function(adminIn) {
-          admin = adminIn
-          return model.Site.create({domain: 'mydomain'})
-        })
-        .then(function(siteIn) {
-          site = siteIn
-          return model.Page.create({site: site, url: 'http://mydomain/testpage'})
-        })
-        .then(function(page) {
-          return model.Comment.create({page: page, user: admin, text: 'This is Some Comment.'})
-        })
-        .then(function(comments) {
-          request(baseUrl)
-            .get('/sites/' + site.id + '/pages/' + encodeURIComponent('http://mydomain/testpage') +
-                 '/comments/')
-            .expect(200)
-            .expect('Content-Type', /json/)
-            .end(function(err, res) {
-              should.not.exist(err)
-              //res.body[0].id.should.equal(comments[0].id)
-              //res.body[0].user.displayName.should.equal('Test User')
-              done()
-            })
-        })
-        .done()
-    }) */
+      // Create site logged in with jarLoggedIn
+      var response = await(rp({
+        uri: baseUrl + 'sites',
+        jar: jarLoggedIn,
+        method: 'POST',
+        json: {domain: 'two.example.org'},
+        resolveWithFullResponse: true
+      }))
+      var siteUrl = response.headers.location
+
+      // Create another user for comment.
+      var user2Jar = rp.jar()
+      await(rp({uri: baseUrl + 'auth/anonymous', jar: user2Jar}))
+
+      // Place comment
+      var commentBody = await(rp({
+        uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/tpg') + '/comments/',
+        method: 'POST',
+        json: {text: 'My comment'},
+        jar: user2Jar,
+      }))
+
+      assert.equal('My comment', commentBody.text)
+      assert.equal('http://two.example.org/tpg', commentBody.page.url)
+    }))
 
     it('should give empty list of comments for unknown page', function(done) {
       request(baseUrl)
-        .get('/sites/9999/pages/' + encodeURIComponent('http://myother/testpage') +
+        .get('sites/9999/pages/' + encodeURIComponent('http://myother/testpage') +
              '/comments/')
         .expect(200)
         .expect('Content-Type', /json/)
@@ -223,7 +208,7 @@ describe('Routing Integration', function() {
       model.Site.create({domain: 'my other domain'})
         .then(function(site) {
           request(baseUrl)
-            .post('/sites/' + site.id + '/pages/testpage/comments/')
+            .post('sites/' + site.id + '/pages/testpage/comments/')
             .expect(401, done)
         })
         .done()
@@ -242,7 +227,7 @@ describe('Routing Integration', function() {
           // Login
           agent = request.agent(baseUrl)
           agent
-            .get('/login/' + user.id)
+            .get('login/' + user.id)
             .end(function(err, res) {
               agent.saveCookies(res)
               done()
@@ -253,7 +238,7 @@ describe('Routing Integration', function() {
 
     it('should give user info in JSON if preferred', function(done) {
       agent
-        .get('/users/' + user.id)
+        .get('users/' + user.id)
         .set('Accept', 'application/json')
         .expect(200)
         .expect('Content-Type', /json/)
@@ -269,7 +254,7 @@ describe('Routing Integration', function() {
 
     it('should give no user info for other users', function(done) {
       agent
-        .get('/users/9999')
+        .get('users/9999')
         .set('Accept', 'application/json')
         .expect(401, done)
     })
@@ -278,7 +263,7 @@ describe('Routing Integration', function() {
     //  siteFactory.qCreate('mydomain')
     //    .then(function(site) {
     //      request(baseUrl)
-    //        .post('/sites/' + site.id + '/pages/testpage/comments/')
+    //        .post('sites/' + site.id + '/pages/testpage/comments/')
     //        .expect(401, done)
     //    })
     //})

@@ -1,7 +1,6 @@
 Todo
 ====
 
-* Display error message when trying to add site as "Anonymous".
 * Use express router consistently.
 * Reasonable logging.
 * Error handling.
@@ -12,3 +11,5 @@ Todo
 * User page where you can add or merge authorization accounts.
 * I18N
 * Validate config for easier setup/upgrade.
+* Switch from Q to Bluebird.
+* Switch from supertest to request-promise.

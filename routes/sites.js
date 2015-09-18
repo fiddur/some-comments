@@ -39,12 +39,15 @@ module.exports = function (app, model, config) {
     }
 
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
-    if (req.user.anonymousIp !== null)   {return res.status(403).send('Forbidden'   )}
 
     var site = await(model.Site.create({domain: req.body.domain}))
 
     site.qAddAdmins([req.user]).done() // No need to wait for it to finish.
 
-    res.status(201).location('/sites/' + site.id).send(site)
+    res.status(201).location(config.baseUrl + 'sites/' + site.id).send(site)
+  }))
+
+  app.get('/sites/:id', async(function(req, res) {
+    res.json(await(model.Site.get(req.params.id)))
   }))
 }

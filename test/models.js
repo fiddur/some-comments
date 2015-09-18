@@ -42,14 +42,14 @@ describe('Models', function() {
         page: page,
       },
       {
-        text: 'This is too comment',
-        user: user,
-        page: page,
+        text:    'This is too comment',
+        user_id: user.id,
+        page:    page,
       },
       {
-        text: 'This is comment, ay?',
-        user: user,
-        page: page,
+        text:    'This is comment, ay?',
+        user:    user,
+        page_id: page.id,
       },
     ]))
   }))
