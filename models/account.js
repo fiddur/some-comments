@@ -17,6 +17,11 @@
  * GNU-AGPL-3.0
  */
 
+'use strict'
+
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 module.exports = function(db, User) {
   var Account = {}
 
@@ -34,23 +39,16 @@ module.exports = function(db, User) {
    * @param uid
    * @param userData   Object of userdata
    */
-  Account.getOrCreate = function(authenticator, uid, userData) {
-    return Account.orm.qOne({authenticator: authenticator, uid: uid})
-      .then(function(account) {
-        if (account) {return account}
+  Account.getOrCreate = async(function(authenticator, uid, userData) {
+    var account = await(Account.orm.qOne({authenticator: authenticator, uid: uid}))
 
-        // Create user first.
-        var user
+    if (account) {return account}
 
-        return User.create(userData)
-          .then(function(user) {
-            return Account.orm.qCreate([{authenticator: authenticator, uid: uid, user: user}])
-          })
-          .then(function(accounts) {
-            return accounts[0]
-          })
-      })
-  }
+    // Create user first.
+    var user = await(User.create(userData))
+
+    return await(Account.orm.qCreate([{authenticator: authenticator, uid: uid, user: user}]))[0]
+  })
 
   return Account
 }

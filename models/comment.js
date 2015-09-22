@@ -19,6 +19,9 @@
 
 'use strict'
 
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 module.exports = function(db, User, Page) {
   var Comment = {}
 
@@ -46,9 +49,9 @@ module.exports = function(db, User, Page) {
     return Comment.orm.qCreate(datas)
   }
 
-  Comment.create = function(data) {
-    return Comment.createMulti([data]).then(function(comments) {return comments[0]})
-  }
+  Comment.create = async(function(data) {
+    return await(Comment.createMulti([data]))[0]
+  })
 
   return Comment
 }

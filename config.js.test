@@ -1,11 +1,11 @@
 var path = require('path')
 
 var config = {
-  secret: 'verysecret',
-  testMode: true,
-  baseUrl: 'http://localhost/',
+  secret:         'verysecret',
+  testMode:       true,
+  baseUrl:        'http://localhost/',
   authenticators: {anonymous: {}}, // Using defaults.
-  database: 'sqlite://' + path.join(__dirname, 'build', 'comments-test.db'),
+  database:       {protocol: 'sqlite'} // In memory sqlite.
 }
 
 module.exports = config

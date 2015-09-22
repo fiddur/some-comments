@@ -17,33 +17,37 @@
  * GNU-AGPL-3.0
  */
 
+'use strict'
+
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 module.exports = function (app, model, config) {
-  app.get('/sites/', function(req, res) {
-    var db = req.app.locals.db
+  app.get('/sites/', async(function(req, res) {
+    var sites = await(model.Site.all())
 
-    console.log('Listing sites.')
-    model.Site.all()
-      .done(function(sites) {
-        if (req.accepts('json', 'html') === 'json') {return res.json(sites)}
+    if (req.accepts('json', 'html') === 'json') {
+      return res.json(sites)
+    }
 
-        res.render('sites/index', {sites: sites, baseUrl: config.baseUrl})
-      })
-  })
+    res.render('sites/index', {sites: sites, baseUrl: config.baseUrl})
+  }))
 
-  app.post('/sites/', function(req, res) {
+  app.post('/sites/', async(function(req, res) {
     if (typeof req.body.domain === 'undefined') {
       return res.status(400).send('Bad Request: domain is required')
     }
 
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
-    if (req.user.anonymousIp !== null)   {return res.status(403).send('Forbidden'   )}
 
-    model.Site.create({domain: req.body.domain})
-      .done(function(site) {
-        site.qAddAdmins([req.user]) // No need to wait for it to finish.
-          .then(function() {console.log('After add', site)}).done()
+    var site = await(model.Site.create({domain: req.body.domain}))
 
-        res.status(201).location('/sites/' + site.id).send(site)
-      })
-  })
+    site.qAddAdmins([req.user]).done() // No need to wait for it to finish.
+
+    res.status(201).location(config.baseUrl + 'sites/' + site.id).send(site)
+  }))
+
+  app.get('/sites/:id', async(function(req, res) {
+    res.json(await(model.Site.get(req.params.id)))
+  }))
 }

@@ -15,6 +15,7 @@
     "url": "https://github.com/fiddur/some-comments/issues"
   },
   "dependencies": {
+    "asyncawait": "^1.0.0",
     "body-parser": "^1.12.2",
     "cookie-session": "^1.1.0",
     "cors": "^2.5.3",
@@ -36,7 +37,8 @@
     "passport-google-oauth2": "^0.1.6",
     "passport-openidconnect": "git+https://github.com/fiddur/passport-openidconnect.git",
     "q": "^1.2.0",
-    "q-orm": "fiddur/q-orm"
+    "q-orm": "fiddur/q-orm",
+    "request-promise": "^0.4.3"
   },
   "optionalDependencies": {
     "sqlite3": "3"

@@ -17,7 +17,10 @@
  * GNU-AGPL-3.0
  */
 
-var Q = require('q')
+'use strict'
+
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
 
 module.exports = function(db, Site, User) {
   var Page = {}
@@ -37,19 +40,18 @@ module.exports = function(db, Site, User) {
 
   Page.get = function(id) {return Page.orm.qGet(id)}
 
-  Page.create = function(data) {
-    if (data.site) data.site_id = data.site.id
+  Page.create = async(function(data) {
+    if (data.site) {data.site_id = data.site.id}
 
-    return Page.orm.qCreate([data])
-      .then(function(pages) {
-        return [pages[0], pages[0].qGetSite().then(function(site) {return site.qGetAdmins()})]
-      })
-      .spread(function(page, admins) {
-        // Subscribe all admins to comments on this new page.
-        return Q.all(admins.map(function (admin) {return admin.subscribe(page)}))
-          .then(function() {return page})
-      })
-  }
+    var page   = await(Page.orm.qCreate([data]))[0]
+    var site   = await(page.qGetSite())
+    var admins = await(site.qGetAdmins())
+
+    // Subscribe all admins to comments on this new page.
+    await(admins.map(function (admin) {return admin.subscribe(page)}))
+
+    return page
+  })
 
   Page.getBySiteUrl = function(site, url) {
     return Page.orm.qOne({site: site, url: url})

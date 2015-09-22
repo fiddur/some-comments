@@ -92,6 +92,7 @@ function start(model, config) {
   var server = app.listen(port)
 
   // Store port in config, if it wasn't there already.
+  config.baseUrl.host = null // Remove host, since hostname and port should be set now.
   config.baseUrl.port = server.address().port
 
   // Authentication strategies

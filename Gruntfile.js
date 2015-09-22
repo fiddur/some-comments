@@ -1,13 +1,12 @@
 var orm           = require('orm')
 var MigrationTask = require('migrate-orm2')
 
-
 var config
 
 runMigration = function (operation, grunt, done) {
   orm.settings.set('connection.debug', true)
   orm.connect(config.database, function (err, connection) {
-    if (err) throw(err)
+    if (err) {throw(err)}
 
     console.log('Running on db:', config.database)
     var migrationTask = new MigrationTask(connection.driver, {dir: 'data/migrations'})
