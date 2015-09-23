@@ -161,20 +161,22 @@ describe('Routing Integration', function() {
   })
 
   describe('Page comments', function() {
-    it('should give comments with user info', async(function() {
-      // Setup site, page, user and comments
-      var admin, site, comment
+    var siteUrl
 
+    before(async(function() {
       // Create site logged in with jarLoggedIn
       var response = await(rp({
-        uri: baseUrl + 'sites',
-        jar: jarLoggedIn,
+        uri:    baseUrl + 'sites',
+        jar:    jarLoggedIn,
         method: 'POST',
-        json: {domain: 'two.example.org'},
+        json:   {domain: 'two.example.org'},
         resolveWithFullResponse: true
       }))
-      var siteUrl = response.headers.location
 
+      siteUrl = response.headers.location
+    }))
+
+    it('should give comments with user info', async(function() {
       // Create another user for comment.
       var user2Jar = rp.jar()
       await(rp({uri: baseUrl + 'auth/anonymous', jar: user2Jar}))
@@ -204,15 +206,48 @@ describe('Routing Integration', function() {
         })
     })
 
-/*    it('should require auth to add comment', function(done) {
-      model.Site.create({domain: 'my other domain'})
-        .then(function(site) {
-          request(baseUrl)
-            .post('sites/' + site.id + '/pages/testpage/comments/')
-            .expect(401, done)
-        })
-        .done()
-    })*/
+    it('should require auth to add comment', async(function() {
+      assert.throws(
+        function() {await(rp({
+          uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/') + '/comments/',
+          method: 'POST',
+          json: {text: 'My comment'},
+          resolveWithFullResponse: true
+        }))},
+        function(err) {
+          if (err.statusCode === 401) {return true}
+          assert.fail(err.statusCode + ' !== 401')
+        }
+      )
+
+    }))
+
+    it('should allow modifying your own comments', async(function() {
+      // Create a user for comment.
+      var user2Jar = rp.jar()
+      await(rp({uri: baseUrl + 'auth/anonymous', jar: user2Jar}))
+
+      // Place comment
+      var comment = await(rp({
+        uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/') + '/comments/',
+        method: 'POST',
+        json: {text: 'My comment'},
+        jar: user2Jar,
+      }))
+
+
+
+      // Modify comment
+      var comment2 = await(rp({
+        uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/') +
+          '/comments/' + comment.id,
+        method: 'PUT',
+        json: {text: 'My ALTERED comment'},
+        jar: user2Jar,
+      }))
+
+      assert.equal(comment2.text, 'My ALTERED comment')
+    }))
   })
 
 /*  describe('Logged in user', function() {
