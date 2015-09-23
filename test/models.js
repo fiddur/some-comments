@@ -5,7 +5,6 @@ var crypto = require('crypto')
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-var Q      = require('q')
 var should = require('should')
 var assert = require('assert')
 var config = require('../config.js.test')
@@ -16,7 +15,13 @@ var config = {
   testMode:       true,
   baseUrl:        'http://localhost/',
   authenticators: {anonymous: {}},     // Using defaults.
-  database:       {protocol: 'sqlite'} // In memory sqlite.
+  database:       {
+    //debug: true,
+    client: 'sqlite3',
+    connection: {
+      filename: ':memory:'
+    }
+  }
 }
 
 describe('Models', function() {
@@ -29,29 +34,29 @@ describe('Models', function() {
     site = await(model.Site.create({domain: 'testdomain'}))
 
     page = page2 = await(model.Page.create({
-      site: site,
+      site: site.id,
       url:  'http://testdomain/myPage'
     }))
 
     user = await(model.User.create({displayName: 'Foo Bar'}))
 
-    comments = await(model.Comment.createMulti([
-      {
+    comments = await([
+      model.Comment.create({
         text: 'This is a comment',
         user: user,
         page: page,
-      },
-      {
-        text:    'This is too comment',
-        user_id: user.id,
-        page:    page,
-      },
-      {
-        text:    'This is comment, ay?',
-        user:    user,
-        page_id: page.id,
-      },
-    ]))
+      }),
+      model.Comment.create({
+        text: 'This is too comment',
+        user: user.id,
+        page: page,
+      }),
+      model.Comment.create({
+        text: 'This is comment, ay?',
+        user: user,
+        page: page.id,
+      }),
+    ])
   }))
 
   describe('Accounts', function() {
@@ -67,7 +72,7 @@ describe('Models', function() {
 
   describe('Comments', function() {
     it('should list all comments from one page', async(function() {
-      var pageComments = await(page.qGetComments())
+      var pageComments = await(page.getComments())
       assert.equal(pageComments.length, 3)
     }))
 
@@ -89,15 +94,15 @@ describe('Models', function() {
         email:       'foo@bar.com',
       }))
 
-      var site = await (model.Site.create({domain: 'example.net'}))
-      await (site.qAddAdmins([admin]))
+      var site = await(model.Site.create({domain: 'example.net'}))
+      await (site.addAdmin(admin))
 
-      var page = await (model.Page.create({
+      var page = await(model.Page.create({
         site: site,
-        url:  'http://testdomain/myPage',
+        url:  'http://example.net/myPage',
       }))
 
-      var hasSubscription = await (Q.ninvoke(admin, 'hasSubscriptions', page))
+      var hasSubscription = await(admin.hasSubscription(page))
       assert.ok(hasSubscription, 'Page admin should have a subscription.')
     }))
   })
@@ -117,7 +122,7 @@ describe('Models', function() {
       await(user.subscribe(page)) // Should do nothing
 
       // Make sure user is subscribed
-      assert.ok(user.qHasSubscriptions(page), 'User should have a subscription.')
+      assert.ok(user.hasSubscription(page), 'User should have a subscription.')
     }))
 
     it('should not add subscription without email', async(function() {
@@ -129,12 +134,7 @@ describe('Models', function() {
       await(user.subscribe(page))
 
       // Make sure user is not subscribed
-      //assert.ok(!await(user.qHasSubscriptions(page)), 'User should NOT have a subscription.')
-      // …sometimes q-orm fails to define the q-methods…
-      assert.ok(
-        !await(Q.ninvoke(user, 'hasSubscriptions', page)),
-        'User should NOT have a subscription.'
-      )
+      assert.ok(!await(user.hasSubscription(page)), 'User should NOT have a subscription.')
     }))
 
     it('should give a working unsubscription token', async(function() {
@@ -147,7 +147,7 @@ describe('Models', function() {
       await(user.subscribe(page))
 
       // Middle check: Make sure user is subscribed
-      assert.ok(await(Q.ninvoke(user, 'hasSubscriptions', page)), 'User should have subscription.')
+      assert.ok(await(user.hasSubscription(page)), 'User should have subscription.')
 
       // Get an unsubscribe token (normally sent by mail)
       var unsubscribeToken = user.unsubscribeToken(page.id)
@@ -157,11 +157,11 @@ describe('Models', function() {
 
       // Check that subscription is gone!
       assert.ok(
-        !await(Q.ninvoke(unsubscribed[0], 'hasSubscriptions', unsubscribed[1])),
+        !await(unsubscribed.user.hasSubscription(unsubscribed.page)),
         'User should NOT be subscribed to page.'
       )
-      assert.equal(unsubscribed[0].id, user.id, 'Unsubscription should have the right user.')
-      assert.equal(unsubscribed[1].id, page.id, 'Unsubscription should have the right page.')
+      assert.equal(unsubscribed.user.id, user.id, 'Unsubscription should have the right user.')
+      assert.equal(unsubscribed.page.id, page.id, 'Unsubscription should have the right page.')
     }))
 
     it('should create an anonymous user with monster gravatars', async(function() {

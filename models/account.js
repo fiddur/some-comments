@@ -22,15 +22,13 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-module.exports = function(db, User) {
-  var Account = {}
+var Model = require('objection').Model
 
-  Account.orm = db.qDefine('accounts', {
-    id:            {type: 'serial', key: true},
-    uid:           {type: 'text', unique: 'authenticator_uid'},
-    authenticator: {type: 'text', unique: 'authenticator_uid'},
-  })
-  Account.orm.qHasOne('user', User.orm, {autoFetch: true, key: true})
+module.exports = function(models) {
+  function Account() {Model.apply(this, arguments)}
+  Model.extend(Account)
+
+  Account.tableName = 'accounts';
 
   /**
    * Find an account by authenticator and UID, or create it along with it's user.
@@ -40,14 +38,20 @@ module.exports = function(db, User) {
    * @param userData   Object of userdata
    */
   Account.getOrCreate = async(function(authenticator, uid, userData) {
-    var account = await(Account.orm.qOne({authenticator: authenticator, uid: uid}))
+    var account = await(
+      Account.query()
+        .where('authenticator', authenticator)
+        .where('uid', uid)
+        .eager('user')
+        .limit(1)
+    )
 
-    if (account) {return account}
+    if (account.length > 0) {return account[0]}
 
     // Create user first.
-    var user = await(User.create(userData))
+    var user = await(models.User.create(userData))
 
-    return await(Account.orm.qCreate([{authenticator: authenticator, uid: uid, user: user}]))[0]
+    return await(Account.query().insert({authenticator: authenticator, uid: uid, user: user}))
   })
 
   return Account

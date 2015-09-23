@@ -22,15 +22,44 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-module.exports = function(db, Site, User) {
-  var Page = {}
+var Model   = require('objection').Model
 
-  Page.orm = db.qDefine('pages', {
+module.exports = function(models) {
+  function Page() {Model.apply(this, arguments)}
+  Model.extend(Page)
+
+  Page.tableName = 'pages';
+
+  Page.get = function(id) {return Page.query().where('id', id).first()}
+
+  Page.create = async(function(data) {
+    // Get site.
+    var site = (data.site instanceof models.Site) ? data.site : await(models.Site.get(data.site))
+    data.site = site.id
+
+    // Insert
+    var page = await(Page.query().insert(data))
+
+    // Subscribe all admins to comments on this new page.
+    var admins = await(site.getAdmins())
+    await(admins.map(function (admin) {return admin.subscribe(page)}))
+
+    return page
+  })
+
+  Page.prototype.getComments = function() {return models.Comment.getByPage(this)}
+
+  return Page
+
+
+
+
+  var orm = db.define('pages', {
     id:  {type: 'serial', key: true},
     url: {type: 'text', size: 255, unique: true}
   })
-  Page.orm.qHasOne('site', Site.orm, {key: true})
-  Page.orm.qHasMany('subscribers', User.orm, {}, {
+  orm.hasOne('site', Site.orm, {key: true})
+  orm.hasMany('subscribers', User.orm, {}, {
     mergeTable:   'subscriptions',
     mergeId:      'pageId',
     mergeAssocId: 'userId',
@@ -38,19 +67,15 @@ module.exports = function(db, Site, User) {
     key:          true
   })
 
-  Page.get = function(id) {return Page.orm.qGet(id)}
+  Page.orm = Promise.promisifyAll(orm)
 
-  Page.create = async(function(data) {
-    if (data.site) {data.site_id = data.site.id}
-
-    var page   = await(Page.orm.qCreate([data]))[0]
-    var site   = await(page.qGetSite())
-    var admins = await(site.qGetAdmins())
-
-    // Subscribe all admins to comments on this new page.
-    await(admins.map(function (admin) {return admin.subscribe(page)}))
-
-    return page
+  /**
+   * Gets a page either by url or id.
+   */
+  Page.get = async(function(id) {
+    var page = Promise.promisifyAll(await(Page.orm.find().where('id = ? OR url = ?', [id, id])))
+    console.log(page)
+    return page[0]
   })
 
   Page.getBySiteUrl = function(site, url) {

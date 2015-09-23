@@ -17,12 +17,18 @@
  * GNU-AGPL-3.0
  */
 
+var Promise = require('bluebird')
+
 module.exports = function(db, Oidc) {
-  var OidcIdentifier = db.qDefine('oidcIdentifiers', {
+  var OidcIdentifier = {}
+
+  var orm = db.define('oidcIdentifiers', {
     identifier: {type: 'text', unique: true, key: true},
   })
 
-  OidcIdentifier.qHasOne('oidc', Oidc, {key: true, required: true})
+  orm.hasOne('oidc', Oidc.orm, {key: true, required: true})
+
+  OidcIdentifier.orm = Promise.promisifyAll(orm)
 
   return OidcIdentifier
 }

@@ -27,46 +27,44 @@ var site           = require('./site')
 var account        = require('./account')
 var page           = require('./page')
 var comment        = require('./comment')
+var siteadmin      = require('./siteadmin')
+var subscription   = require('./subscription')
 var oidc           = require('./oidc')
 var oidcIdentifier = require('./oidc_identifier')
 
-var Q           = require('q')
-var qOrm        = require('q-orm')
-var modts       = require('orm-timestamps')
+var Promise = require('bluebird')
+var orm     = Promise.promisifyAll(require('orm'))
+var modts   = require('orm-timestamps')
 
 module.exports = async(function(config) {
+  var Knex = require('knex')
+  var Model = require('objection').Model
+
+  var knex = Knex(config.database)
+  Model.knex(knex);
+
   var model = {}
-  var db = await(qOrm.qConnect(config.database))
 
-  // Use timestamps in all models.
-  db.use(modts, {persist: true})
+  model.User           = user(model, config)
+  model.Site           = site(model)
+  model.Page           = page(model)
+  model.Comment        = comment(model)
+  model.Account        = account(model)
+  model.SiteAdmin      = siteadmin(model)
+  model.Subscription   = subscription(model)
+  //var Oidc           = oidc(db)
+  //var OidcIdentifier = oidcIdentifier(db, Oidc)
 
-  var User           = user(db, config)
-  var Site           = site(db, User)
-  var Account        = account(db, User)
-  var Page           = page(db, Site, User)
-  var Comment        = comment(db, User, Page)
-  var Oidc           = oidc(db)
-  var OidcIdentifier = oidcIdentifier(db, Oidc)
-
-  model = {
-    User:           User,
-    Site:           Site,
-    Account:        Account,
-    Page:           Page,
-    Comment:        Comment,
-    Oidc:           Oidc,
-    OidcIdentifier: OidcIdentifier,
-  }
-
-  // Superadmins
-  model.Superadmin = db.qDefine('superadmin', {})
-  model.Superadmin.hasOne('user', model.User.orm, {key: true})
+  //// Superadmins
+  //model.Superadmin = db.define('superadmin', {})
+  //model.Superadmin.hasOne('user', model.User.orm, {key: true})
 
   if (config.testMode) {
-    var MigrationTask = require('migrate-orm2')
-    var migrationTask = new MigrationTask(db.driver, {dir: 'data/migrations'})
-    await(Q.ninvoke(migrationTask, 'up', null))
+    await(knex.migrate.latest())
+    //var MigrationTask = require('migrate-orm2')
+    //var migrationTask = Promise.promisifyAll(new MigrationTask(db.driver, {dir: 'data/migrations'}))
+    //await(migrationTask.upAsync(null))
+
   }
 
   return config.model = model

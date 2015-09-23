@@ -17,22 +17,16 @@
  * GNU-AGPL-3.0
  */
 
-var Promise = require('bluebird')
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
 
-module.exports = function(db) {
-  var Oidc = {}
+var Model = require('objection').Model
 
-  Oidc.orm = Promise.promisifyAll(db.define('oidc', {
-    id:               {type: 'serial', key:    true},
-    issuer:           {type: 'text',   unique: true},
-    authorizationURL: {type: 'text'},
-    tokenURL:         {type: 'text'},
-    userInfoURL:      {type: 'text'},
-    registrationURL:  {type: 'text'},
-    clientID:         {type: 'text'},
-    clientSecret:     {type: 'text'},
-    expiresAt:        {type: 'integer', size: 8}
-  }))
+module.exports = function(db, config) {
+  function Subscription() {Model.apply(this, arguments)}
+  Model.extend(Subscription)
 
-  return Oidc
+  Subscription.tableName = 'subscriptions';
+
+  return Subscription
 }

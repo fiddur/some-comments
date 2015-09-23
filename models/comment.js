@@ -22,36 +22,25 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-module.exports = function(db, User, Page) {
-  var Comment = {}
+var Model = require('objection').Model
 
-  Comment.orm = db.qDefine('comments', {
-    id:        {type: 'serial', key: true},
-    text:      {type: 'text'},
-    deletedAt: {type: 'date', time: true},
-  }, {
-    timestamp: {
-      createdProperty:  'createdAt',
-      modifiedProperty: 'modifiedAt',
-    }
-  })
-  Comment.orm.qHasOne('user',   User.orm,    {autoFetch: true, key: true})
-  Comment.orm.qHasOne('page',   Page.orm,    {key: true, reverse: 'comments'})
-  Comment.orm.qHasOne('parent', Comment.orm, {index: true})
+module.exports = function(models) {
+  function Comment() {Model.apply(this, arguments)}
+  Model.extend(Comment)
 
-  Comment.createMulti = function(datas) {
-    var l = datas.length
-    for (var i = 0; i < l; i++) {
-      if (datas[i].page) {datas[i].page_id = datas[i].page.id}
-      if (datas[i].user) {datas[i].user_id = datas[i].user.id}
-    }
-
-    return Comment.orm.qCreate(datas)
-  }
+  Comment.tableName = 'comments';
 
   Comment.create = async(function(data) {
-    return await(Comment.createMulti([data]))[0]
+    if (data.user instanceof models.User) {data.user = data.user.id}
+    if (data.page instanceof models.Page) {data.page = data.page.id}
+
+    // Without await here, it somehow doubled the inserts…
+    return await(Comment.query().insert(data))
   })
+
+  Comment.getByPage = function(page) {
+    return Comment.query().where('page', page.id)
+  }
 
   return Comment
 }

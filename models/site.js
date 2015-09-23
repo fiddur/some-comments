@@ -22,46 +22,63 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-module.exports = function(db, User) {
-  var Site = {}
+var Model   = require('objection').Model
 
-  Site.orm = db.qDefine('sites', {
-    id:        {type: 'serial',  key:    true},
-    domain:    {type: 'text',    unique: true},
-    maxLevels: {type: 'integer', size:   2, defaultValue: 0},
-  })
-  Site.orm.qHasMany('admins', User.orm, {}, {
-    mergeTable:   'siteadmins',
-    mergeId:      'site_id',
-    mergeAssocId: 'user_id',
-    reverse:      'sites',
-    key:          true,
-    autoFetch:    true,
-  })
+module.exports = function(models) {
+  function Site() {Model.apply(this, arguments)}
+  Model.extend(Site)
 
-  Site.get = function(id) {return Site.orm.qGet(id)}
+  Site.tableName = 'sites'
+
+  Site.relationMappings = {
+    admins: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.User,
+      join: {
+        from: 'sites.id',
+        through: {
+          from: 'siteadmins.site',
+          to:   'siteadmins.user',
+        },
+        to:   'users.id',
+      }
+    }
+  }
+
+  Site.create = function(data) {
+    return Site.query().insert(data)
+  }
+
+  Site.get = function(id) {return Site.query().where('id', id).first()}
+
+  Site.prototype.getAdmins = function() {
+    return await(this.$loadRelated('admins')).admins
+  }
+  Site.prototype.addAdmin = function(admin) {
+    var adminId = admin instanceof models.User ? admin.id : admin
+    return models.SiteAdmin.query().insert({site: this.id, user: adminId})
+  }
+
+  return Site
+
+
+
 
   /**
    * List all sites.
    */
   Site.all = function() {
-    return Site.orm.qAll()
+    return Site.orm.allAsync()
   }
-
-  Site.create = async(function(data) {
-    return await(Site.orm.qCreate([data]))[0]
-  })
 
   /**
    * Get a Site by http origin header string.
    */
   Site.getByOrigin = function(origin) {
-    return Site.orm.qOne({domain: origin.split('//')[1]})
+    return Site.orm.oneAsync({domain: origin.split('//')[1]})
   }
 
   Site.getByDomain = function(domain) {
-    return Site.orm.qOne({domain: domain})
+    return Site.orm.oneAsync({domain: domain})
   }
-
-  return Site
 }

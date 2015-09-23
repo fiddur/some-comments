@@ -22,51 +22,40 @@ var crypto = require('crypto')
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-var jwt = require('jsonwebtoken')
-var Q   = require('q')
+var Promise = require('bluebird')
+var Model = require('objection').Model
+var jwt   = require('jsonwebtoken')
 
-module.exports = function(db, config) {
-  var User = {}
+module.exports = function(models, config) {
+  function User() {Model.apply(this, arguments)}
+  Model.extend(User)
 
-  User.orm = db.qDefine('users', {
-    id:          {type: 'serial', key: true},
-    displayName: {type: 'text'},
-    avatar:      {type: 'text'},
-    email:       {type: 'text'},
-    anonymousIp: {type: 'text', defaultValue: null},
-  }, {
-    methods: {
-      /**
-       * Get an unsubscribe token for a page
-       *
-       * @todo Make this async as well (for maximum performance).
-       */
-      unsubscribeToken: function (pageId) {
-        return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
-      },
+  User.tableName = 'users';
 
-      subscribe: async(function(page) {
-        var self = this
+  User.create = function(data) {return User.query().insert(data)}
 
-        // Don't subscribe if there's no e-mail address.
-        if (!this.email) {return false}
+  User.get = function(id) {return User.query().where('id', id).first()}
 
-        // Check if already subscribed.
-        if (await(Q.ninvoke(this, 'hasSubscriptions', page))) {
-          return true
-        }
-        else {
-          return Q.ninvoke(self, 'addSubscriptions', page)
-        }
-      })
+  /**
+   * @return Promise for object with user and page
+   *
+   * @exception Error  If token is not valid
+   */
+  User.unsubscribe = async(function(unsubscribeToken) {
+    var token = await(Promise.promisify(jwt.verify)(unsubscribeToken, config.secret))
+
+    if (token.sub !== 'unsubscribe') {
+      throw new Error('Not an unsubscribe token')
     }
-  })
 
-  User.get = function(id) {return User.orm.qGet(id)}
+    var data = await({
+      user: User.get(token.user),
+      page: models.Page.get(token.page)
+    })
 
-  User.create = async(function(data) {
-    var users = await(User.orm.qCreate([data]))
-    return users[0]
+    await(models.Subscription.query().where({page: token.page, user: token.user}).delete())
+
+    return data
   })
 
   /**
@@ -91,36 +80,46 @@ module.exports = function(db, config) {
       var hash = crypto.createHash('md5')
       hash.update(user.id + ': ' + user.anonymousIp)
 
-      user.avatar =
+      await(user.setAvatar(
         'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=' + gravatarMatches[1]
-
-      return user.save()
+      ))
     }
 
     return user
   })
 
   /**
-   * @return Promise for [user, page]
+   * Get an unsubscribe token for a page
    *
-   * @exception Error  If token is not valid
+   * @todo Make this async as well (for maximum performance).
    */
-  User.unsubscribe = async(function(unsubscribeToken) {
-    var token = await(Q.ninvoke(jwt, 'verify', unsubscribeToken, config.secret))
+  User.prototype.unsubscribeToken = function(page) {
+    var pageId = page instanceof models.Page ? page.id : page
 
-    if (token.sub !== 'unsubscribe') {
-      throw new Error('Not an unsubscribe token')
-    }
+    return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
+  }
 
-    var data = await({
-      user: User.get(token.user),
-      page: config.model.Page.get(token.page)
-    })
-
-    await(Q.ninvoke(data.page, 'removeSubscribers', data.user))
-
-    return [data.user, data.page]
+  User.prototype.hasSubscription = async(function(page) {
+    return await(models.Subscription.query().where({page: page.id, user: this.id})).length > 0
   })
+
+  User.prototype.subscribe = async(function(page) {
+    // Don't subscribe if there's no e-mail address.
+    if (!this.email) {return}
+
+    try {
+      await(models.Subscription.query().insert({user: this.id, page: page.id}))
+    }
+    catch (err) {
+      // Ignore the UNIQUE contraint.
+      if (!(/UNIQUE/.test(err))) {throw err}
+    }
+  })
+
+  User.prototype.setAvatar = function(avatar) {
+    this.avatar = avatar
+    return this.$query().patch({avatar: avatar})
+  }
 
   return User
 }

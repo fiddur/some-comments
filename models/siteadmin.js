@@ -17,22 +17,18 @@
  * GNU-AGPL-3.0
  */
 
-var Promise = require('bluebird')
+'use strict'
 
-module.exports = function(db) {
-  var Oidc = {}
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
 
-  Oidc.orm = Promise.promisifyAll(db.define('oidc', {
-    id:               {type: 'serial', key:    true},
-    issuer:           {type: 'text',   unique: true},
-    authorizationURL: {type: 'text'},
-    tokenURL:         {type: 'text'},
-    userInfoURL:      {type: 'text'},
-    registrationURL:  {type: 'text'},
-    clientID:         {type: 'text'},
-    clientSecret:     {type: 'text'},
-    expiresAt:        {type: 'integer', size: 8}
-  }))
+var Model   = require('objection').Model
 
-  return Oidc
+module.exports = function(models) {
+  function SiteAdmin() {Model.apply(this, arguments)}
+  Model.extend(SiteAdmin)
+
+  SiteAdmin.tableName = 'siteadmins'
+
+  return SiteAdmin
 }
