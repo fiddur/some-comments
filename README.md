@@ -4,12 +4,15 @@ Some comments
 [![Build Status](https://travis-ci.org/fiddur/some-comments.svg?branch=master)](https://travis-ci.org/fiddur/some-comments)
 [![Coverage Status](https://coveralls.io/repos/fiddur/some-comments/badge.svg?branch=master&service=github)](https://coveralls.io/r/fiddur/some-comments?branch=master)
 
-Aims to become a free standing commenting system that you attach by including javascript.  I need
-this because Ghost has no commenting function and I don't want ads funded commenting, nor tie it to
-one specific social platform.
+**Some comments** is stand-alone commenting microservice that you could attach by including
+javascript.
 
-All the commenters have to authenticate via 3rd party authentication like openid, google, facebook
-etc; currently anything that "passport" supports.
+This was initially constructed because Ghost has no built in commenting functionality and I don't
+want ads funded commenting, nor tie it to one specific social platform.
+
+Commenters can authenticate via 3rd party authentication like openid, google, facebook etc, or
+comment anonymously.
+
 
 
 Features
