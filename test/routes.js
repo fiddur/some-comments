@@ -235,8 +235,6 @@ describe('Routing Integration', function() {
         jar: user2Jar,
       }))
 
-
-
       // Modify comment
       var comment2 = await(rp({
         uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/') +

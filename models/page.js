@@ -70,12 +70,10 @@ module.exports = function(models) {
     return page
   })
 
-  Page.getBySiteUrl = async(function(site, url) {
+  Page.getBySiteUrl = function(site, url) {
     if (site instanceof models.Site) {site = site.id}
-
-    var pages = Page.query().where({site: site, url: url})
-    if (pages.length === 0) {throw new Error('Found no page by site ' + site + ' and url ' + url)}
-  })
+    return Page.query().where({siteId: site, url: url}).first()
+  }
 
   Page.prototype.getComments = async(function() {
     console.log('getComments')

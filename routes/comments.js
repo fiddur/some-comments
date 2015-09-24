@@ -57,7 +57,6 @@ module.exports = function (app, model, mailTransport, config) {
       user: req.user,
       text: req.body.text
     }))
-    console.log('comment', comment)
 
     res.status(201).location(req.path + comment.id).send(comment)
 
@@ -72,13 +71,14 @@ module.exports = function (app, model, mailTransport, config) {
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
 
     var comment = await(model.Comment.get(req.params.comment))
-    var page    = await(model.Page.get(req.params.page))
+    var page    = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
     // Validate site and page
-    if (comment.site_id !== req.params.site || comment.page_id !== req.params.page) {
-      console.log(comment.site_id, req.params.site, comment.page_id, req.params.page)
-      return res.sendStatus(404)
-    }
+    if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
+
+    // Validate user
+    // Update comment
+    res.json(comment)
   }))
 
   var notifySubscribers = async(function(comment) {
