@@ -5,9 +5,9 @@ exports.up = function(knex) {
     table.increments()
     table.string('text')
 
-    table.integer('user')
-    table.integer('page')
-    table.integer('parent')
+    table.integer('userId')
+    table.integer('pageId')
+    table.integer('parentId')
 
     table.timestamp('createdAt')
     table.timestamp('modifiedAt')

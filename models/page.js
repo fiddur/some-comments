@@ -30,12 +30,35 @@ module.exports = function(models) {
 
   Page.tableName = 'pages';
 
+  Page.relationMappings = {
+    site: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.Site,
+      join: {
+        from: 'pages.siteId',
+        to:   'sites.id',
+      }
+    },
+    subscribers: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.User,
+      join: {
+        from: 'pages.id',
+        through: {
+          from: 'subscriptions.pageId',
+          to:   'subscriptions.userId',
+        },
+        to:   'users.id',
+      }
+    }
+  }
+
   Page.get = function(id) {return Page.query().where('id', id).first()}
 
   Page.create = async(function(data) {
     // Get site.
     var site = (data.site instanceof models.Site) ? data.site : await(models.Site.get(data.site))
-    data.site = site.id
+    data.siteId = site.id
 
     // Insert
     var page = await(Page.query().insert(data))
@@ -47,27 +70,31 @@ module.exports = function(models) {
     return page
   })
 
-  Page.prototype.getComments = function() {return models.Comment.getByPage(this)}
+  Page.getBySiteUrl = async(function(site, url) {
+    if (site instanceof models.Site) {site = site.id}
+
+    var pages = Page.query().where({site: site, url: url})
+    if (pages.length === 0) {throw new Error('Found no page by site ' + site + ' and url ' + url)}
+  })
+
+  Page.prototype.getComments = async(function() {
+    console.log('getComments')
+    return await(this.$loadRelated('comments')).comments
+  })
+
+  Page.prototype.getSubscribers = async(function() {
+    return await(this.$loadRelated('subscribers')).subscribers
+  })
+
+  Page.prototype.getSite = async(function() {
+    if (this.site) {return this.site}
+    return await(this.$loadRelated('site')).site
+  })
 
   return Page
 
 
 
-
-  var orm = db.define('pages', {
-    id:  {type: 'serial', key: true},
-    url: {type: 'text', size: 255, unique: true}
-  })
-  orm.hasOne('site', Site.orm, {key: true})
-  orm.hasMany('subscribers', User.orm, {}, {
-    mergeTable:   'subscriptions',
-    mergeId:      'pageId',
-    mergeAssocId: 'userId',
-    reverse:      'subscriptions',
-    key:          true
-  })
-
-  Page.orm = Promise.promisifyAll(orm)
 
   /**
    * Gets a page either by url or id.
@@ -78,9 +105,6 @@ module.exports = function(models) {
     return page[0]
   })
 
-  Page.getBySiteUrl = function(site, url) {
-    return Page.orm.qOne({site: site, url: url})
-  }
 
   return Page
 }

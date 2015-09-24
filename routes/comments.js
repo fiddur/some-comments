@@ -22,6 +22,7 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
+//// TODO remove Q
 var Q          = require('q')
 var Handlebars = require('handlebars')
 var FS         = require('fs')
@@ -33,7 +34,7 @@ module.exports = function (app, model, mailTransport, config) {
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
     if (page) {
-      res.json(await(page.qGetComments()))
+      res.json(await(page.getComments()))
     }
     else {
       res.json([])
@@ -49,15 +50,14 @@ module.exports = function (app, model, mailTransport, config) {
 
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
-    if (!page) {
-      page = await(model.Page.create({site: req.params.site, url: req.params.page}))
-    }
+    if (!page) {page = await(model.Page.create({site: req.params.site, url: req.params.page}))}
 
     var comment = await(model.Comment.create({
       page: page,
       user: req.user,
       text: req.body.text
     }))
+    console.log('comment', comment)
 
     res.status(201).location(req.path + comment.id).send(comment)
 
@@ -82,9 +82,9 @@ module.exports = function (app, model, mailTransport, config) {
   }))
 
   var notifySubscribers = async(function(comment) {
-    var page        = await(comment.qGetPage())
-    var subscribers = await(page.qGetSubscribers())
-    var site        = await(page.qGetSite())
+    var page        = await(comment.getPage())
+    var subscribers = await(page.getSubscribers())
+    var site        = await(page.getSite())
 
     var hbsRaw = await({
       txt: Q.nfcall(

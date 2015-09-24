@@ -53,7 +53,7 @@ describe('Routing Integration', function() {
       subEnv.COVERAGE = true
       serverProcess = spawn('node', ['index.js', 'config.js.test'], {env: subEnv})
       serverProcess.stdout.on('data', function (buffer) {
-        console.log('Server output: ' + buffer)
+        //console.log('Server output: ' + buffer)
 
         var portRegex = /listening on port (\d+) in/g
         var portMatch = portRegex.exec(buffer.toString())

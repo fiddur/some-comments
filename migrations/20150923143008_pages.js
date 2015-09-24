@@ -4,7 +4,7 @@ exports.up = function(knex) {
   return knex.schema.createTable('pages', function(table) {
     table.increments()
     table.string('url', 191).unique().index()
-    table.integer('site').references('site.id')
+    table.integer('siteId').references('site.id')
 
     table.timestamp('createdAt')
     table.timestamp('modifiedAt')

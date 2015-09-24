@@ -59,26 +59,28 @@ module.exports = function(models) {
     return models.SiteAdmin.query().insert({site: this.id, user: adminId})
   }
 
-  return Site
-
-
-
-
   /**
    * List all sites.
    */
   Site.all = function() {
-    return Site.orm.allAsync()
+    return Site.query()
   }
+
+  return Site
+
+
 
   /**
    * Get a Site by http origin header string.
    */
-  Site.getByOrigin = function(origin) {
-    return Site.orm.oneAsync({domain: origin.split('//')[1]})
-  }
+  Site.getByOrigin = async(function(origin) {
+    var sites = Site.query().where({domain: origin.split('//')[1]}).limit(1)
+    if (sites.length === 0) {throw new Error('No domain found by origin: ' + origin)}
+    return sites[0]
+  })
 
   Site.getByDomain = function(domain) {
     return Site.orm.oneAsync({domain: domain})
   }
+
 }

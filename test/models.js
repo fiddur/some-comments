@@ -48,13 +48,13 @@ describe('Models', function() {
       }),
       model.Comment.create({
         text: 'This is too comment',
-        user: user.id,
+        userId: user.id,
         page: page,
       }),
       model.Comment.create({
         text: 'This is comment, ay?',
         user: user,
-        page: page.id,
+        pageId: page.id,
       }),
     ])
   }))

@@ -2,9 +2,9 @@
 
 exports.up = function(knex) {
   return knex.schema.createTable('subscriptions', function(table) {
-    table.integer('user').references('user.id')
-    table.integer('page').references('page.id')
-    table.primary(['user', 'page'])
+    table.integer('userId').references('user.id')
+    table.integer('pageId').references('page.id')
+    table.primary(['userId', 'pageId'])
   })
 }
 

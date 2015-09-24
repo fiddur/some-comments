@@ -30,17 +30,41 @@ module.exports = function(models) {
 
   Comment.tableName = 'comments';
 
+  Comment.relationMappings = {
+    page: {
+      relation: Model.OneToManyRelation,
+      modelClass: models.Page,
+      join: {
+        from: 'comments.pageId',
+        to:   'pages.id',
+      }
+    },
+    user: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.User,
+      join: {
+        from: 'comments.userId',
+        to:   'users.id',
+      }
+    }
+  }
+
+  Comment.get = function(id) {return Comment.query().where('id', id).first()}
+
   Comment.create = async(function(data) {
-    if (data.user instanceof models.User) {data.user = data.user.id}
-    if (data.page instanceof models.Page) {data.page = data.page.id}
+    if (data.user instanceof models.User) {data.userId = data.user.id}
+    if (data.page instanceof models.Page) {data.pageId = data.page.id}
 
     // Without await here, it somehow doubled the inserts…
     return await(Comment.query().insert(data))
   })
 
-  Comment.getByPage = function(page) {
-    return Comment.query().where('page', page.id)
-  }
+  Comment.prototype.getPage = async(function() {
+    if (this.page) {return this.page}
+
+    await(this.$loadRelated('page'))
+    return await(this.$loadRelated('page')).page
+  })
 
   return Comment
 }

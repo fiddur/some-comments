@@ -43,21 +43,45 @@ module.exports = async(function(config) {
   var knex = Knex(config.database)
   Model.knex(knex);
 
-  var model = {}
+  var models = {}
 
-  model.User           = user(model, config)
-  model.Site           = site(model)
-  model.Page           = page(model)
-  model.Comment        = comment(model)
-  model.Account        = account(model)
-  model.SiteAdmin      = siteadmin(model)
-  model.Subscription   = subscription(model)
+  models.User           = user(models, config)
+  models.Site           = site(models)
+  models.Page           = page(models)
+  models.Comment        = comment(models)
+  models.Account        = account(models)
+  models.SiteAdmin      = siteadmin(models)
+
+  models.User.relationMappings = {
+    subscriptions: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.Page,
+      join: {
+        from: 'users.id',
+        through: {
+          from: 'subscriptions.userId',
+          to:   'subscriptions.pageId',
+        },
+        to:   'pages.id',
+      }
+    }
+  }
+
+  models.Page.relationMappings.comments = {
+    relation: Model.OneToManyRelation,
+    modelClass: models.Comment,
+    join: {
+      from: 'pages.id',
+      to:   'comments.pageId',
+    }
+  }
+
   //var Oidc           = oidc(db)
   //var OidcIdentifier = oidcIdentifier(db, Oidc)
 
   //// Superadmins
-  //model.Superadmin = db.define('superadmin', {})
-  //model.Superadmin.hasOne('user', model.User.orm, {key: true})
+  //models.Superadmin = db.define('superadmin', {})
+  //models.Superadmin.hasOne('user', models.User.orm, {key: true})
 
   if (config.testMode) {
     await(knex.migrate.latest())
@@ -67,5 +91,5 @@ module.exports = async(function(config) {
 
   }
 
-  return config.model = model
+  return config.model = models
 })

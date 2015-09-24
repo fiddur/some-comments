@@ -53,7 +53,7 @@ module.exports = function(models, config) {
       page: models.Page.get(token.page)
     })
 
-    await(models.Subscription.query().where({page: token.page, user: token.user}).delete())
+    await(data.page.$relatedQuery('subscribers').unrelate(data.user.id))
 
     return data
   })
@@ -100,15 +100,16 @@ module.exports = function(models, config) {
   }
 
   User.prototype.hasSubscription = async(function(page) {
-    return await(models.Subscription.query().where({page: page.id, user: this.id})).length > 0
+    var pages = await(this.$relatedQuery('subscriptions').where({pageId: page.id}))
+    return pages.length > 0
   })
 
   User.prototype.subscribe = async(function(page) {
     // Don't subscribe if there's no e-mail address.
-    if (!this.email) {return}
+    if (!this.email) {return }
 
     try {
-      await(models.Subscription.query().insert({user: this.id, page: page.id}))
+      await(this.$relatedQuery('subscriptions').relate(page.id))
     }
     catch (err) {
       // Ignore the UNIQUE contraint.
