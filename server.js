@@ -38,7 +38,7 @@ var Authentication   = require('./authentication')
 var SiteRoutes       = require('./routes/sites')
 var CommentRoutes    = require('./routes/comments')
 
-function start(model, config) {
+exports.start = function start(model, config) {
   var app = express()
 
   if (coverage) {app.use('/coverage', istanbulMiddleware.createHandler())}
@@ -124,4 +124,3 @@ function start(model, config) {
   console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
               app.settings.env)
 }
-exports.start = start

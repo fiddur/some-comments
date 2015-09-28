@@ -85,6 +85,21 @@ describe('Models', function() {
 
       assert.equal(comment.text, 'Another one')
     }))
+
+    it('should alter comment text', async(function() {
+      var comment = await(model.Comment.create({
+        text: 'One one one',
+        user: user,
+        page: page,
+      }))
+
+      assert.equal(comment.text, 'One one one')
+      await(comment.setText('Else'))
+      assert.equal(comment.text, 'Else')
+
+      var comment2 = await(model.Comment.get(comment.id))
+      assert.equal(comment2.text, 'Else')
+    }))
   })
 
   describe('Pages', function() {

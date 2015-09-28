@@ -77,7 +77,11 @@ module.exports = function (app, model, mailTransport, config) {
     if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
 
     // Validate user
+    if (comment.userId !== req.user.id) {return res.sendStatus(401)}
+
     // Update comment
+    await(comment.setText(req.body.text))
+
     res.json(comment)
   }))
 

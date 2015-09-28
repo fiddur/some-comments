@@ -246,6 +246,34 @@ describe('Routing Integration', function() {
 
       assert.equal(comment2.text, 'My ALTERED comment')
     }))
+
+    it('should disallow modifying others\' comments', async(function() {
+      // Create a user for comment.
+      var user2Jar = rp.jar()
+      await(rp({uri: baseUrl + 'auth/anonymous', jar: user2Jar}))
+
+      // Place comment
+      var comment = await(rp({
+        uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/') + '/comments/',
+        method: 'POST',
+        json: {text: 'My comment'},
+        jar: user2Jar,
+      }))
+
+      // Modify comment (without cookie jar)
+      assert.throws(
+        function() {await(rp({
+          uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/') +
+            '/comments/' + comment.id,
+          method: 'PUT',
+          json: {text: 'My ALTERED comment'},
+        }))},
+        function(err) {
+          if (err.statusCode === 401) {return true}
+          assert.fail(err.statusCode + ' !== 401')
+        }
+      )
+    }))
   })
 
 /*  describe('Logged in user', function() {

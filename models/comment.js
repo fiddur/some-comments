@@ -59,6 +59,11 @@ module.exports = function(models) {
     return await(Comment.query().insert(data))
   })
 
+  Comment.prototype.setText = function(text) {
+    this.text = text
+    return this.$query().patch({text: text})
+  }
+
   Comment.prototype.getPage = async(function() {
     if (this.page) {return this.page}
 
