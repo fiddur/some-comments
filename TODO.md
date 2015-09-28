@@ -1,6 +1,7 @@
 Todo
 ====
 
+* Remove Q (in favour of bluebird and asyncawait).
 * Use express router consistently.
 * Reasonable logging.
 * Error handling.

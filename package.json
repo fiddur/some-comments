@@ -39,6 +39,7 @@
     "passport-github": "^0.1.5",
     "passport-google-oauth2": "^0.1.6",
     "passport-openidconnect": "git+https://github.com/fiddur/passport-openidconnect.git",
+    "q": "^1.4.1",
     "request-promise": "^0.4.3"
   },
   "optionalDependencies": {
