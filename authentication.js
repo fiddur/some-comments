@@ -46,53 +46,46 @@ function openIdConnectDynamic(model, app, config) {
   var oidcStrategy = new OpenIdConnect.Strategy({
     identifierField:   'oidci',
     scope:             'openid profile email',
-  }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
+  }, async(function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
     /// @todo Save identifier -> oidc  connection.
-
-    model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
+    var account = await(model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture,
       email:       userInfo.email,
-    })
-      .then(function(account) {return account.qGetUser()})
-      .then(function(user)    {done(null, user)})
-      .done()
-  })
+    }))
+    var user = await(account.qGetUser())
+    done(null, user)
+  }))
 
   passport.use(oidcStrategy)
 
-  oidcStrategy.configure(function(identifier, done) {
-    model.OidcIdentifier.qOne({identifier: identifier})
-      .then(function(oidcIdentifier) {
-        if (oidcIdentifier) {
-          oidcIdentifier.qGetOidc().done(function(oidc) {done(null, oidc)})
-        }
-        else {
-          done(null, null)
-        }
-      })
-      .catch(function(error) {done(error, null)})
-      .done()
-  })
+  oidcStrategy.configure(async(function(identifier, done) {
+    var oidcIdentifier = model.OidcIdentifier.qOne({identifier: identifier})
 
-  OpenIdConnect.config(function(issuer, done) {
-    model.Oidc.qOne({issuer: issuer})
-      .then(function(oidc) {
-        if (oidc) {
-          done(null, oidc)
-        }
-        else {
-          done(null, null)
-        }
-      }, function(error) {done(error, null)})
-      .done()
-  })
+    if (oidcIdentifier) {
+      oidcIdentifier.qGetOidc().done(function(oidc) {done(null, oidc)})
+    }
+    else {
+      done(null, null)
+    }
+  }))
+
+  OpenIdConnect.config(async(function(issuer, done) {
+    var oidc = await(model.Oidc.qOne({issuer: issuer}))
+
+    if (oidc) {
+      done(null, oidc)
+    }
+    else {
+      done(null, null)
+    }
+  }))
 
   OpenIdConnect.register(OpenIdConnect.registration({
     name:        'Some Comments',
     redirectURI: config.baseUrl + 'auth/oidc/callback',
-  }, function(provider, reg, next) {
-    model.Oidc.create([{
+  }, async(function(provider, reg, next) {
+    var oidcs = await(model.Oidc.create([{
       issuer:           provider.issuer,
       authorizationURL: provider.authorizationURL,
       tokenURL:         provider.tokenURL,
@@ -101,9 +94,9 @@ function openIdConnectDynamic(model, app, config) {
       clientID:         reg.clientID,
       clientSecret:     reg.clientSecret,
       expiresAt:        reg.expiresAt
-    }])
-      .done(function(oidcs) {next()})
-  }))
+    }]))
+    next()
+  })))
 
   app.get(
     '/auth/oidc',
@@ -197,7 +190,7 @@ function ensureAuthenticated(req, res, next) {
   res.sendStatus(403)
 }
 
-function setup(app, model, config) {
+exports.setup = function setup(app, model, config) {
   app.use(passport.initialize())
   app.use(passport.session())
 
@@ -254,5 +247,3 @@ function setup(app, model, config) {
     facebook(app, config.authenticators.facebook, model, config.baseUrl.toString())
   }
 }
-
-exports.setup = setup
