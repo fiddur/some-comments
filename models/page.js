@@ -57,7 +57,7 @@ module.exports = function(models) {
 
   Page.create = async(function(data) {
     // Get site.
-    var site = (data.site instanceof models.Site) ? data.site : await(models.Site.get(data.site))
+    var site = data.site ? data.site : await(models.Site.get(data.siteId))
     data.siteId = site.id
 
     // Insert
@@ -76,7 +76,6 @@ module.exports = function(models) {
   }
 
   Page.prototype.getComments = async(function() {
-    console.log('getComments')
     return await(this.$loadRelated('comments')).comments
   })
 

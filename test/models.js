@@ -34,7 +34,7 @@ describe('Models', function() {
     site = await(model.Site.create({domain: 'testdomain'}))
 
     page = page2 = await(model.Page.create({
-      site: site.id,
+      site: site,
       url:  'http://testdomain/myPage'
     }))
 

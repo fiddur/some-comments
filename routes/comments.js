@@ -50,7 +50,7 @@ module.exports = function (app, model, mailTransport, config) {
 
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
-    if (!page) {page = await(model.Page.create({site: req.params.site, url: req.params.page}))}
+    if (!page) {page = await(model.Page.create({siteId: req.params.site, url: req.params.page}))}
 
     var comment = await(model.Comment.create({
       page: page,

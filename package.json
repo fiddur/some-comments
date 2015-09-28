@@ -31,7 +31,7 @@
     "migrate-orm2": "^1.2.14",
     "morgan": "^1.5.2",
     "nodemailer": "^1.3.4",
-    "objection": "0.2.6",
+    "objection": "^0.2.7",
     "orm": "^2.1.26",
     "orm-timestamps": "^0.5.2",
     "passport": "^0.2.1",
