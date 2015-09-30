@@ -65,6 +65,11 @@ describe('Models', function() {
       let site2 = await(model.Site.getByDomain('testdomain'))
       assert.equal('testdomain', site2.domain)
     }))
+
+    it('should get by origin', async(() => {
+      let site2 = await(model.Site.getByOrigin('http://testdomain/foo'))
+      assert.equal('testdomain', site2.domain)
+    }))
   })
 
   describe('Accounts', function() {

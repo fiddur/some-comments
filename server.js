@@ -70,14 +70,14 @@ exports.start = function start(model, config) {
     origin: function(origin, callback) {
       if (typeof origin === 'undefined') {return callback(null, true)}
       model.Site.getByOrigin(origin)
-        .done(function(site) {
+        .then(function(site) {
           if (site) {
             callback(null, true)
           }
           else {
             callback(null, false)
           }
-        })
+        }).done()
     },
     credentials: true
   }))

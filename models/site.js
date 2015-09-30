@@ -22,7 +22,9 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-var Model   = require('objection').Model
+var url = require('url')
+
+var Model = require('objection').Model
 
 module.exports = function(models) {
   function Site() {Model.apply(this, arguments)}
@@ -53,6 +55,14 @@ module.exports = function(models) {
   Site.getByDomain = (domain) => Site.query().where({domain: domain}).first()
 
   /**
+   * Get a Site by http origin header string.
+   */
+  Site.getByOrigin = (origin) => {
+    var urlParts = url.parse(origin)
+    return Site.getByDomain(urlParts.host)
+  }
+
+  /**
    * List all sites.
    */
   Site.all = function() {
@@ -73,16 +83,4 @@ module.exports = function(models) {
   }
 
   return Site
-
-
-
-  /**
-   * Get a Site by http origin header string.
-   */
-  Site.getByOrigin = async(function(origin) {
-    var sites = Site.query().where({domain: origin.split('//')[1]}).limit(1)
-    if (sites.length === 0) {throw new Error('No domain found by origin: ' + origin)}
-    return sites[0]
-  })
-
 }
