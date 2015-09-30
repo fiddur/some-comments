@@ -68,7 +68,7 @@
       }
       deferred.reject(req.statusText)
     }
-    req.onerror = function() {deferred.reject("Network failure")}
+    req.onerror = function() {deferred.reject('Network failure')}
     req.send(body)
 
     return deferred.promise
@@ -90,14 +90,6 @@
     headers['content-type'] = 'application/json'
     var body = JSON.stringify(data)
     return ajax.call('PUT', url, headers, body)
-  }
-
-  function Editor(input, preview) {
-    this.update = function () {
-      preview.innerHTML = markdown.toHTML(input.value)
-    }
-    input.editor = this
-    this.update()
   }
 
   function parseUrl(url) {
@@ -123,21 +115,51 @@
     return sc
   }
 
-  function getNewCommentDivInnerHtml(user, urlStr) {
-    var userHtml = user.avatar ?
-        '<div class="comment_avatar">' +
-        '  <img title="' + user.displayName + '" alt="' + user.displayName + '" ' +
-        ' src="' + user.avatar + '" />' +
-        '</div>'
-        : '<div class="comment_avatar unknown_user">?</div>'
+  function insertNewCommentElement(element, user, urlStr) {
+    var div = document.createElement('div')
+    div.className = 'comment_row'
 
-    return userHtml +
-      '<div class="comment">' +
-      '  <textarea id="comment_' + urlStr + '"' +
-      '            placeholder="Type your comment and press enter…" ' +
-      '            oninput="this.editor.update()"></textarea>' +
-      '  <div class="comment_preview" id="preview_' + urlStr + '"></div>' +
-      '</div>'
+    div.appendChild(avatarDiv(user))
+
+    // Instead of just showing the comment, make an input and a preview.
+
+    var commentDiv = document.createElement('div')
+    commentDiv.className = 'comment'
+
+    var inputDiv = document.createElement('div')
+    inputDiv.className = 'comment_text'
+
+    var input = document.createElement('textarea')
+    input.placeholder = 'Type your comment and press enter…'
+    inputDiv.appendChild(input)
+    commentDiv.appendChild(inputDiv)
+
+    var commentPreview = document.createElement('div')
+    commentPreview.className = 'comment_text'
+    commentDiv.appendChild(commentPreview)
+
+    input.addEventListener('input', function() {
+      commentPreview.innerHTML = markdown.toHTML(this.value)
+    })
+
+    input.addEventListener('keypress', function(kp) {
+      if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
+        var commentText = input.value
+        input.value = ''
+        Comment.add(user.site, urlStr, commentText)
+          .then(function(comment) {
+            comment.site = user.site
+            element.insertBefore(Comment.getElement(comment, user), div)
+
+            // Re-get the new comment div html, since user might have logged in.
+            /// @todo Bind this to users/me instead.
+            /////newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
+          }).done()
+      }
+    })
+
+    div.appendChild(commentDiv)
+    element.appendChild(div)
   }
 
   SomeCommentsPrototype.displayByPage = function(siteId, url, elementId) {
@@ -151,33 +173,13 @@
       User.get(sc.server, 'me')
     ])
       .spread(function(comments, user) {
+        user.site = site
         for (var i = 0; i < comments.length; i++) {
           element.appendChild(Comment.getElement(comments[i], user))
         }
 
-        // Add input field
-        var newCommentDiv = document.createElement('div')
-        newCommentDiv.className = 'comment_row'
-        newCommentDiv.innerHTML = getNewCommentDivInnerHtml(user, urlStr)
-        element.appendChild(newCommentDiv)
-
-        var input = e('comment_' + urlStr)
-        input.addEventListener('keypress', function(kp) {
-          if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
-            var commentText = input.value
-            input.value = ''
-            Comment.add(site, urlStr, commentText)
-              .then(function(comment) {
-                comment.site = site
-                element.insertBefore(Comment.getElement(comment, user), newCommentDiv)
-
-                // Re-get the new comment div html, since user might have logged in.
-                /// @todo Bind this to users/me instead.
-                newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
-                new Editor(input, e('preview_' + urlStr))
-              }).done()
-          }
-        })
+        // Add field for new comment
+        insertNewCommentElement(element, user, urlStr)
 
         var someCommentInfo = document.createElement('div')
         someCommentInfo.className = 'some_comment_info'
@@ -188,8 +190,6 @@
           '  <a href="http://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL-3.0</a>' +
           '</p>'
         element.appendChild(someCommentInfo)
-
-        new Editor(input, e('preview_' + urlStr))
       }).done()
   }
 
@@ -335,70 +335,75 @@
       }).done()
   }
 
-  Comment.getElement = function(comment, user) {
-    var displayName = comment.user.displayName || ''
-    var avatarSrc   = comment.user.avatar      || ''
-    var createdAt   = comment.createdAt        || ''
+  function avatarDiv(user) {
+    var avatarDiv = document.createElement('div')
+    avatarDiv.className = 'comment_avatar'
 
-    // Building the comment DOM
+    var avatarImg = document.createElement('img')
+    avatarImg.src = user.avatar || ''
+    avatarImg.alt = user.displayName || ''
+    avatarDiv.appendChild(avatarImg)
+
+    return avatarDiv
+  }
+
+  function editOptionsDiv(comment) {
+    var editOptions = document.createElement('div')
+    editOptions.className = 'edit_options'
+
+    var editButton       = document.createElement('button')
+    editButton.className = 'comment_edit'
+    editButton.title     = 'Edit'
+    editButton.appendChild(document.createTextNode('✎'))
+    editOptions.appendChild(editButton)
+
+    var deleteButton       = document.createElement('button')
+    deleteButton.className = 'comment_delete'
+    deleteButton.title     = 'Delete'
+    deleteButton.setAttribute(
+      'comment_url',
+      comment.site.server + 'sites/' + comment.site.id + '/pages/' +
+        comment.pageId + '/comments/' + comment.id
+    )
+
+    deleteButton.addEventListener('click', Comment.delHook)
+    editOptions.appendChild(deleteButton)
+
+    return editOptions
+  }
+
+  function commentDiv(comment, user) {
+    var commentDiv = document.createElement('div')
+    commentDiv.className = 'comment'
+
+    if (user && comment.user.id === user.id) {
+      commentDiv.appendChild(editOptionsDiv(comment))
+    }
+
+    var commenterName = document.createElement('span')
+    commenterName.className = 'commenter_name'
+    commenterName.appendChild(document.createTextNode(comment.user.displayName || ''))
+    commentDiv.appendChild(commenterName)
+
+    var commentText = document.createElement('div')
+    commentText.className = 'comment_text'
+    commentText.innerHTML = markdown.toHTML(comment.text)
+    commentDiv.appendChild(commentText)
+
+    var createdAtSpan = document.createElement('span')
+    createdAtSpan.className = 'comment_created'
+    createdAtSpan.appendChild(document.createTextNode(comment.createdAt || ''))
+    commentDiv.appendChild(createdAtSpan)
+
+    return commentDiv
+  }
+
+  Comment.getElement = function(comment, user) {
     var div = document.createElement('div')
     div.className = 'comment_row'
-    {
-      var avatarDiv = document.createElement('div')
-      avatarDiv.className = 'comment_avatar'
-      {
-        var avatarImg = document.createElement('img')
-        avatarImg.src = avatarSrc
-        avatarImg.alt = displayName
-        avatarDiv.appendChild(avatarImg)
-      }
-      div.appendChild(avatarDiv)
 
-      var commentDiv = document.createElement('div')
-      commentDiv.className = 'comment'
-      {
-        if (user && comment.user.id === user.id) {
-          var editOptions = document.createElement('div')
-          editOptions.className = 'edit_options'
-          {
-            var editButton = document.createElement('button')
-            editButton.className = 'comment_edit'
-            editButton.title = 'Edit'
-            editButton.appendChild(document.createTextNode('✎'))
-            editOptions.appendChild(editButton)
-
-            var deleteButton = document.createElement('button')
-            deleteButton.className = 'comment_delete'
-            deleteButton.title = 'Delete'
-            deleteButton.setAttribute(
-              'comment_url',
-              comment.site.server + 'sites/' + comment.site.id + '/pages/' +
-                comment.pageId + '/comments/' + comment.id
-            )
-
-            deleteButton.addEventListener('click', Comment.delHook)
-            editOptions.appendChild(deleteButton)
-          }
-          commentDiv.appendChild(editOptions)
-        }
-
-        var commenterName = document.createElement('span')
-        commenterName.className = 'commenter_name'
-        commenterName.appendChild(document.createTextNode(displayName))
-        commentDiv.appendChild(commenterName)
-
-        var commentText = document.createElement('div')
-        commentText.className = 'comment_text'
-        commentText.innerHTML = markdown.toHTML(comment.text)
-        commentDiv.appendChild(commentText)
-
-        var createdAtSpan = document.createElement('span')
-        createdAtSpan.className = 'comment_created'
-        createdAtSpan.appendChild(document.createTextNode(createdAt))
-        commentDiv.appendChild(createdAtSpan)
-      }
-      div.appendChild(commentDiv)
-    }
+    div.appendChild(avatarDiv(comment.user))
+    div.appendChild(commentDiv(comment, user))
 
     return div
   }

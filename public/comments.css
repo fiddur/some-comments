@@ -50,6 +50,7 @@
 }
 .comment textarea {
   width: 100%;
+  height: 4em;
 }
 
 .comments .comment p:first-child {
