@@ -53,7 +53,7 @@ module.exports = function(models) {
     }
   }
 
-  Page.get = function(id) {return Page.query().where('id', id).first()}
+  Page.get = (id) => Page.query().where({id: id}).orWhere({url: id}).first()
 
   Page.create = async(function(data) {
     // Get site.
@@ -61,7 +61,7 @@ module.exports = function(models) {
     data.siteId = site.id
 
     // Insert
-    var page = await(Page.query().insert(data))
+    var page = await(Page.query().insert(data).eager('site'))
 
     // Subscribe all admins to comments on this new page.
     var admins = await(site.getAdmins())
@@ -76,7 +76,7 @@ module.exports = function(models) {
   }
 
   Page.prototype.getComments = async(function() {
-    return await(this.$loadRelated('comments')).comments
+    return await(this.$loadRelated('comments.user')).comments
   })
 
   Page.prototype.getSubscribers = async(function() {

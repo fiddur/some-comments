@@ -1,6 +1,7 @@
 Todo
 ====
 
+* MIGRATE 0.3.0 → 0.4.0.
 * Remove Q (in favour of bluebird and asyncawait).
 * Use express router consistently.
 * Reasonable logging.

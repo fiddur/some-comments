@@ -63,10 +63,6 @@ exports.start = function start(model, config) {
     res.render('error', {message: err.message, error: {}})
   })
 
-  app.set('views', __dirname + '/views')
-  app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
-  app.set('view engine', 'hbs')
-
   var mailTransport = nodemailer.createTransport(config.mailTransport)
 
   // Setup Cross-origin resource sharing
@@ -120,6 +116,10 @@ exports.start = function start(model, config) {
       })
       .done()
   })
+
+  app.set('views', __dirname + '/views')
+  app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
+  app.set('view engine', 'hbs')
 
   console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
               app.settings.env)

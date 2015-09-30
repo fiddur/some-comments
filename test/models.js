@@ -35,6 +35,7 @@ describe('Models', function() {
 
     page = page2 = await(model.Page.create({
       site: site,
+      // siteId: site.id, /// @todo Test creating page with siteId as well.
       url:  'http://testdomain/myPage'
     }))
 
@@ -59,6 +60,13 @@ describe('Models', function() {
     ])
   }))
 
+  describe('Sites', function() {
+    it('should get by domain', async(() => {
+      let site2 = await(model.Site.getByDomain('testdomain'))
+      assert.equal('testdomain', site2.domain)
+    }))
+  })
+
   describe('Accounts', function() {
     it('should create a user when creating an account', async(function() {
       var account = await(model.Account.getOrCreate(
@@ -73,7 +81,10 @@ describe('Models', function() {
   describe('Comments', function() {
     it('should list all comments from one page', async(function() {
       var pageComments = await(page.getComments())
+
       assert.equal(pageComments.length, 3)
+      assert.equal(pageComments[0].text, 'This is a comment')
+      assert.equal(pageComments[0].user.displayName, 'Foo Bar')
     }))
 
     it('should create a comment', async(function() {

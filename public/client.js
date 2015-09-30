@@ -76,11 +76,20 @@
   ajax.get = function(url) {
     return ajax.call('GET', url, {}, '')
   }
+  ajax.del = function(url) {
+    return ajax.call('DELETE', url, {}, '')
+  }
   ajax.post = function(url, data) {
     var headers = {}
     headers['content-type'] = 'application/json'
     var body = JSON.stringify(data)
     return ajax.call('POST', url, headers, body)
+  }
+  ajax.put = function(url, data) {
+    var headers = {}
+    headers['content-type'] = 'application/json'
+    var body = JSON.stringify(data)
+    return ajax.call('PUT', url, headers, body)
   }
 
   function Editor(input, preview) {
@@ -116,14 +125,14 @@
 
   function getNewCommentDivInnerHtml(user, urlStr) {
     var userHtml = user.avatar ?
-        '<div class="user">' +
+        '<div class="comment_avatar">' +
         '  <img title="' + user.displayName + '" alt="' + user.displayName + '" ' +
         ' src="' + user.avatar + '" />' +
         '</div>'
-        : '<div class="user unknown_user">?</div>'
+        : '<div class="comment_avatar unknown_user">?</div>'
 
     return userHtml +
-      '<div class="comment_text">' +
+      '<div class="comment">' +
       '  <textarea id="comment_' + urlStr + '"' +
       '            placeholder="Type your comment and press enter…" ' +
       '            oninput="this.editor.update()"></textarea>' +
@@ -137,15 +146,15 @@
     var site    = Site(sc.server, siteId)
     var urlStr  = encodeURIComponent(url)
 
-    Comment.getAllByPage(site, urlStr)
-      .then(function(comments) {
+    window.Q.all([
+      Comment.getAllByPage(site, urlStr),
+      User.get(sc.server, 'me')
+    ])
+      .spread(function(comments, user) {
         for (var i = 0; i < comments.length; i++) {
-          element.appendChild(Comment.getElement(comments[i]))
+          element.appendChild(Comment.getElement(comments[i], user))
         }
 
-        return User.get(sc.server, 'me')
-      })
-      .then(function (user) {
         // Add input field
         var newCommentDiv = document.createElement('div')
         newCommentDiv.className = 'comment_row'
@@ -159,12 +168,14 @@
             input.value = ''
             Comment.add(site, urlStr, commentText)
               .then(function(comment) {
-                element.insertBefore(Comment.getElement(comment), newCommentDiv)
+                comment.site = site
+                element.insertBefore(Comment.getElement(comment, user), newCommentDiv)
 
                 // Re-get the new comment div html, since user might have logged in.
                 /// @todo Bind this to users/me instead.
-                newCommentDiv.innerHtml = getNewCommentDivInnerHtml(comment.user)
-              })
+                newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
+                new Editor(input, e('preview_' + urlStr))
+              }).done()
           }
         })
 
@@ -179,7 +190,7 @@
         element.appendChild(someCommentInfo)
 
         new Editor(input, e('preview_' + urlStr))
-      })
+      }).done()
   }
 
   SomeCommentsPrototype.getSites = function() {
@@ -234,7 +245,7 @@
 
       // Resend ajax request.
       document.body.removeChild(iframe)
-      ajax.call(call.method, call.url, call.headers, call.body).then(deferred.resolve)
+      ajax.call(call.method, call.url, call.headers, call.body).then(deferred.resolve).done()
     }, false);
 
     document.body.appendChild(iframe)
@@ -282,7 +293,8 @@
     return ajax.get(
       site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/'
     ).then(function(commentsJson) {
-      return JSON.parse(commentsJson)
+      var comments = JSON.parse(commentsJson)
+      return comments.map(function(comment) {comment.site = site; return comment})
     })
   }
 
@@ -312,19 +324,81 @@
       )
   }
 
-  Comment.getElement = function(comment) {
-    var div = document.createElement('div')
+  Comment.delHook = function() {
+    var element = this
 
+    var commentUrl = element.getAttribute('comment_url')
+    ajax.del(commentUrl)
+      .then(function() {
+        var commentRow = element.parentNode.parentNode.parentNode
+        commentRow.parentNode.removeChild(commentRow)
+      }).done()
+  }
+
+  Comment.getElement = function(comment, user) {
     var displayName = comment.user.displayName || ''
-    var avatar      = comment.user.avatar      || ''
+    var avatarSrc   = comment.user.avatar      || ''
     var createdAt   = comment.createdAt        || ''
 
+    // Building the comment DOM
+    var div = document.createElement('div')
     div.className = 'comment_row'
-    div.innerHTML =
-      '<div class="user"><img alt="' + displayName + '" src="' + avatar
-      + '" /></div><div class="comment_text">'
-      + markdown.toHTML('**' + displayName + '**: ' + comment.text)
-      + '<div class="created">' + createdAt + '</div></div>'
+    {
+      var avatarDiv = document.createElement('div')
+      avatarDiv.className = 'comment_avatar'
+      {
+        var avatarImg = document.createElement('img')
+        avatarImg.src = avatarSrc
+        avatarImg.alt = displayName
+        avatarDiv.appendChild(avatarImg)
+      }
+      div.appendChild(avatarDiv)
+
+      var commentDiv = document.createElement('div')
+      commentDiv.className = 'comment'
+      {
+        if (user && comment.user.id === user.id) {
+          var editOptions = document.createElement('div')
+          editOptions.className = 'edit_options'
+          {
+            var editButton = document.createElement('button')
+            editButton.className = 'comment_edit'
+            editButton.title = 'Edit'
+            editButton.appendChild(document.createTextNode('✎'))
+            editOptions.appendChild(editButton)
+
+            var deleteButton = document.createElement('button')
+            deleteButton.className = 'comment_delete'
+            deleteButton.title = 'Delete'
+            deleteButton.setAttribute(
+              'comment_url',
+              comment.site.server + 'sites/' + comment.site.id + '/pages/' +
+                comment.pageId + '/comments/' + comment.id
+            )
+
+            deleteButton.addEventListener('click', Comment.delHook)
+            editOptions.appendChild(deleteButton)
+          }
+          commentDiv.appendChild(editOptions)
+        }
+
+        var commenterName = document.createElement('span')
+        commenterName.className = 'commenter_name'
+        commenterName.appendChild(document.createTextNode(displayName))
+        commentDiv.appendChild(commenterName)
+
+        var commentText = document.createElement('div')
+        commentText.className = 'comment_text'
+        commentText.innerHTML = markdown.toHTML(comment.text)
+        commentDiv.appendChild(commentText)
+
+        var createdAtSpan = document.createElement('span')
+        createdAtSpan.className = 'comment_created'
+        createdAtSpan.appendChild(document.createTextNode(createdAt))
+        commentDiv.appendChild(createdAtSpan)
+      }
+      div.appendChild(commentDiv)
+    }
 
     return div
   }

@@ -68,10 +68,14 @@ module.exports = function (app, model, mailTransport, config) {
   }))
 
   app.put('/sites/:site/pages/:page/comments/:comment', async(function(req, res) {
+    if (typeof req.body.text === 'undefined') {
+      return res.status(400).send('Bad Request: text is required')
+    }
+
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
 
     var comment = await(model.Comment.get(req.params.comment))
-    var page    = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
+    var page    = await(model.Page.get(req.params.page))
 
     // Validate site and page
     if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
@@ -80,9 +84,37 @@ module.exports = function (app, model, mailTransport, config) {
     if (comment.userId !== req.user.id) {return res.sendStatus(401)}
 
     // Update comment
-    await(comment.setText(req.body.text))
+    try {
+      await(comment.setText(req.body.text))
+      res.json(comment)
+    }
+    catch (err) {
+      console.error(err)
+      res.sendStatus(500)
+    }
+  }))
 
-    res.json(comment)
+  app.delete('/sites/:site/pages/:page/comments/:comment', async((req, res) => {
+    if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
+
+    var comment = await(model.Comment.get(req.params.comment))
+    var page    = await(model.Page.get(req.params.page))
+
+    // Validate site and page
+    if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
+
+    // Validate user
+    if (comment.userId !== req.user.id) {return res.sendStatus(401)}
+
+    // Delete comment
+    try {
+      await(comment.del())
+      res.sendStatus(204)
+    }
+    catch (err) {
+      console.error(err)
+      res.sendStatus(500)
+    }
   }))
 
   var notifySubscribers = async(function(comment) {

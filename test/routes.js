@@ -176,7 +176,7 @@ describe('Routing Integration', function() {
       siteUrl = response.headers.location
     }))
 
-    it('should give comments with user info', async(function() {
+    it('POST should give comments with user info', async(function() {
       // Create another user for comment.
       var user2Jar = rp.jar()
       await(rp({uri: baseUrl + 'auth/anonymous', jar: user2Jar}))
@@ -190,7 +190,30 @@ describe('Routing Integration', function() {
       }))
 
       assert.equal('My comment', commentBody.text)
-      assert.equal('http://two.example.org/tpg', commentBody.page.url)
+      assert.equal('Anonymous', commentBody.user.displayName)
+    }))
+
+    it('GET should give comments with user info', async(function() {
+      // Create another user for comment.
+      var user2Jar = rp.jar()
+      await(rp({uri: baseUrl + 'auth/anonymous', jar: user2Jar}))
+
+      // Place comment
+      var commentBody = await(rp({
+        uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/tpg2') + '/comments/',
+        method: 'POST',
+        json: {text: 'My comment'},
+        jar: user2Jar,
+      }))
+
+      // Get comments from that page
+      var commentBodies = JSON.parse(await(rp({
+        uri: siteUrl + '/pages/' + encodeURIComponent('http://two.example.org/tpg2') + '/comments/',
+        method: 'GET',
+      })))
+
+      assert.equal('My comment', commentBodies[0].text)
+      assert.equal('Anonymous', commentBodies[0].user.displayName)
     }))
 
     it('should give empty list of comments for unknown page', function(done) {

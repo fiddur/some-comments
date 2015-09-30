@@ -49,7 +49,20 @@ module.exports = function(models) {
     return Site.query().insert(data)
   }
 
-  Site.get = function(id) {return Site.query().where('id', id).first()}
+  Site.get         = (id)     => Site.query().where({id:     id    }).first()
+  Site.getByDomain = (domain) => Site.query().where({domain: domain}).first()
+
+  /**
+   * List all sites.
+   */
+  Site.all = function() {
+    return Site.query()
+  }
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
 
   Site.prototype.getAdmins = function() {
     return await(this.$loadRelated('admins')).admins
@@ -57,13 +70,6 @@ module.exports = function(models) {
   Site.prototype.addAdmin = function(admin) {
     var adminId = admin instanceof models.User ? admin.id : admin
     return models.SiteAdmin.query().insert({site: this.id, user: adminId})
-  }
-
-  /**
-   * List all sites.
-   */
-  Site.all = function() {
-    return Site.query()
   }
 
   return Site
@@ -78,9 +84,5 @@ module.exports = function(models) {
     if (sites.length === 0) {throw new Error('No domain found by origin: ' + origin)}
     return sites[0]
   })
-
-  Site.getByDomain = function(domain) {
-    return Site.orm.oneAsync({domain: domain})
-  }
 
 }

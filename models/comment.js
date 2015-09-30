@@ -59,6 +59,8 @@ module.exports = function(models) {
     return await(Comment.query().insert(data))
   })
 
+  Comment.prototype.$beforeInsert = function () {this.createdAt = new Date().toISOString()}
+
   Comment.prototype.setText = function(text) {
     this.text = text
     return this.$query().patch({text: text})
@@ -70,6 +72,8 @@ module.exports = function(models) {
     await(this.$loadRelated('page'))
     return await(this.$loadRelated('page')).page
   })
+
+  Comment.prototype.del = function() {return this.$query().delete()}
 
   return Comment
 }

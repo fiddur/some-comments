@@ -3,7 +3,7 @@
 exports.up = function(knex) {
   return knex.schema.createTable('comments', function(table) {
     table.increments()
-    table.string('text')
+    table.string('text').notNullable()
 
     table.integer('userId')
     table.integer('pageId')
