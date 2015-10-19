@@ -6,8 +6,8 @@ exports.up = function(knex) {
     table.string('domain', 191).unique().index()
     table.integer('maxLevels').defaultTo(0)
 
-    table.timestamp('createdAt')
-    table.timestamp('modifiedAt')
+    table.timestamp('createdAt').defaultTo(knex.raw('CURRENT_TIMESTAMP'))
+    table.timestamp('modifiedAt').defaultTo(knex.raw('CURRENT_TIMESTAMP'))
   })
 }
 

@@ -8,8 +8,8 @@ exports.up = function(knex) {
     table.string('email')
     table.string('anonymousIp')
 
-    table.timestamp('createdAt')
-    table.timestamp('modifiedAt')
+    table.timestamp('createdAt').defaultTo(knex.raw('CURRENT_TIMESTAMP'))
+    table.timestamp('modifiedAt').defaultTo(knex.raw('CURRENT_TIMESTAMP'))
   })
 }
 
