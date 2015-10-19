@@ -114,28 +114,3 @@ const main = async(function() {
 })
 
 main().done()
-
-/**
-
-Here's the manual "diff" between 0.3 and current…
-
--- Table missing in current
-CREATE TABLE `oidc` (
-  `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT ,
-  `issuer` TEXT ,
-  `authorizationURL` TEXT ,
-  `tokenURL` TEXT ,
-  `userInfoURL` TEXT ,
-  `registrationURL` TEXT ,
-  `clientID` TEXT ,
-  `clientSecret` TEXT ,
-  `expiresAt` INTEGER
-);
-
--- Table missing in current
-CREATE TABLE `oidcIdentifiers` (`identifier` TEXT NOT NULL , `oidc_id` INTEGER );
-
--- Table missing in current - Drop it until further use?
-DROP TABLE `superadmins`
-
-*/

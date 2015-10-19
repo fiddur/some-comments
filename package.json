@@ -1,6 +1,5 @@
 {
   "name": "some-comments",
-  "version": "0.2.0",
   "description": "Some Comments",
   "main": "index.js",
   "scripts": {

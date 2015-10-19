@@ -174,7 +174,7 @@ Callback URI will be `http(s)://domain/auth/facebook/callback`.
 
 ### Database
 
-Anything that [node-orm2](https://github.com/dresende/node-orm2) supports.
+Anything that [Knex](http://knexjs.org/) supports.
 
 To use a backend, simply install it:
 
@@ -184,16 +184,18 @@ npm install sqlite3
 
 …and use it in your config:
 ```javascript
-database: 'sqlite:///var/lib/some-comments.db'
+database: {
+  client: 'sqlite3',
+  connection: {
+    filename: "/var/lib/some-comments.db"
+  }
+}
 ```
 
 …and run the migrations:
 ```
-DB_URL=sqlite:///var/lib/some-comments.db ./node_modules/.bin/migrate up
+grunt migrate:up
 ```
-
-Whatever is in `config.database` will be passed on to
-[orm.connect](https://github.com/dresende/node-orm2/wiki/Connecting-to-Database).
 
 
 ### E-mail notifications
