@@ -1,6 +1,15 @@
 Todo
 ====
 
+Before 0.4.0
+------------
+
+* Finish converting oidc and oidcIdentity-classes to knex/objection.
+
+
+General
+-------
+
 * Move authentication.js to routes.
 * Use express router consistently.
 * Reasonable logging.

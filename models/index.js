@@ -33,8 +33,6 @@ var oidc           = require('./oidc')
 var oidcIdentifier = require('./oidc_identifier')
 
 var Promise = require('bluebird')
-var orm     = Promise.promisifyAll(require('orm'))
-var modts   = require('orm-timestamps')
 
 module.exports = async(function(config) {
   var Knex = require('knex')
@@ -78,10 +76,6 @@ module.exports = async(function(config) {
 
   //var Oidc           = oidc(db)
   //var OidcIdentifier = oidcIdentifier(db, Oidc)
-
-  //// Superadmins
-  //models.Superadmin = db.define('superadmin', {})
-  //models.Superadmin.hasOne('user', models.User.orm, {key: true})
 
   if (config.testMode) {await(knex.migrate.latest())}
 
