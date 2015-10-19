@@ -19,16 +19,16 @@
 
 'use strict'
 
-var crypto = require('crypto')
+const crypto = require('crypto')
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var Promise = require('bluebird')
-var Model = require('objection').Model
-var jwt   = require('jsonwebtoken')
+const Promise = require('bluebird')
+const Model = require('objection').Model
+const jwt   = require('jsonwebtoken')
 
-module.exports = function(models, config) {
+module.exports = (models, config) => {
   function User() {Model.apply(this, arguments)}
   Model.extend(User)
 
@@ -37,7 +37,7 @@ module.exports = function(models, config) {
   User.create = (data) => User.query().insert(data)
 
   User.get = async((id) => {
-    let user = await(User.query().where('id', id).first())
+    const user = await(User.query().where('id', id).first())
     if (user === undefined) throw new Error('No User with ID ' + id)
     return user
   })
@@ -47,14 +47,14 @@ module.exports = function(models, config) {
    *
    * @exception Error  If token is not valid
    */
-  User.unsubscribe = async(function(unsubscribeToken) {
-    var token = await(Promise.promisify(jwt.verify)(unsubscribeToken, config.secret))
+  User.unsubscribe = async((unsubscribeToken) => {
+    const token = await(Promise.promisify(jwt.verify)(unsubscribeToken, config.secret))
 
     if (token.sub !== 'unsubscribe') {
       throw new Error('Not an unsubscribe token')
     }
 
-    var data = await({
+    const data = await({
       user: User.get(token.user),
       page: models.Page.get(token.page)
     })
@@ -68,22 +68,22 @@ module.exports = function(models, config) {
    * Create an anonymous user from IP address.
    *
    */
-  User.createAnonymous = async(function(ip) {
+  User.createAnonymous = async((ip) => {
     if (!('anonymous' in config.authenticators)) {
       throw new Error('Anonymous users are not enabled in config.')
     }
 
-    var userData = {
+    const userData = {
       anonymousIp: ip,
       displayName: config.authenticators.anonymous.displayName || 'Anonymous',
       avatar:      config.authenticators.anonymous.avatar || 'gravatar(monsterid)',
     }
 
-    var user = await(User.create(userData))
+    const user = await(User.create(userData))
 
-    var gravatarMatches
+    let gravatarMatches
     if (gravatarMatches = user.avatar.match(/^gravatar\((.*)\)$/)) {
-      var hash = crypto.createHash('md5')
+      const hash = crypto.createHash('md5')
       hash.update(user.id + ': ' + user.anonymousIp)
 
       await(user.setAvatar(
@@ -94,19 +94,24 @@ module.exports = function(models, config) {
     return user
   })
 
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
   /**
    * Get an unsubscribe token for a page
    *
    * @todo Make this async as well (for maximum performance).
    */
   User.prototype.unsubscribeToken = function(page) {
-    var pageId = page instanceof models.Page ? page.id : page
+    const pageId = page instanceof models.Page ? page.id : page
 
     return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
   }
 
   User.prototype.hasSubscription = async(function(page) {
-    var pages = await(this.$relatedQuery('subscriptions').where({pageId: page.id}))
+    const pages = await(this.$relatedQuery('subscriptions').where({pageId: page.id}))
     return pages.length > 0
   })
 

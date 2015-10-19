@@ -19,14 +19,14 @@
 
 'use strict'
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var url = require('url')
+const url = require('url')
 
-var Model = require('objection').Model
+const Model = require('objection').Model
 
-module.exports = function(models) {
+module.exports = (models) => {
   function Site() {Model.apply(this, arguments)}
   Model.extend(Site)
 
@@ -47,10 +47,7 @@ module.exports = function(models) {
     }
   }
 
-  Site.create = function(data) {
-    return Site.query().insert(data)
-  }
-
+  Site.create      = (data)   => Site.query().insert(data)
   Site.get         = (id)     => Site.query().where({id:     id    }).first()
   Site.getByDomain = (domain) => Site.query().where({domain: domain}).first()
 
@@ -58,16 +55,14 @@ module.exports = function(models) {
    * Get a Site by http origin header string.
    */
   Site.getByOrigin = (origin) => {
-    var urlParts = url.parse(origin)
+    const urlParts = url.parse(origin)
     return Site.getByDomain(urlParts.host)
   }
 
   /**
    * List all sites.
    */
-  Site.all = function() {
-    return Site.query()
-  }
+  Site.all = () => Site.query()
 
 
   /************************************************************************************************
@@ -77,8 +72,9 @@ module.exports = function(models) {
   Site.prototype.getAdmins = function() {
     return await(this.$loadRelated('admins')).admins
   }
+
   Site.prototype.addAdmin = function(admin) {
-    var adminId = admin instanceof models.User ? admin.id : admin
+    const adminId = admin instanceof models.User ? admin.id : admin
     return models.SiteAdmin.query().insert({siteId: this.id, userId: adminId})
   }
 

@@ -13,5 +13,5 @@ Todo
 * User page where you can add or merge authorization accounts.
 * I18N
 * Validate config for easier setup/upgrade.
-* Switch from Q to Bluebird.
 * Switch from supertest to request-promise.
+* Consistent ES6 usage: const, let, arrow-lambdas…

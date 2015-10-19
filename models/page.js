@@ -19,12 +19,12 @@
 
 'use strict'
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var Model   = require('objection').Model
+const Model   = require('objection').Model
 
-module.exports = function(models) {
+module.exports = (models) => {
   function Page() {Model.apply(this, arguments)}
   Model.extend(Page)
 
@@ -55,25 +55,30 @@ module.exports = function(models) {
 
   Page.get = (id) => Page.query().where({id: id}).orWhere({url: id}).first()
 
-  Page.create = async(function(data) {
+  Page.create = async((data) => {
     // Get site.
-    var site = data.site ? data.site : await(models.Site.get(data.siteId))
+    const site = data.site ? data.site : await(models.Site.get(data.siteId))
     data.siteId = site.id
 
     // Insert
-    var page = await(Page.query().insert(data).eager('site'))
+    const page = await(Page.query().insert(data).eager('site'))
 
     // Subscribe all admins to comments on this new page.
-    var admins = await(site.getAdmins())
-    await(admins.map(function (admin) {return admin.subscribe(page)}))
+    const admins = await(site.getAdmins())
+    await(admins.map((admin) => admin.subscribe(page)))
 
     return page
   })
 
-  Page.getBySiteUrl = function(site, url) {
+  Page.getBySiteUrl = (site, url) => {
     if (site instanceof models.Site) {site = site.id}
     return Page.query().where({siteId: site, url: url}).first()
   }
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
 
   Page.prototype.getComments = async(function() {
     return await(this.$loadRelated('comments.user')).comments
@@ -87,21 +92,6 @@ module.exports = function(models) {
     if (this.site) {return this.site}
     return await(this.$loadRelated('site')).site
   })
-
-  return Page
-
-
-
-
-  /**
-   * Gets a page either by url or id.
-   */
-  Page.get = async(function(id) {
-    var page = Promise.promisifyAll(await(Page.orm.find().where('id = ? OR url = ?', [id, id])))
-    console.log(page)
-    return page[0]
-  })
-
 
   return Page
 }

@@ -19,12 +19,12 @@
 
 'use strict'
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var Model = require('objection').Model
+const Model = require('objection').Model
 
-module.exports = function(models) {
+module.exports = (models) => {
   function Account() {Model.apply(this, arguments)}
   Model.extend(Account)
 
@@ -44,12 +44,12 @@ module.exports = function(models) {
   /**
    * Find an account by authenticator and UID, or create it along with it's user.
    *
-   * @param authenticator
-   * @param uid
-   * @param userData   Object of userdata
+   * @param {string} authenticator
+   * @param {string} uid
+   * @param {object} userData   Object of userdata
    */
-  Account.getOrCreate = async(function(authenticator, uid, userData) {
-    var account = await(
+  Account.getOrCreate = async((authenticator, uid, userData) => {
+    const account = await(
       Account.query()
         .where('authenticator', authenticator)
         .where('uid', uid)
@@ -60,7 +60,7 @@ module.exports = function(models) {
     if (account.length > 0) {return account[0]}
 
     // Create user first.
-    var user = await(models.User.create(userData))
+    const user = await(models.User.create(userData))
 
     return await(
       Account.query().insert({authenticator: authenticator, uid: uid, userId: user.id})

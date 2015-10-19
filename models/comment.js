@@ -19,12 +19,12 @@
 
 'use strict'
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var Model = require('objection').Model
+const Model = require('objection').Model
 
-module.exports = function(models) {
+module.exports = (models) => {
   function Comment() {Model.apply(this, arguments)}
   Model.extend(Comment)
 
@@ -49,9 +49,9 @@ module.exports = function(models) {
     }
   }
 
-  Comment.get = function(id) {return Comment.query().where('id', id).first()}
+  Comment.get = (id) => Comment.query().where('id', id).first()
 
-  Comment.create = async(function(data) {
+  Comment.create = async((data) => {
     if (data.user instanceof models.User) {data.userId = data.user.id}
     if (data.page instanceof models.Page) {data.pageId = data.page.id}
 
@@ -59,7 +59,7 @@ module.exports = function(models) {
     return await(Comment.query().insert(data))
   })
 
-  Comment.prototype.$beforeInsert = function () {this.createdAt = new Date().toISOString()}
+  Comment.prototype.$beforeInsert = function() {this.createdAt = new Date().toISOString()}
 
   Comment.prototype.setText = function(text) {
     this.text = text
