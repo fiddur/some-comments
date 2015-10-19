@@ -26,7 +26,10 @@ var config = {
       }
     ],
   },
-  database: 'sqlite://' + path.join(__dirname, 'comments.db'),
+  database: {
+    client: 'sqlite3',
+    connection: {filename: path.join(__dirname, 'comments.db')}
+  }
 }
 
 module.exports = config

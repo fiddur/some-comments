@@ -243,7 +243,7 @@
     iframe.src = server + 'login'
     iframe.className = 'login'
 
-    var deferred = Q.defer()
+    var deferred = window.Q.defer()
 
     window.addEventListener('message', function(event) {
       var origUrl   = parseUrl(event.origin)

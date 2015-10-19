@@ -47,7 +47,7 @@ describe('Routing Integration', function() {
 
   before(async(function() {
     this.timeout(5000)
-    await(Q.Promise(function(resolve, reject, notify) {
+    await(new Promise(function(resolve, reject) {
       // Start the server
       var subEnv = process.env
       subEnv.COVERAGE = true

@@ -1,8 +1,7 @@
 Todo
 ====
 
-* MIGRATE 0.3.0 → 0.4.0.
-* Remove Q (in favour of bluebird and asyncawait).
+* Move authentication.js to routes.
 * Use express router consistently.
 * Reasonable logging.
 * Error handling.
@@ -15,3 +14,6 @@ Todo
 * Validate config for easier setup/upgrade.
 * Switch from supertest to request-promise.
 * Consistent ES6 usage: const, let, arrow-lambdas…
+* Remove Q from test/routes.
+* Remove Q from frontend.
+* Use `request-promise` in test, rather than `supertest`.

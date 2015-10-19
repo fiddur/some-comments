@@ -20,7 +20,7 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-var Q                = require('q')
+var Promise          = require('bluebird')
 var passport         = require('passport')
 var FacebookStrategy = require('passport-facebook').Strategy
 var GithubStrategy   = require('passport-github').Strategy
@@ -36,7 +36,7 @@ function setupAnonymous(model, app, anonConfig) {
 
       // Create an anonymous user.
       var user = await(model.User.createAnonymous(req.ip))
-      await(Q.ninvoke(req, 'login', user))
+      await(Promise.promisify(req.login, req)(user))
       res.redirect('/account')
     })
   )

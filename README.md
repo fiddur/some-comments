@@ -224,6 +224,21 @@ require('nodemailer-sendmail-transport')(options)`.
 Changelog
 ---------
 
+### 0.4.0
+
+**Upgrade from 0.3**:
+
+1. Update config (`database` format changed to [Knex]())
+2. `node migrate0.3.0-0.4.0.js`
+
+* #19: Edit/delete own comments.
+* Changing ORM again (using objection.js, but thinking about ditching that and only using knex).
+* Using Bluebird for promises.
+* Dropping node < 4 - This is a microservice, does not need to be compatible with old interpreters!
+
+Use with caution; I haven't tested the Dynamic OpenID Connect authentication in this version.
+
+
 ### 0.3.0
 
 **Upgrade from 0.2**: `grunt migrate:up`
