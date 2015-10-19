@@ -30,6 +30,17 @@ module.exports = function(models) {
 
   Account.tableName = 'accounts';
 
+  Account.relationMappings = {
+    user: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.User,
+      join: {
+        from: 'accounts.userId',
+        to:   'users.id',
+      }
+    }
+  }
+
   /**
    * Find an account by authenticator and UID, or create it along with it's user.
    *
@@ -51,8 +62,19 @@ module.exports = function(models) {
     // Create user first.
     var user = await(models.User.create(userData))
 
-    return await(Account.query().insert({authenticator: authenticator, uid: uid, user: user}))
+    return await(
+      Account.query().insert({authenticator: authenticator, uid: uid, userId: user.id})
+    ).$loadRelated('user')
   })
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  Account.prototype.getUser = function() {
+    return await(this.$loadRelated('user')).user
+  }
 
   return Account
 }

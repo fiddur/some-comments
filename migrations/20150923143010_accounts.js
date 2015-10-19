@@ -4,11 +4,11 @@ exports.up = function(knex) {
   return knex.schema.createTable('accounts', function(table) {
     table.increments()
 
-    table.string('uid',           191).unique()
-    table.string('authenticator', 191).unique()
-    table.index(['uid','authenticator'], 'authenticator_uid')
+    table.string('uid',           191)
+    table.string('authenticator', 191)
+    table.index(['uid', 'authenticator'], 'authenticatorUid')
 
-    table.integer('user')
+    table.integer('userId')
 
     table.timestamp('createdAt')
     table.timestamp('modifiedAt')

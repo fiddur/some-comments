@@ -115,7 +115,7 @@
     return sc
   }
 
-  function insertNewCommentElement(element, user, urlStr) {
+  function makeCommentingDiv(user, postCb, preText) {
     var div = document.createElement('div')
     div.className = 'comment_row'
 
@@ -133,6 +133,7 @@
     input.placeholder = 'Type your comment and press enter…'
     inputDiv.appendChild(input)
     commentDiv.appendChild(inputDiv)
+    if (preText) input.value = preText
 
     var commentPreview = document.createElement('div')
     commentPreview.className = 'comment_text'
@@ -141,24 +142,34 @@
     input.addEventListener('input', function() {
       commentPreview.innerHTML = markdown.toHTML(this.value)
     })
+    if (preText) {input.dispatchEvent(new Event('input'))}
 
     input.addEventListener('keypress', function(kp) {
       if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
         var commentText = input.value
         input.value = ''
-        Comment.add(user.site, urlStr, commentText)
-          .then(function(comment) {
-            comment.site = user.site
-            element.insertBefore(Comment.getElement(comment, user), div)
-
-            // Re-get the new comment div html, since user might have logged in.
-            /// @todo Bind this to users/me instead.
-            /////newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
-          }).done()
+        postCb(commentText)
       }
     })
 
     div.appendChild(commentDiv)
+
+    return div
+  }
+
+  function insertNewCommentElement(element, user, urlStr) {
+    var div = makeCommentingDiv(user, function(commentText) {
+      Comment.add(user.site, urlStr, commentText)
+        .then(function(comment) {
+          comment.site = user.site
+          element.insertBefore(Comment.getElement(comment, user), div)
+
+          // Re-get the new comment div html, since user might have logged in.
+          /// @todo Bind this to users/me instead.
+          /////newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
+        }).done()
+    })
+
     element.appendChild(div)
   }
 
@@ -219,7 +230,6 @@
       )
   }
 
-
   ////////
   // User
   //
@@ -277,7 +287,6 @@
     return site
   }
 
-
   ///////////
   // Comment
   //
@@ -324,13 +333,13 @@
       )
   }
 
-  Comment.delHook = function() {
-    var element = this
+  Comment.del = function(comment) {
+    var commentUrl = comment.site.server + 'sites/' + comment.site.id + '/pages/' +
+        comment.pageId + '/comments/' + comment.id
 
-    var commentUrl = element.getAttribute('comment_url')
     ajax.del(commentUrl)
       .then(function() {
-        var commentRow = element.parentNode.parentNode.parentNode
+        var commentRow = e('comment_' + comment.id)
         commentRow.parentNode.removeChild(commentRow)
       }).done()
   }
@@ -339,12 +348,44 @@
     var avatarDiv = document.createElement('div')
     avatarDiv.className = 'comment_avatar'
 
-    var avatarImg = document.createElement('img')
-    avatarImg.src = user.avatar || ''
-    avatarImg.alt = user.displayName || ''
-    avatarDiv.appendChild(avatarImg)
+    if (user.avatar) {
+      var avatarImg = document.createElement('img')
+      avatarImg.src = user.avatar || ''
+      avatarImg.alt = user.displayName || ''
+      avatarDiv.appendChild(avatarImg)
+    }
+    else {
+      var avatarTxt = document.createTextNode('?')
+      avatarDiv.className = avatarDiv.className + ' unknown_user'
+      avatarDiv.appendChild(avatarTxt)
+    }
 
     return avatarDiv
+  }
+
+  function transformToEdit(comment) {
+    var commentUrl = comment.site.server + 'sites/' + comment.site.id + '/pages/' +
+        comment.pageId + '/comments/' + comment.id
+
+    var row = e('comment_' + comment.id)
+    var user = comment.user
+
+    var oldCommentDiv = e('comment_' + comment.id)
+    var commentingDiv = makeCommentingDiv(comment.user, function(commentText) {
+      ajax.put(commentUrl, {text: commentText})
+        .then(function(newCommentJson) {
+          var newComment = JSON.parse(newCommentJson)
+          newComment.user = user
+          newComment.site = comment.site
+
+          var newCommentDiv = Comment.getElement(newComment, user)
+          commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
+          commentingDiv.parentNode.removeChild(commentingDiv)
+        }).done()
+    }, comment.text)
+
+    oldCommentDiv.parentNode.insertBefore(commentingDiv, oldCommentDiv)
+    oldCommentDiv.parentNode.removeChild(oldCommentDiv)
   }
 
   function editOptionsDiv(comment) {
@@ -355,18 +396,13 @@
     editButton.className = 'comment_edit'
     editButton.title     = 'Edit'
     editButton.appendChild(document.createTextNode('✎'))
+    editButton.addEventListener('click', function() {transformToEdit(comment)})
     editOptions.appendChild(editButton)
 
     var deleteButton       = document.createElement('button')
     deleteButton.className = 'comment_delete'
     deleteButton.title     = 'Delete'
-    deleteButton.setAttribute(
-      'comment_url',
-      comment.site.server + 'sites/' + comment.site.id + '/pages/' +
-        comment.pageId + '/comments/' + comment.id
-    )
-
-    deleteButton.addEventListener('click', Comment.delHook)
+    deleteButton.addEventListener('click', function() {Comment.del(comment)})
     editOptions.appendChild(deleteButton)
 
     return editOptions
@@ -401,6 +437,7 @@
   Comment.getElement = function(comment, user) {
     var div = document.createElement('div')
     div.className = 'comment_row'
+    div.id = 'comment_' + comment.id
 
     div.appendChild(avatarDiv(comment.user))
     div.appendChild(commentDiv(comment, user))

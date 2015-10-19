@@ -17,6 +17,8 @@
  * GNU-AGPL-3.0
  */
 
+'use strict'
+
 var crypto = require('crypto')
 
 var async = require('asyncawait/async')
@@ -32,9 +34,13 @@ module.exports = function(models, config) {
 
   User.tableName = 'users';
 
-  User.create = function(data) {return User.query().insert(data)}
+  User.create = (data) => User.query().insert(data)
 
-  User.get = function(id) {return User.query().where('id', id).first()}
+  User.get = async((id) => {
+    let user = await(User.query().where('id', id).first())
+    if (user === undefined) throw new Error('No User with ID ' + id)
+    return user
+  })
 
   /**
    * @return Promise for object with user and page

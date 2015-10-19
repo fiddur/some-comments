@@ -83,13 +83,7 @@ module.exports = async(function(config) {
   //models.Superadmin = db.define('superadmin', {})
   //models.Superadmin.hasOne('user', models.User.orm, {key: true})
 
-  if (config.testMode) {
-    await(knex.migrate.latest())
-    //var MigrationTask = require('migrate-orm2')
-    //var migrationTask = Promise.promisifyAll(new MigrationTask(db.driver, {dir: 'data/migrations'}))
-    //await(migrationTask.upAsync(null))
-
-  }
+  if (config.testMode) {await(knex.migrate.latest())}
 
   return config.model = models
 })

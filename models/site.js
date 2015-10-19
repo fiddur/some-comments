@@ -39,8 +39,8 @@ module.exports = function(models) {
       join: {
         from: 'sites.id',
         through: {
-          from: 'siteadmins.site',
-          to:   'siteadmins.user',
+          from: 'siteadmins.siteId',
+          to:   'siteadmins.userId',
         },
         to:   'users.id',
       }
@@ -79,7 +79,7 @@ module.exports = function(models) {
   }
   Site.prototype.addAdmin = function(admin) {
     var adminId = admin instanceof models.User ? admin.id : admin
-    return models.SiteAdmin.query().insert({site: this.id, user: adminId})
+    return models.SiteAdmin.query().insert({siteId: this.id, userId: adminId})
   }
 
   return Site

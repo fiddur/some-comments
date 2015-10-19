@@ -53,7 +53,7 @@ function openIdConnectDynamic(model, app, config) {
       avatar:      userInfo.picture,
       email:       userInfo.email,
     }))
-    var user = await(account.qGetUser())
+    var user = await(account.getUser()) /// @todo test
     done(null, user)
   }))
 
@@ -130,7 +130,7 @@ function openIdConnectProvider(app, model, baseUrl, provider) {
       avatar:      userInfo.picture || '',
       email:       userInfo.email,
     })
-      .then(function(account) {return account.qGetUser()})
+      .then(function(account) {return account.getUser()})  /// @todo test
       .then(function(user)    {done(null, user)})
       .done()
   })
@@ -170,7 +170,7 @@ function facebook(app, provider, model, baseUrl) {
         avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
         email:       profile._json.email,
       })
-        .then(function(account) {return account.qGetUser()})
+        .then(function(account) {return account.getUser()})  /// @todo test
         .then(function(user) {done(null, user)})
         .done()
     }
@@ -200,10 +200,8 @@ exports.setup = function setup(app, model, config) {
   })
   passport.deserializeUser(function(id, done) {
     model.User.get(id)
-      .then(
-        function(user)  {done(null, user)},
-        function(error) {done(null, null)}
-      )
+      .then((user) => done(null, user))
+      .catch((error) => done(null, null))
   })
 
   app.get('/login', function(req, res) {res.render('login', {config: config})})

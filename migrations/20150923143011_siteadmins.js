@@ -2,9 +2,9 @@
 
 exports.up = function(knex) {
   return knex.schema.createTable('siteadmins', function(table) {
-    table.integer('site').references('site.id')
-    table.integer('user').references('user.id')
-    table.primary(['site', 'user'])
+    table.integer('siteId').references('site.id')
+    table.integer('userId').references('user.id')
+    table.primary(['siteId', 'userId'])
   })
 }
 
