@@ -57,6 +57,30 @@
   margin-top: 0;
 }
 
+.comments .review {
+  padding: 5px 0px;
+}
+.comments .review input {
+  display: none;
+}
+.comments .review span {
+  color: #ccc;
+  padding: 1px;
+  display: inline-block;
+}
+.comments .review label {
+  color: #ccc;
+  padding: 1px;
+  cursor: pointer;
+  display: inline-block;
+}
+.comments .review .active {
+  color: green;
+}
+.comments .review label:hover {
+  color: red;
+}
+
 iframe.login {
   z-index: 1000;
   position: fixed;

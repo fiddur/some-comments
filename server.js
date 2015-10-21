@@ -37,6 +37,7 @@ var nodemailer       = require('nodemailer')
 var Authentication   = require('./authentication')
 var SiteRoutes       = require('./routes/sites')
 var CommentRoutes    = require('./routes/comments')
+var ReviewRoutes     = require('./routes/reviews')
 
 exports.start = function start(model, config) {
   var app = express()
@@ -97,6 +98,7 @@ exports.start = function start(model, config) {
   // Setup routes
   SiteRoutes(app, model, config)
   CommentRoutes(app, model, mailTransport, config)
+  ReviewRoutes(app, model, config)
 
   // routes
   app.use('/users', require('./routes/users')(model, config))

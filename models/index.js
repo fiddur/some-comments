@@ -27,6 +27,7 @@ var site           = require('./site')
 var account        = require('./account')
 var page           = require('./page')
 var comment        = require('./comment')
+var review         = require('./review')
 var siteadmin      = require('./siteadmin')
 var subscription   = require('./subscription')
 var oidc           = require('./oidc')
@@ -49,6 +50,7 @@ module.exports = async(function(config) {
   models.Site           = site(models)
   models.Page           = page(models)
   models.Comment        = comment(models)
+  models.Review         = review(models)
   models.Account        = account(models)
   models.SiteAdmin      = siteadmin(models)
 
@@ -73,6 +75,15 @@ module.exports = async(function(config) {
     join: {
       from: 'pages.id',
       to:   'comments.pageId',
+    }
+  }
+
+  models.Page.relationMappings.reviews = {
+    relation: Model.OneToManyRelation,
+    modelClass: models.Review,
+    join: {
+      from: 'pages.id',
+      to:   'reviews.pageId',
     }
   }
 
