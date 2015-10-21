@@ -210,11 +210,11 @@
         return JSON.parse(sitesJson)
       })
   }
-  SomeCommentsPrototype.addSite = function(domain) {
+  SomeCommentsPrototype.addSite = function(domain, settings) {
     var sc = this
 
     return ajax.post(
-      sc.server + 'sites/', {domain: domain})
+      sc.server + 'sites/', {domain: domain, settings: settings})
       .then(
         function(response) {
         }, function(error) {
