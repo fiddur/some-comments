@@ -47,6 +47,9 @@ module.exports = function (app, model, config) {
   }))
 
   app.get('/sites/:id', async(function(req, res) {
-    res.json(await(model.Site.get(req.params.id)))
+    var site = await(model.Site.get(req.params.id))
+    if (!site) return res.sendStatus(404)
+    site.settings = JSON.parse(site.settings)
+    res.json(site)
   }))
 }
