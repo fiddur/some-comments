@@ -231,7 +231,7 @@ Changelog
 
 **Upgrade from 0.3**:
 
-1. Update config (`database` format changed to [Knex]())
+1. Update config (`database` format changed to [Knex](http://knexjs.org/))
 2. `node migrate0.3.0-0.4.0.js`
 
 * #19: Edit/delete own comments.
