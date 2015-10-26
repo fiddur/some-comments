@@ -56,7 +56,8 @@ And, add the css:
 Install (server)
 ----------------
 
-This is tested on Node 0.10, 0.12, and v4.0.0, and io.js.
+**Some comments** requires Node v4 or higher!  I suggest using
+[nvm](https://github.com/creationix/nvm).
 
 ```
 git clone https://github.com/fiddur/some-comments.git
@@ -236,7 +237,8 @@ Changelog
 * #19: Edit/delete own comments.
 * Changing ORM again (using objection.js, but thinking about ditching that and only using knex).
 * Using Bluebird for promises.
-* Dropping node < 4 - This is a microservice, does not need to be compatible with old interpreters!
+* **Required node >= 4** - This is a microservice, does not need to be compatible with old
+  interpreters!
 
 Use with caution; I haven't tested the Dynamic OpenID Connect authentication in this version.
 
