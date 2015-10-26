@@ -109,11 +109,12 @@ exports.start = function start(model, config) {
   app.get('/ping', function(req, res) {res.send('pong')})
 
   app.get('/test', function(req, res) {
-    model.Site.getByDomain(config.baseUrl.host)
+    const host = config.baseUrl.hostname + ':' + config.baseUrl.port
+    model.Site.getByDomain(host)
       .then(function(site) {
         if (site) {return site} // Chain it for creation below
 
-        return model.Site.create({domain: config.baseUrl.host})
+        return model.Site.create({domain: host})
       })
       .then(function(site) {
         res.render('test', {config: config, site: site.id})
