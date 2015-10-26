@@ -224,6 +224,21 @@ could for example `npm install nodemailer-sendmail-transport` and in config put 
 require('nodemailer-sendmail-transport')(options)`.
 
 
+Contributing
+------------
+
+* Comment on issue to let others know you started implementing something.  Discuss data & code
+  design on the issue.
+* Use [gitflow](https://github.com/nvie/gitflow) branching model - make pull requests toward the
+  `develop` branch.
+* Use jscs for code formatting.
+* Skip unnecessary semicolons.
+* Use ES6 `const`, `=>`, prefer `async/await` before explicit promises.
+* Make sure new code is tested both with relevant unit tests and integration tests.
+* Make sure there are working migrations from older versions.
+* See [TODO](TODO.md) for refactorings waiting to happen…
+
+
 Changelog
 ---------
 
