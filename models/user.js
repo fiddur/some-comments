@@ -17,97 +17,120 @@
  * GNU-AGPL-3.0
  */
 
-var crypto = require('crypto')
+'use strict'
 
-var jwt = require('jsonwebtoken')
-var Q   = require('q')
+const crypto = require('crypto')
 
-module.exports = function(db, config) {
-  var User = {}
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-  User.orm = db.qDefine('users', {
-    id:          {type: 'serial', key: true},
-    displayName: {type: 'text'},
-    avatar:      {type: 'text'},
-    email:       {type: 'text'},
-    anonymousIp: {type: 'text', defaultValue: null},
-  }, {
-    methods: {
-      /**
-       * Get an unsubscribe token for a page
-       *
-       * @todo Make this async as well (for maximum performance).
-       */
-      unsubscribeToken: function (pageId) {
-        return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
-      },
+const Promise = require('bluebird')
+const Model = require('objection').Model
+const jwt   = require('jsonwebtoken')
 
-      subscribe: function(page) {
-        var self = this
+module.exports = (models, config) => {
+  function User() {Model.apply(this, arguments)}
+  Model.extend(User)
 
-        // Don't subscribe if there's no e-mail address.
-        if (!this.email) {return Q(false)}
+  User.tableName = 'users'
 
-        // Check if already subscribed.
-        return Q.ninvoke(this, 'hasSubscriptions', page)
-          .then(function(isSubscribed) {
-            if (isSubscribed) {return true}
-            return Q.ninvoke(self, 'addSubscriptions', page)
-          })
-      }
-    }
+  User.create = (data) => User.query().insert(data)
+
+  User.get = async((id) => {
+    const user = await(User.query().where('id', id).first())
+    if (user === undefined) throw new Error('No User with ID ' + id)
+    return user
   })
 
-  User.get = function(id) {return User.orm.qGet(id)}
+  /**
+   * @return Promise for object with user and page
+   *
+   * @exception Error  If token is not valid
+   */
+  User.unsubscribe = async((unsubscribeToken) => {
+    const token = await(Promise.promisify(jwt.verify)(unsubscribeToken, config.secret))
 
-  User.create = function(data) {
-    return User.orm.qCreate([data]).then(function(users) {return users[0]})
-  }
+    if (token.sub !== 'unsubscribe') {
+      throw new Error('Not an unsubscribe token')
+    }
+
+    const data = await({
+      user: User.get(token.user),
+      page: models.Page.get(token.page)
+    })
+
+    await(data.page.$relatedQuery('subscribers').unrelate(data.user.id))
+
+    return data
+  })
 
   /**
    * Create an anonymous user from IP address.
    *
    */
-  User.createAnonymous = function(ip) {
+  User.createAnonymous = async((ip) => {
     if (!('anonymous' in config.authenticators)) {
       throw new Error('Anonymous users are not enabled in config.')
     }
 
-    var userData = {
+    const userData = {
       anonymousIp: ip,
       displayName: config.authenticators.anonymous.displayName || 'Anonymous',
       avatar:      config.authenticators.anonymous.avatar || 'gravatar(monsterid)',
     }
 
-    return User.create(userData)
-      .then(function(user) {
-        var gravatarMatches
-        if (gravatarMatches = user.avatar.match(/^gravatar\((.*)\)$/)) {
-          var hash = crypto.createHash('md5')
-          hash.update(user.id + ': ' + user.anonymousIp)
+    const user = await(User.create(userData))
 
-          user.avatar =
-            'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=' + gravatarMatches[1]
+    let gravatarMatches
+    if (gravatarMatches = user.avatar.match(/^gravatar\((.*)\)$/)) {
+      const hash = crypto.createHash('md5')
+      hash.update(user.id + ': ' + user.anonymousIp)
 
-          return user.save()
-        }
-        return user
-      })
-  }
+      await(user.setAvatar(
+        'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=' + gravatarMatches[1]
+      ))
+    }
+
+    return user
+  })
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
 
   /**
-   * @return Promise for [user, page]
+   * Get an unsubscribe token for a page
    *
-   * @exception Error  If token is not valid
+   * @todo Make this async as well (for maximum performance).
    */
-  User.unsubscribe = function(unsubscribeToken) {
-    return Q.ninvoke(jwt, 'verify', unsubscribeToken, config.secret)
-      .then(function(token) {
-        if (token.sub !== 'unsubscribe') {throw new Error('Not an unsubscribe token')}
-        return [User.get(token.user), config.model.Page.get(token.page)]
-      }).spread(function(user, page) {
-        return Q.ninvoke(page, 'removeSubscribers', user).then(function() {return [user, page]})
-      })
+  User.prototype.unsubscribeToken = function(page) {
+    const pageId = page instanceof models.Page ? page.id : page
+
+    return jwt.sign({page: pageId, user: this.id}, config.secret, {subject: 'unsubscribe'})
+  }
+
+  User.prototype.hasSubscription = async(function(page) {
+    const pages = await(this.$relatedQuery('subscriptions').where({pageId: page.id}))
+    return pages.length > 0
+  })
+
+  User.prototype.subscribe = async(function(page) {
+    // Don't subscribe if there's no e-mail address.
+    if (!this.email) {return }
+
+    try {
+      await(this.$relatedQuery('subscriptions').relate(page.id))
+    }
+    catch (err) {
+      // Ignore the UNIQUE contraint.
+      if (!(/UNIQUE/.test(err))) {throw err}
+    }
+  })
+
+  User.prototype.setAvatar = function(avatar) {
+    this.avatar = avatar
+    return this.$query().patch({avatar: avatar})
   }
 
   return User

@@ -17,39 +17,63 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function(db, User) {
-  var Account = {}
+'use strict'
 
-  Account.orm = db.qDefine('accounts', {
-    id:            {type: 'serial', key: true},
-    uid:           {type: 'text', unique: 'authenticator_uid'},
-    authenticator: {type: 'text', unique: 'authenticator_uid'},
-  })
-  Account.orm.qHasOne('user', User.orm, {autoFetch: true, key: true})
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
+
+const Model = require('objection').Model
+
+module.exports = (models) => {
+  function Account() {Model.apply(this, arguments)}
+  Model.extend(Account)
+
+  Account.tableName = 'accounts';
+
+  Account.relationMappings = {
+    user: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.User,
+      join: {
+        from: 'accounts.userId',
+        to:   'users.id',
+      }
+    }
+  }
 
   /**
    * Find an account by authenticator and UID, or create it along with it's user.
    *
-   * @param authenticator
-   * @param uid
-   * @param userData   Object of userdata
+   * @param {string} authenticator
+   * @param {string} uid
+   * @param {object} userData   Object of userdata
    */
-  Account.getOrCreate = function(authenticator, uid, userData) {
-    return Account.orm.qOne({authenticator: authenticator, uid: uid})
-      .then(function(account) {
-        if (account) {return account}
+  Account.getOrCreate = async((authenticator, uid, userData) => {
+    const account = await(
+      Account.query()
+        .where('authenticator', authenticator)
+        .where('uid', uid)
+        .eager('user')
+        .limit(1)
+    )
 
-        // Create user first.
-        var user
+    if (account.length > 0) {return account[0]}
 
-        return User.create(userData)
-          .then(function(user) {
-            return Account.orm.qCreate([{authenticator: authenticator, uid: uid, user: user}])
-          })
-          .then(function(accounts) {
-            return accounts[0]
-          })
-      })
+    // Create user first.
+    const user = await(models.User.create(userData))
+
+    return await(
+      Account.query().insert({authenticator: authenticator, uid: uid, userId: user.id})
+    ).$loadRelated('user')
+  })
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  Account.prototype.getUser = function() {
+    return this.$loadRelated('user').then((account) => account.user)
   }
 
   return Account

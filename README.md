@@ -1,15 +1,18 @@
 Some comments
 =============
 
-[![Build Status](https://travis-ci.org/fiddur/some-comments.svg)](https://travis-ci.org/fiddur/some-comments)
-[![Coverage Status](https://coveralls.io/repos/fiddur/some-comments/badge.svg)](https://coveralls.io/r/fiddur/some-comments)
+[![Build Status](https://travis-ci.org/fiddur/some-comments.svg?branch=master)](https://travis-ci.org/fiddur/some-comments)
+[![Coverage Status](https://coveralls.io/repos/fiddur/some-comments/badge.svg?branch=master&service=github)](https://coveralls.io/r/fiddur/some-comments?branch=master)
 
-Aims to become a free standing commenting system that you attach by including javascript.  I need
-this because Ghost has no commenting function and I don't want ads funded commenting, nor tie it to
-one specific social platform.
+**Some comments** is stand-alone commenting microservice that you could attach by including
+javascript.
 
-All the commenters have to authenticate via 3rd party authentication like openid, google, facebook
-etc; currently anything that "passport" supports.
+This was initially constructed because Ghost has no built in commenting functionality and I don't
+want ads funded commenting, nor tie it to one specific social platform.
+
+Commenters can authenticate via 3rd party authentication like openid, google, facebook etc, or
+comment anonymously.
+
 
 
 Features
@@ -53,7 +56,8 @@ And, add the css:
 Install (server)
 ----------------
 
-This is tested on Node 0.10, 0.12, and v4.0.0, and io.js.
+**Some comments** requires Node v4 or higher!  I suggest using
+[nvm](https://github.com/creationix/nvm).
 
 ```
 git clone https://github.com/fiddur/some-comments.git
@@ -171,7 +175,7 @@ Callback URI will be `http(s)://domain/auth/facebook/callback`.
 
 ### Database
 
-Anything that [node-orm2](https://github.com/dresende/node-orm2) supports.
+Anything that [Knex](http://knexjs.org/) supports.
 
 To use a backend, simply install it:
 
@@ -181,16 +185,18 @@ npm install sqlite3
 
 …and use it in your config:
 ```javascript
-database: 'sqlite:///var/lib/some-comments.db'
+database: {
+  client: 'sqlite3',
+  connection: {
+    filename: "/var/lib/some-comments.db"
+  }
+}
 ```
 
 …and run the migrations:
 ```
-DB_URL=sqlite:///var/lib/some-comments.db ./node_modules/.bin/migrate up
+grunt migrate:up
 ```
-
-Whatever is in `config.database` will be passed on to
-[orm.connect](https://github.com/dresende/node-orm2/wiki/Connecting-to-Database).
 
 
 ### E-mail notifications
@@ -218,8 +224,39 @@ could for example `npm install nodemailer-sendmail-transport` and in config put 
 require('nodemailer-sendmail-transport')(options)`.
 
 
+Contributing
+------------
+
+* Comment on issue to let others know you started implementing something.  Discuss data & code
+  design on the issue.
+* Use [gitflow](https://github.com/nvie/gitflow) branching model - make pull requests toward the
+  `develop` branch.
+* Use jscs for code formatting.
+* Skip unnecessary semicolons.
+* Use ES6 `const`, `=>`, prefer `async/await` before explicit promises.
+* Make sure new code is tested both with relevant unit tests and integration tests.
+* Make sure there are working migrations from older versions.
+* See [TODO](TODO.md) for refactorings waiting to happen…
+
+
 Changelog
 ---------
+
+### 0.4.0
+
+**Upgrade from 0.3**:
+
+1. Update config (`database` format changed to [Knex](http://knexjs.org/))
+2. `node migrate0.3.0-0.4.0.js`
+
+* #19: Edit/delete own comments.
+* Changing ORM again (using objection.js, but thinking about ditching that and only using knex).
+* Using Bluebird for promises.
+* **Required node >= 4** - This is a microservice, does not need to be compatible with old
+  interpreters!
+
+Use with caution; I haven't tested the Dynamic OpenID Connect authentication in this version.
+
 
 ### 0.3.0
 

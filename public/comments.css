@@ -1,3 +1,7 @@
+.comment_icon_delete::before {
+  content: url("data:image/svg+xml,<svg height='.7em' version='1.1' viewBox='0 0 19 23' width='19px' xmlns='http://www.w3.org/2000/svg' xmlns:sketch='http://www.bohemiancoding.com/sketch/ns' xmlns:xlink='http://www.w3.org/1999/xlink'><title/><defs><path d='M0.501203573,1.96015511 C0.501203573,1.96015511 7.17230047e-07,1.96015511 0,2.96015511 C-4.1525821e-07,3.96015511 0.501203573,3.96015511 0.501203573,3.96015511 L18.4987964,3.96015511 C18.4987964,3.96015511 19,3.96015511 19,2.96015511 C18.9999995,1.96015511 18.4987964,1.96015511 18.4987964,1.96015511 L0.501203573,1.96015511 L0.501203573,1.96015511 Z M0.973754885,4.96015511 L1.97273588,4.96015511 L3.97375489,21.9601551 L14.9737549,21.9601551 L16.9737549,4.96015511 L17.9737549,4.96015511 L15.9737549,22.9601551 L2.97375489,22.9601551 L0.973754885,4.96015511 Z M7.9737549,0.960155108 C6.9737549,0.960155108 6.9737549,1.96015511 6.9737549,1.96015511 L11.9737549,1.96015511 C11.9737549,1.96015511 11.9737549,0.960155108 10.9737549,0.960155108 L7.9737549,0.960155108 L7.9737549,0.960155108 Z M5.9737549,20.9601551 L6.9737549,20.9601551 L5.9737549,4.92304573 L4.97375489,4.92304573 L5.9737549,20.9601551 Z M12.9737549,4.92304573 L11.9737549,20.9601551 L12.9737549,20.9601551 L13.9737549,4.92304573 L12.9737549,4.92304573 L12.9737549,4.92304573 Z M8.9737549,4.92304573 L8.9737549,20.9601551 L9.9737549,20.9601551 L9.9737549,4.92304573 L8.9737549,4.92304573 L8.9737549,4.92304573 Z' id='path-1'/></defs><g fill='none' fill-rule='evenodd' id='miu' stroke='none' stroke-width='1'><g id='editor_trash_delete_recycle_bin_outline_stroke'><use fill='%23000000' fill-rule='evenodd' xlink:href='%23path-1'/><use fill='none' xlink:href='%23path-1'/></g></g></svg>");
+}
+
 .comments {
   padding: .5rem;
 }
@@ -5,9 +9,10 @@
   display: table-row;
 }
 
-.comments .user {
+.comments .comment_avatar {
   vertical-align: top;
   display:        table-cell;
+  min-width:      3rem;
   width:          3rem;
   max-width:      3rem;
   height:         3rem;
@@ -15,35 +20,40 @@
   padding-bottom: 0.2rem;
   overflow:       hidden;
 }
-.comments .user img {
+.comments .comment_avatar img {
   max-width:  100%;
   max-height: 100%;
 }
-.comments .user.unknown_user {
+.comments .comment_avatar.unknown_user {
   font-size: 300%;
   text-align: center;
 }
 
-.comments .comment_text {
+.comments .comment_row .commenter_name {
+  font-weight: bold;
+}
+
+.comments .comment_row .comment {
   vertical-align: top;
   display:        table-cell;
   padding-left:   0.5rem;
   border-bottom:  1px solid lightgrey;
   width:          100%; /* greedy */
 }
-.comment_text .created {
+.comment .comment_created {
   font-size: 70%;
   color:     grey;
 }
 
 .comment_preview {
-  border: 1px solig lightgrey;
+  border: 1px solid lightgrey;
 }
-.comment_text textarea {
+.comment textarea {
   width: 100%;
+  height: 4em;
 }
 
-.comments .comment_text p:first-child {
+.comments .comment p:first-child {
   margin-top: 0;
 }
 
@@ -82,4 +92,17 @@ iframe.login {
 }
 .oidc input:focus {
   background: white;
+}
+
+.edit_options {
+  float: right;
+}
+.edit_options button {
+  border: none;
+  width: 1rem;
+  height: 1rem;
+  background: transparent;
+}
+.edit_options button.comment_delete {
+  background: url("data:image/svg+xml,<svg height='.7em' version='1.1' viewBox='0 0 19 23' width='19px' xmlns='http://www.w3.org/2000/svg' xmlns:sketch='http://www.bohemiancoding.com/sketch/ns' xmlns:xlink='http://www.w3.org/1999/xlink'><title/><defs><path d='M0.501203573,1.96015511 C0.501203573,1.96015511 7.17230047e-07,1.96015511 0,2.96015511 C-4.1525821e-07,3.96015511 0.501203573,3.96015511 0.501203573,3.96015511 L18.4987964,3.96015511 C18.4987964,3.96015511 19,3.96015511 19,2.96015511 C18.9999995,1.96015511 18.4987964,1.96015511 18.4987964,1.96015511 L0.501203573,1.96015511 L0.501203573,1.96015511 Z M0.973754885,4.96015511 L1.97273588,4.96015511 L3.97375489,21.9601551 L14.9737549,21.9601551 L16.9737549,4.96015511 L17.9737549,4.96015511 L15.9737549,22.9601551 L2.97375489,22.9601551 L0.973754885,4.96015511 Z M7.9737549,0.960155108 C6.9737549,0.960155108 6.9737549,1.96015511 6.9737549,1.96015511 L11.9737549,1.96015511 C11.9737549,1.96015511 11.9737549,0.960155108 10.9737549,0.960155108 L7.9737549,0.960155108 L7.9737549,0.960155108 Z M5.9737549,20.9601551 L6.9737549,20.9601551 L5.9737549,4.92304573 L4.97375489,4.92304573 L5.9737549,20.9601551 Z M12.9737549,4.92304573 L11.9737549,20.9601551 L12.9737549,20.9601551 L13.9737549,4.92304573 L12.9737549,4.92304573 L12.9737549,4.92304573 Z M8.9737549,4.92304573 L8.9737549,20.9601551 L9.9737549,20.9601551 L9.9737549,4.92304573 L8.9737549,4.92304573 L8.9737549,4.92304573 Z' id='path-1'/></defs><g fill='none' fill-rule='evenodd' id='miu' stroke='none' stroke-width='1'><g id='editor_trash_delete_recycle_bin_outline_stroke'><use fill='%23000000' fill-rule='evenodd' xlink:href='%23path-1'/><use fill='none' xlink:href='%23path-1'/></g></g></svg>") no-repeat center;
 }

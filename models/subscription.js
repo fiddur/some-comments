@@ -17,15 +17,16 @@
  * GNU-AGPL-3.0
  */
 
-const Model = require('objection').Model
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
 
-module.exports = () => {
-  function Oidc() {Model.apply(this, arguments)}
-  Model.extend(Oidc)
+var Model = require('objection').Model
 
-  Oidc.tableName = 'oidc'
+module.exports = function(db, config) {
+  function Subscription() {Model.apply(this, arguments)}
+  Model.extend(Subscription)
 
-  Oidc.getByIssuer = (issuer) => Oidc.query().where({issuer: issuer}).first()
+  Subscription.tableName = 'subscriptions';
 
-  return Oidc
+  return Subscription
 }

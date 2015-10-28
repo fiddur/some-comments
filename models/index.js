@@ -17,53 +17,69 @@
  * GNU-AGPL-3.0
  */
 
-var url = require('url')
+const url = require('url')
 
-var user           = require('./user')
-var site           = require('./site')
-var account        = require('./account')
-var page           = require('./page')
-var comment        = require('./comment')
-var oidc           = require('./oidc')
-var oidcIdentifier = require('./oidc_identifier')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var Q           = require('q')
-var qOrm        = require('q-orm')
-var modts       = require('orm-timestamps')
+const user           = require('./user')
+const site           = require('./site')
+const account        = require('./account')
+const page           = require('./page')
+const comment        = require('./comment')
+const siteadmin      = require('./siteadmin')
+const subscription   = require('./subscription')
+const oidc           = require('./oidc')
+const oidcIdentifier = require('./oidc_identifier')
 
-module.exports = function(config) {
-  var model = {}
-  var db
+const Promise = require('bluebird')
 
-  return qOrm.qConnect(config.database)
-    .then(function(dbIn) {
-      db = dbIn
+module.exports = async((config) => {
+  const Knex = require('knex')
+  const Model = require('objection').Model
 
-      // Use timestamps in all models.
-      db.use(modts, {persist: true})
+  const knex = Knex(config.database)
+  Model.knex(knex);
 
-      var User           = user(db, config)
-      var Site           = site(db, User)
-      var Account        = account(db, User)
-      var Page           = page(db, Site, User)
-      var Comment        = comment(db, User, Page)
-      var Oidc           = oidc(db)
-      var OidcIdentifier = oidcIdentifier(db, Oidc)
+  const models = {}
 
-      model = {
-        User:           User,
-        Site:           Site,
-        Account:        Account,
-        Page:           Page,
-        Comment:        Comment,
-        Oidc:           Oidc,
-        OidcIdentifier: OidcIdentifier,
+  models.User           = user(models, config)
+  models.Site           = site(models)
+  models.Page           = page(models)
+  models.Comment        = comment(models)
+  models.Account        = account(models)
+  models.SiteAdmin      = siteadmin(models)
+  models.Oidc           = oidc()
+  models.OidcIdentifier = oidcIdentifier(models)
+
+  models.User.relationMappings = {
+    subscriptions: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.Page,
+      join: {
+        from: 'users.id',
+        through: {
+          from: 'subscriptions.userId',
+          to:   'subscriptions.pageId',
+        },
+        to:   'pages.id',
       }
+    }
+  }
 
-      // Superadmins
-      model.Superadmin = db.qDefine('superadmin', {})
-      model.Superadmin.hasOne('user', model.User.orm, {key: true})
+  models.Page.relationMappings.comments = {
+    relation: Model.OneToManyRelation,
+    modelClass: models.Comment,
+    join: {
+      from: 'pages.id',
+      to:   'comments.pageId',
+    }
+  }
 
-      return config.model = model
-    })
-}
+  //const Oidc           = oidc(db)
+  //const OidcIdentifier = oidcIdentifier(db, Oidc)
+
+  if (config.testMode) {await(knex.migrate.latest())}
+
+  return config.model = models
+})

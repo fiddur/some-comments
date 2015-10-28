@@ -1,7 +1,12 @@
 Todo
 ====
 
-* Display error message when trying to add site as "Anonymous".
+General
+-------
+
+* Get nicer looking edit/delete icons?
+* Auto-test oidc dynamic auth.
+* Move authentication.js to routes.
 * Use express router consistently.
 * Reasonable logging.
 * Error handling.
@@ -12,3 +17,8 @@ Todo
 * User page where you can add or merge authorization accounts.
 * I18N
 * Validate config for easier setup/upgrade.
+* Switch from supertest to request-promise.
+* Consistent ES6 usage: const, let, arrow-lambdas…
+* Remove Q from test/routes.
+* Remove Q from frontend.
+* Use `request-promise` in test, rather than `supertest`.

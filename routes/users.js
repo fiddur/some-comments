@@ -17,19 +17,23 @@
  * GNU-AGPL-3.0
  */
 
+'use strict'
+
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
+
 var express = require('express')
 
 module.exports = function(model, config) {
   var router = express.Router()
 
-  router.get('/unsubscribe', function(req, res) {
-    model.User.unsubscribe(req.query.jwt)
-      .spread(function(user, page) {
-        res.render('unsubscribe', {page: page, user: user})
-      }).done()
-  })
+  router.get('/unsubscribe', async(function(req, res) {
+    var unsubscibed = await(model.User.unsubscribe(req.query.jwt))
 
-  router.get('/:id', function(req, res) {
+    res.render('unsubscribe', {page: unsubscribed[0], user: unsubscribed[1]})
+  }))
+
+  router.get('/:id', async(function(req, res) {
     // Not logged in
     if (typeof req.user === 'undefined') {return res.sendStatus(401)}
 
@@ -42,14 +46,12 @@ module.exports = function(model, config) {
     if (req.user.id !== parseInt(req.params.id)) {return res.sendStatus(401)}
 
     // Specific user ID
-    model.User.get(req.params.id)
-      .then(function (user) {
-        if (!user) {return res.sendStatus(404)}
+    var user = await(model.User.get(req.params.id))
 
-        res.json(user)
-      })
-      .done()
-  })
+    if (!user) {return res.sendStatus(404)}
+
+    res.json(user)
+  }))
 
   return router
 }

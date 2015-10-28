@@ -17,43 +17,81 @@
  * GNU-AGPL-3.0
  */
 
-var Q = require('q')
+'use strict'
 
-module.exports = function(db, Site, User) {
-  var Page = {}
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-  Page.orm = db.qDefine('pages', {
-    id:  {type: 'serial', key: true},
-    url: {type: 'text', size: 255, unique: true}
-  })
-  Page.orm.qHasOne('site', Site.orm, {key: true})
-  Page.orm.qHasMany('subscribers', User.orm, {}, {
-    mergeTable:   'subscriptions',
-    mergeId:      'pageId',
-    mergeAssocId: 'userId',
-    reverse:      'subscriptions',
-    key:          true
-  })
+const Model   = require('objection').Model
 
-  Page.get = function(id) {return Page.orm.qGet(id)}
+module.exports = (models) => {
+  function Page() {Model.apply(this, arguments)}
+  Model.extend(Page)
 
-  Page.create = function(data) {
-    if (data.site) data.site_id = data.site.id
+  Page.tableName = 'pages';
 
-    return Page.orm.qCreate([data])
-      .then(function(pages) {
-        return [pages[0], pages[0].qGetSite().then(function(site) {return site.qGetAdmins()})]
-      })
-      .spread(function(page, admins) {
-        // Subscribe all admins to comments on this new page.
-        return Q.all(admins.map(function (admin) {return admin.subscribe(page)}))
-          .then(function() {return page})
-      })
+  Page.relationMappings = {
+    site: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.Site,
+      join: {
+        from: 'pages.siteId',
+        to:   'sites.id',
+      }
+    },
+    subscribers: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.User,
+      join: {
+        from: 'pages.id',
+        through: {
+          from: 'subscriptions.pageId',
+          to:   'subscriptions.userId',
+        },
+        to:   'users.id',
+      }
+    }
   }
 
-  Page.getBySiteUrl = function(site, url) {
-    return Page.orm.qOne({site: site, url: url})
+  Page.get = (id) => Page.query().where({id: id}).orWhere({url: id}).first()
+
+  Page.create = async((data) => {
+    // Get site.
+    const site = data.site ? data.site : await(models.Site.get(data.siteId))
+    data.siteId = site.id
+
+    // Insert
+    const page = await(Page.query().insert(data).eager('site'))
+
+    // Subscribe all admins to comments on this new page.
+    const admins = await(site.getAdmins())
+    await(admins.map((admin) => admin.subscribe(page)))
+
+    return page
+  })
+
+  Page.getBySiteUrl = (site, url) => {
+    if (site instanceof models.Site) {site = site.id}
+    return Page.query().where({siteId: site, url: url}).first()
   }
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  Page.prototype.getComments = async(function() {
+    return await(this.$loadRelated('comments.user')).comments
+  })
+
+  Page.prototype.getSubscribers = async(function() {
+    return await(this.$loadRelated('subscribers')).subscribers
+  })
+
+  Page.prototype.getSite = async(function() {
+    if (this.site) {return this.site}
+    return await(this.$loadRelated('site')).site
+  })
 
   return Page
 }

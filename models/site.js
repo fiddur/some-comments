@@ -17,43 +17,65 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function(db, User) {
-  var Site = {}
+'use strict'
 
-  Site.orm = db.qDefine('sites', {
-    id:        {type: 'serial',  key:    true},
-    domain:    {type: 'text',    unique: true},
-    maxLevels: {type: 'integer', size:   2, defaultValue: 0},
-  })
-  Site.orm.qHasMany('admins', User.orm, {}, {
-    mergeTable:   'siteadmins',
-    mergeId:      'site_id',
-    mergeAssocId: 'user_id',
-    reverse:      'sites',
-    key:          true,
-    autoFetch:    true,
-  })
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-  /**
-   * List all sites.
-   */
-  Site.all = function() {
-    return Site.orm.qAll()
+const url = require('url')
+
+const Model = require('objection').Model
+
+module.exports = (models) => {
+  function Site() {Model.apply(this, arguments)}
+  Model.extend(Site)
+
+  Site.tableName = 'sites'
+
+  Site.relationMappings = {
+    admins: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.User,
+      join: {
+        from: 'sites.id',
+        through: {
+          from: 'siteadmins.siteId',
+          to:   'siteadmins.userId',
+        },
+        to:   'users.id',
+      }
+    }
   }
 
-  Site.create = function(data) {
-    return Site.orm.qCreate([data]).then(function(sites) {return sites[0]})
-  }
+  Site.create      = (data)   => Site.query().insert(data)
+  Site.get         = (id)     => Site.query().where({id:     id    }).first()
+  Site.getByDomain = (domain) => Site.query().where({domain: domain}).first()
 
   /**
    * Get a Site by http origin header string.
    */
-  Site.getByOrigin = function(origin) {
-    return Site.orm.qOne({domain: origin.split('//')[1]})
+  Site.getByOrigin = (origin) => {
+    const urlParts = url.parse(origin)
+    return Site.getByDomain(urlParts.host)
   }
 
-  Site.getByDomain = function(domain) {
-    return Site.orm.qOne({domain: domain})
+  /**
+   * List all sites.
+   */
+  Site.all = () => Site.query()
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  Site.prototype.getAdmins = function() {
+    return await(this.$loadRelated('admins')).admins
+  }
+
+  Site.prototype.addAdmin = function(admin) {
+    const adminId = admin instanceof models.User ? admin.id : admin
+    return models.SiteAdmin.query().insert({siteId: this.id, userId: adminId})
   }
 
   return Site

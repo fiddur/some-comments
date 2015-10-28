@@ -17,12 +17,39 @@
  * GNU-AGPL-3.0
  */
 
-module.exports = function(db, Oidc) {
-  var OidcIdentifier = db.qDefine('oidcIdentifiers', {
-    identifier: {type: 'text', unique: true, key: true},
-  })
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-  OidcIdentifier.qHasOne('oidc', Oidc, {key: true, required: true})
+const Model = require('objection').Model
+
+module.exports = (models) => {
+  function OidcIdentifier() {Model.apply(this, arguments)}
+  Model.extend(OidcIdentifier)
+
+  OidcIdentifier.tableName = 'oidcIdentifiers'
+
+  OidcIdentifier.relationMappings = {
+    oidc: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.Oidc,
+      join: {
+        from: 'oidcidentifier.oidcId',
+        to:   'oidc.id',
+      }
+    },
+  }
+
+  OidcIdentifier.get = (identifier) =>
+    OidcIdentifier.query().where({identifier: identifier}).first()
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  OidcIdentifier.prototype.getOidc = async(function() {
+    return await(this.$loadRelated('oidc')).oidc
+  })
 
   return OidcIdentifier
 }
