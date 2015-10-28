@@ -5,7 +5,13 @@ var config = {
   testMode:       true,
   baseUrl:        'http://localhost/',
   authenticators: {anonymous: {}}, // Using defaults.
-  database:       {protocol: 'sqlite'} // In memory sqlite.
+  database:       {
+    //debug: true,
+    client: 'sqlite3',
+    connection: {
+      filename: ':memory:'
+    }
+  }
 }
 
 module.exports = config

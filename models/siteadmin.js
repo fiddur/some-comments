@@ -17,15 +17,18 @@
  * GNU-AGPL-3.0
  */
 
-const Model = require('objection').Model
+'use strict'
 
-module.exports = () => {
-  function Oidc() {Model.apply(this, arguments)}
-  Model.extend(Oidc)
+var async = require('asyncawait/async')
+var await = require('asyncawait/await')
 
-  Oidc.tableName = 'oidc'
+var Model   = require('objection').Model
 
-  Oidc.getByIssuer = (issuer) => Oidc.query().where({issuer: issuer}).first()
+module.exports = function(models) {
+  function SiteAdmin() {Model.apply(this, arguments)}
+  Model.extend(SiteAdmin)
 
-  return Oidc
+  SiteAdmin.tableName = 'siteadmins'
+
+  return SiteAdmin
 }

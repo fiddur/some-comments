@@ -38,7 +38,7 @@ var Authentication   = require('./authentication')
 var SiteRoutes       = require('./routes/sites')
 var CommentRoutes    = require('./routes/comments')
 
-function start(model, config) {
+exports.start = function start(model, config) {
   var app = express()
 
   if (coverage) {app.use('/coverage', istanbulMiddleware.createHandler())}
@@ -63,10 +63,6 @@ function start(model, config) {
     res.render('error', {message: err.message, error: {}})
   })
 
-  app.set('views', __dirname + '/views')
-  app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
-  app.set('view engine', 'hbs')
-
   var mailTransport = nodemailer.createTransport(config.mailTransport)
 
   // Setup Cross-origin resource sharing
@@ -74,26 +70,30 @@ function start(model, config) {
     origin: function(origin, callback) {
       if (typeof origin === 'undefined') {return callback(null, true)}
       model.Site.getByOrigin(origin)
-        .done(function(site) {
+        .then(function(site) {
           if (site) {
             callback(null, true)
           }
           else {
             callback(null, false)
           }
-        })
+        }).done()
     },
     credentials: true
   }))
 
   config.baseUrl = url.parse(config.baseUrl)
   config.baseUrl.toString = function() {return url.format(this)}
-  var port   = process.env.PORT || config.baseUrl.port || null
-  var server = app.listen(port)
 
-  // Store port in config, if it wasn't there already.
-  config.baseUrl.host = null // Remove host, since hostname and port should be set now.
-  config.baseUrl.port = server.address().port
+  var port   = process.env.PORT || config.baseUrl.port || null
+  var server = app.listen(port, (listening) => {
+    // Store port in config, if it wasn't there already.
+    config.baseUrl.host = null // Remove host, since hostname and port should be set now.
+    config.baseUrl.port = server.address().port
+
+    console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
+                app.settings.env)
+  })
 
   // Authentication strategies
   Authentication.setup(app, model, config)
@@ -109,11 +109,12 @@ function start(model, config) {
   app.get('/ping', function(req, res) {res.send('pong')})
 
   app.get('/test', function(req, res) {
-    model.Site.getByDomain(config.baseUrl.host)
+    const host = config.baseUrl.hostname + ':' + config.baseUrl.port
+    model.Site.getByDomain(host)
       .then(function(site) {
         if (site) {return site} // Chain it for creation below
 
-        return model.Site.create({domain: config.baseUrl.host})
+        return model.Site.create({domain: host})
       })
       .then(function(site) {
         res.render('test', {config: config, site: site.id})
@@ -121,7 +122,7 @@ function start(model, config) {
       .done()
   })
 
-  console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
-              app.settings.env)
+  app.set('views', __dirname + '/views')
+  app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
+  app.set('view engine', 'hbs')
 }
-exports.start = start

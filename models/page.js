@@ -19,43 +19,79 @@
 
 'use strict'
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-module.exports = function(db, Site, User) {
-  var Page = {}
+const Model   = require('objection').Model
 
-  Page.orm = db.qDefine('pages', {
-    id:  {type: 'serial', key: true},
-    url: {type: 'text', size: 255, unique: true}
-  })
-  Page.orm.qHasOne('site', Site.orm, {key: true})
-  Page.orm.qHasMany('subscribers', User.orm, {}, {
-    mergeTable:   'subscriptions',
-    mergeId:      'pageId',
-    mergeAssocId: 'userId',
-    reverse:      'subscriptions',
-    key:          true
-  })
+module.exports = (models) => {
+  function Page() {Model.apply(this, arguments)}
+  Model.extend(Page)
 
-  Page.get = function(id) {return Page.orm.qGet(id)}
+  Page.tableName = 'pages';
 
-  Page.create = async(function(data) {
-    if (data.site) {data.site_id = data.site.id}
+  Page.relationMappings = {
+    site: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.Site,
+      join: {
+        from: 'pages.siteId',
+        to:   'sites.id',
+      }
+    },
+    subscribers: {
+      relation: Model.ManyToManyRelation,
+      modelClass: models.User,
+      join: {
+        from: 'pages.id',
+        through: {
+          from: 'subscriptions.pageId',
+          to:   'subscriptions.userId',
+        },
+        to:   'users.id',
+      }
+    }
+  }
 
-    var page   = await(Page.orm.qCreate([data]))[0]
-    var site   = await(page.qGetSite())
-    var admins = await(site.qGetAdmins())
+  Page.get = (id) => Page.query().where({id: id}).orWhere({url: id}).first()
+
+  Page.create = async((data) => {
+    // Get site.
+    const site = data.site ? data.site : await(models.Site.get(data.siteId))
+    data.siteId = site.id
+
+    // Insert
+    const page = await(Page.query().insert(data).eager('site'))
 
     // Subscribe all admins to comments on this new page.
-    await(admins.map(function (admin) {return admin.subscribe(page)}))
+    const admins = await(site.getAdmins())
+    await(admins.map((admin) => admin.subscribe(page)))
 
     return page
   })
 
-  Page.getBySiteUrl = function(site, url) {
-    return Page.orm.qOne({site: site, url: url})
+  Page.getBySiteUrl = (site, url) => {
+    if (site instanceof models.Site) {site = site.id}
+    return Page.query().where({siteId: site, url: url}).first()
   }
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  Page.prototype.getComments = async(function() {
+    return await(this.$loadRelated('comments.user')).comments
+  })
+
+  Page.prototype.getSubscribers = async(function() {
+    return await(this.$loadRelated('subscribers')).subscribers
+  })
+
+  Page.prototype.getSite = async(function() {
+    if (this.site) {return this.site}
+    return await(this.$loadRelated('site')).site
+  })
 
   return Page
 }

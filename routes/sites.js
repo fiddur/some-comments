@@ -42,7 +42,7 @@ module.exports = function (app, model, config) {
 
     var site = await(model.Site.create({domain: req.body.domain}))
 
-    site.qAddAdmins([req.user]).done() // No need to wait for it to finish.
+    await(site.addAdmin(req.user))
 
     res.status(201).location(config.baseUrl + 'sites/' + site.id).send(site)
   }))

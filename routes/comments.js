@@ -22,8 +22,9 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-var Q          = require('q')
+var Promise    = require('bluebird')
 var Handlebars = require('handlebars')
+var readFile   = Promise.promisify(require("fs").readFile)
 var FS         = require('fs')
 var path       = require('path')
 var markdown   = require('markdown').markdown
@@ -33,7 +34,7 @@ module.exports = function (app, model, mailTransport, config) {
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
     if (page) {
-      res.json(await(page.qGetComments()))
+      res.json(await(page.getComments()))
     }
     else {
       res.json([])
@@ -49,9 +50,7 @@ module.exports = function (app, model, mailTransport, config) {
 
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
-    if (!page) {
-      page = await(model.Page.create({site: req.params.site, url: req.params.page}))
-    }
+    if (!page) {page = await(model.Page.create({siteId: req.params.site, url: req.params.page}))}
 
     var comment = await(model.Comment.create({
       page: page,
@@ -68,20 +67,64 @@ module.exports = function (app, model, mailTransport, config) {
     notifySubscribers(comment).done()
   }))
 
+  app.put('/sites/:site/pages/:page/comments/:comment', async(function(req, res) {
+    if (typeof req.body.text === 'undefined') {
+      return res.status(400).send('Bad Request: text is required')
+    }
+
+    if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
+
+    var comment = await(model.Comment.get(req.params.comment))
+    var page    = await(model.Page.get(req.params.page))
+
+    // Validate site and page
+    if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
+
+    // Validate user
+    if (comment.userId !== req.user.id) {return res.sendStatus(401)}
+
+    // Update comment
+    try {
+      await(comment.setText(req.body.text))
+      res.json(comment)
+    }
+    catch (err) {
+      console.error(err)
+      res.sendStatus(500)
+    }
+  }))
+
+  app.delete('/sites/:site/pages/:page/comments/:comment', async((req, res) => {
+    if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
+
+    var comment = await(model.Comment.get(req.params.comment))
+    var page    = await(model.Page.get(req.params.page))
+
+    // Validate site and page
+    if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
+
+    // Validate user
+    if (comment.userId !== req.user.id) {return res.sendStatus(401)}
+
+    // Delete comment
+    try {
+      await(comment.del())
+      res.sendStatus(204)
+    }
+    catch (err) {
+      console.error(err)
+      res.sendStatus(500)
+    }
+  }))
+
   var notifySubscribers = async(function(comment) {
-    var page        = await(comment.qGetPage())
-    var subscribers = await(page.qGetSubscribers())
-    var site        = await(page.qGetSite())
+    var page        = await(comment.getPage())
+    var subscribers = await(page.getSubscribers())
+    var site        = await(page.getSite())
 
     var hbsRaw = await({
-      txt: Q.nfcall(
-        FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'),
-        'utf-8'
-      ),
-      html: Q.nfcall(
-        FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'),
-        'utf-8'
-      )
+      txt: readFile(path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'), 'utf-8'),
+      html: readFile(path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'), 'utf-8')
     })
     var templates = {
       txt:  Handlebars.compile(hbsRaw.txt),
@@ -111,7 +154,7 @@ module.exports = function (app, model, mailTransport, config) {
           unsubscribeUrl: unsubscribeUrl
         })
 
-        return Q.ninvoke(mailTransport, 'sendMail', {
+        return Promise.promisify(mailTransport.sendMail, mailTransport)({
           from:    config.email.address,
           to:      user.email,
           subject: 'New comment on: ' + page.url,
