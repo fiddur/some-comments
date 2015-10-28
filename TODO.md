@@ -1,15 +1,11 @@
 Todo
 ====
 
-Before 0.4.0
-------------
-
-* Finish converting oidc and oidcIdentity-classes to knex/objection.
-
-
 General
 -------
 
+* Get nicer looking edit/delete icons?
+* Auto-test oidc dynamic auth.
 * Move authentication.js to routes.
 * Use express router consistently.
 * Reasonable logging.
