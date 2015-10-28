@@ -106,6 +106,13 @@ describe('Routing Integration', function() {
         .expect('Content-Type', /html/)
         .expect(200, done)
     })
+
+    it('should return not found status', function(done) {
+      request(baseUrl)
+        .get('sites/555')
+        .set('Accept', 'application/json')
+        .expect(404, done)
+    })
   })
 
   describe('Anonymous user', function() {

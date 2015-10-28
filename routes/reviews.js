@@ -35,11 +35,8 @@ module.exports = function (app, model, config) {
   app.get('/sites/:site/pages/:page/reviews/', async(function(req, res) {
 
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
-console.log('--------------- app.get')
 
     if (page) {
-console.log(await(page.getReviews()))
-
       res.json(await(page.getReviews()))
     }
     else {
@@ -56,10 +53,8 @@ console.log(await(page.getReviews()))
     }
 
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))
-
     if (!page) {page = await(model.Page.create({siteId: req.params.site, url: req.params.page}))}
 
-console.log('app.post', model)
     var review = await(model.Review.create({
       page: page,
       user: req.user,
@@ -72,26 +67,26 @@ console.log('app.post', model)
   }))
 
   // Update existing
-  app.put('/sites/:site/pages/:page/comments/:comment', async(function(req, res) {
-    if (typeof req.body.text === 'undefined') {
+  app.put('/sites/:site/pages/:page/reviews/:review', async(function(req, res) {
+    if (typeof req.body.grade === 'undefined') {
       return res.status(400).send('Bad Request: text is required')
     }
 
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
 
-    var comment = await(model.Comment.get(req.params.comment))
     var page    = await(model.Page.get(req.params.page))
+    var review  = await(model.Review.get(req.params.review))
 
     // Validate site and page
-    if (page.siteId != req.params.site || comment.pageId != page.id) {return res.sendStatus(404)}
+    if (page.siteId != req.params.site || review.pageId != page.id) {return res.sendStatus(404)}
 
     // Validate user
-    if (comment.userId !== req.user.id) {return res.sendStatus(401)}
+    if (review.userId !== req.user.id) {return res.sendStatus(401)}
 
-    // Update comment
+    // Update review
     try {
-      await(comment.setText(req.body.text))
-      res.json(comment)
+      await(review.update(req.body.grade, req.body.linkTo))
+      res.json(review)
     }
     catch (err) {
       console.error(err)

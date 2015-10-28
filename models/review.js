@@ -63,9 +63,10 @@ module.exports = (models) => {
 
   Review.prototype.$beforeInsert = function() {this.createdAt = new Date().toISOString()}
 
-  Review.prototype.setGrade = function(grade) {
+  Review.prototype.update = function(grade, commentId) {
+    this.commentId = commentId
     this.grade = grade
-    return this.$query().patch({grade: grade})
+    return this.$query().patch({grade: grade, commentId: commentId})
   }
 
   Review.prototype.getPage = async(function() {

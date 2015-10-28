@@ -115,42 +115,46 @@
     return sc
   }
 
-  function makeCommentingDiv(user, postCb, preText) {
+  function makeCommentingDiv(user, postCb, preText, reviewGrade) {
     var div = document.createElement('div')
     div.className = 'comment_row'
 
-    div.appendChild(avatarDiv(user))
+    if (user.site.getSetting('useAvatar', true)) div.appendChild(avatarDiv(user))
 
     // Instead of just showing the comment, make an input and a preview.
 
     var commentDiv = document.createElement('div')
     commentDiv.className = 'comment'
 
-    // Review
-    var reviewGrade = null // Not graded yet
-    var reviewGradeLabelItems = {}
+    if (reviewGrade != null) {
 
-    var reviewDiv = document.createElement('div')
-    reviewDiv.className = 'review review_editable'
+      // Review
+      var reviewGradeLabelItems = {}
 
-    for (var i = 1; i <= 5; i++) {
-      var gradeItem = document.createElement('input')
-      var gradeItemLabel = document.createElement('label')
-      gradeItem.name = 'review_grade'
-      gradeItem.type = 'radio'
-      gradeItem.value = i
-      gradeItemLabel.innerHTML = '★'
-      gradeItemLabel.appendChild(gradeItem)
-      reviewGradeLabelItems[i] = gradeItemLabel;
-      reviewDiv.appendChild(gradeItemLabel)
-      gradeItem.addEventListener('click', function(cl) {
-        reviewGrade = this.value
-        for (var i = 1; i <= 5; i++) {
-          reviewGradeLabelItems[i].className = i <= reviewGrade ? 'active' : ''
-        }
-      })
+      var reviewDiv = document.createElement('div')
+      reviewDiv.className = 'review review_editable'
+
+      for (var i = 1; i <= 5; i++) {
+        var gradeItem = document.createElement('input')
+        var gradeItemLabel = document.createElement('label')
+        gradeItem.name = 'review_grade'
+        gradeItem.type = 'radio'
+        gradeItem.value = i
+        gradeItemLabel.innerHTML = '★'
+        gradeItemLabel.appendChild(gradeItem)
+        reviewGradeLabelItems[i] = gradeItemLabel;
+        reviewDiv.appendChild(gradeItemLabel)
+        gradeItemLabel.className = i <= reviewGrade ? 'active' : ''
+
+        gradeItem.addEventListener('click', function(cl) {
+          reviewGrade = this.value
+          for (var i = 1; i <= 5; i++) {
+            reviewGradeLabelItems[i].className = i <= reviewGrade ? 'active' : ''
+          }
+        })
+      }
+      commentDiv.appendChild(reviewDiv)
     }
-    commentDiv.appendChild(reviewDiv)
 
     var inputDiv = document.createElement('div')
     inputDiv.className = 'comment_text'
@@ -187,24 +191,35 @@
     var div = makeCommentingDiv(user, function(commentText, grade) {
       Comment.add(user.site, urlStr, commentText)
         .then(function(comment) {
-console.log('insertNewCommentElement', comment);
           comment.site = user.site
           if (grade != null) {
-            Review.add(user.site, urlStr, comment.id, grade)
-              .then(function(review) {
-                console.log('HEJ')
-              })
-              .done()
-          }
-          element.insertBefore(Comment.getElement(comment, user, review), div)
 
-console.log(comment, grade);
+            Review.save(user, comment, urlStr, grade)
+              .then(function(review) {
+                comment.review = review
+                if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
+                  element.insertBefore(Comment.getElement(comment, user), div)
+                }
+                else {
+                  element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
+                }
+              })
+          }
+          else {
+            if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
+              element.insertBefore(Comment.getElement(comment, user), div)
+            }
+            else {
+              element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
+            }
+          }
+
           // Re-get the new comment div html, since user might have logged in.
           /// @todo Bind this to users/me instead.
           /////newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
         })
         .done()
-    })
+    }, '', 0)
 
     element.appendChild(div)
   }
@@ -218,11 +233,18 @@ console.log(comment, grade);
     window.Q.all([
       Comment.getAllByPage(site, urlStr),
       Review.getAllByPage(site, urlStr),
-      User.get(sc.server, 'me')
+      User.get(sc.server, 'me'),
+      site.config()
     ])
-      .spread(function(comments, reviews, user) {
+      .spread(function(comments, reviews, user, config) {
+
+        var commentContainer = document.createElement('div')
+        commentContainer.className = 'comments_container'
+        element.appendChild(commentContainer)
+
         user.site = site
         user.review = null
+
         // Attach reviews to linked comment
         for (var i = 0; i < comments.length; i++) {
           comments[i].review = null
@@ -235,11 +257,21 @@ console.log(comment, grade);
               break
             }
           }
-          element.appendChild(Comment.getElement(comments[i], user))
         }
-console.log(user.review)
-        // Add field for new comment
-        insertNewCommentElement(element, user, urlStr)
+
+        // On sortOrder=desc, input files first and then latest comment on top
+        if (site.getSetting('sortOrder', 'asc') == 'desc') {
+          insertNewCommentElement(commentContainer, user, urlStr)
+          comments.reverse()
+        }
+
+        for (var i = 0; i < comments.length; i++) {
+          commentContainer.appendChild(Comment.getElement(comments[i], user))
+        }
+
+        if (site.getSetting('sortOrder', 'asc') == 'asc') {
+          insertNewCommentElement(commentContainer, user, urlStr)
+        }
 
         var someCommentInfo = document.createElement('div')
         someCommentInfo.className = 'some_comment_info'
@@ -259,17 +291,17 @@ console.log(user.review)
         return JSON.parse(sitesJson)
       })
   }
-  SomeCommentsPrototype.addSite = function(domain) {
+  SomeCommentsPrototype.addSite = function(domain, settings) {
     var sc = this
 
     return ajax.post(
-      sc.server + 'sites/', {domain: domain})
+      sc.server + 'sites/', {domain: domain, settings: settings})
       .then(
         function(response) {
         }, function(error) {
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
-            return User.offerLogin(sc.server, error.call)
+            return User.offerLogin(sc.server, null, error.call)
               .then(function (siteJson) {
                 console.log('Added site after auth?', siteJson)
               })
@@ -287,9 +319,10 @@ console.log(user.review)
   /**
    * Display a login iframe, promise to fulfil the original request.
    */
-  User.offerLogin = function(server, call) {
+  User.offerLogin = function(server, siteId, call) {
     var iframe = document.createElement('iframe')
-    iframe.src = server + 'login'
+    if (siteId == null) iframe.src = server + 'login'
+    else iframe.src = server + 'login/site/' + siteId
     iframe.className = 'login'
 
     var deferred = Q.defer()
@@ -333,8 +366,26 @@ console.log(user.review)
     site.id     = siteId
     site.server = server
 
+    site.config = function() {
+      ajax.get(
+        site.server + 'sites/' + site.id
+      ).then(function(siteJson) {
+        var siteData = JSON.parse(siteJson)
+        site.domain = siteData.domain
+        site.settings = siteData.settings
+      })
+    }
+
+    site.getSetting = function(key, defaultValue) {
+      if (site.settings == null) return defaultValue
+      if (!site.settings.hasOwnProperty(key)) return defaultValue
+      return site.settings[key]
+    }
+
     return site
   }
+
+
 
   ///////////
   // Comment
@@ -370,8 +421,9 @@ console.log(user.review)
           return comment
         }, function(error) {
           if (error instanceof ForbiddenError) {
+
             // Lets offer login and retry
-            return User.offerLogin(site.server, error.call)
+            return User.offerLogin(site.server, site.id, error.call)
               .then(function (commentJson) {
                 var comment = JSON.parse(commentJson)
                 return comment
@@ -399,29 +451,50 @@ console.log(user.review)
   var Review = {}
 
   /**
-   * @param site    object  A site object
-   * @param urlStr  string  The page ID
+   * @param user    object  A user object
+   * @param comment object  A user object
    * @param grade   int     Review grade
    */
-  Review.add = function(site, urlStr, commentId, grade) {
-    return ajax.post(
-      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/reviews/', {grade: grade, linkTo: commentId})
-      .then(
-        function(reviewJson) {
-          var review = JSON.parse(reviewJson)
-          return review
-        }, function(error) {
-          if (error instanceof ForbiddenError) {
-            // Lets offer login and retry
-            return User.offerLogin(site.server, error.call)
-              .then(function (reviewJson) {
-                var review = JSON.parse(reviewJson)
-                return review
-              })
+  Review.save = function(user, comment, urlStr, grade) {
+    var base_url = user.site.server + 'sites/' + user.site.id + '/pages/' + urlStr + '/reviews/'
+    if (user.review) {
+      return ajax.put(base_url + user.review.id, {grade: grade, linkTo: comment.id})
+        .then(
+          function(reviewJson) {
+            var review = JSON.parse(reviewJson)
+            return review
+          }, function(error) {
+            if (error instanceof ForbiddenError) {
+              // Lets offer login and retry
+              return User.offerLogin(site.server, error.call)
+                .then(function (reviewJson) {
+                  var review = JSON.parse(reviewJson)
+                  return review
+                })
+            }
+            console.log('Error', error)
           }
-          console.log('Error', error)
-        }
-      )
+        )
+    }
+    else {
+      return ajax.post(base_url, {grade: grade, linkTo: commentId})
+        .then(
+          function(reviewJson) {
+            var review = JSON.parse(reviewJson)
+            return review
+          }, function(error) {
+            if (error instanceof ForbiddenError) {
+              // Lets offer login and retry
+              return User.offerLogin(site.server, error.call)
+                .then(function (reviewJson) {
+                  var review = JSON.parse(reviewJson)
+                  return review
+                })
+            }
+            console.log('Error', error)
+          }
+        )
+    }
   }
 
   Review.getAllByPage = function(site, urlStr) {
@@ -453,32 +526,46 @@ console.log(user.review)
     return avatarDiv
   }
 
-  function transformToEdit(comment) {
+  function transformToEdit(comment, user) {
     var commentUrl = comment.site.server + 'sites/' + comment.site.id + '/pages/' +
         comment.pageId + '/comments/' + comment.id
 
-    var row = e('comment_' + comment.id)
-    var user = comment.user
+    if (user.id !== comment.userId) {
+      console.log('Illegal edit')
+      return
+    }
 
     var oldCommentDiv = e('comment_' + comment.id)
-    var commentingDiv = makeCommentingDiv(comment.user, function(commentText) {
+    var commentingDiv = makeCommentingDiv(user, function(commentText, grade) {
       ajax.put(commentUrl, {text: commentText})
         .then(function(newCommentJson) {
           var newComment = JSON.parse(newCommentJson)
           newComment.user = user
           newComment.site = comment.site
+          newComment.review = null
 
-          var newCommentDiv = Comment.getElement(newComment, user)
-          commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
-          commentingDiv.parentNode.removeChild(commentingDiv)
+          if (grade != null) {
+            Review.save(user, newComment, comment.pageId, grade)
+              .then(function(review) {
+                newComment.review = review
+                var newCommentDiv = Comment.getElement(newComment, user)
+                commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
+                commentingDiv.parentNode.removeChild(commentingDiv)
+              })
+          }
+          else {
+            var newCommentDiv = Comment.getElement(newComment, user)
+            commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
+            commentingDiv.parentNode.removeChild(commentingDiv)
+          }
         }).done()
-    }, comment.text)
+    }, comment.text, comment.review ? comment.review.grade : null)
 
     oldCommentDiv.parentNode.insertBefore(commentingDiv, oldCommentDiv)
     oldCommentDiv.parentNode.removeChild(oldCommentDiv)
   }
 
-  function editOptionsDiv(comment) {
+  function editOptionsDiv(comment, user) {
     var editOptions = document.createElement('div')
     editOptions.className = 'edit_options'
 
@@ -486,7 +573,7 @@ console.log(user.review)
     editButton.className = 'comment_edit'
     editButton.title     = 'Edit'
     editButton.appendChild(document.createTextNode('✎'))
-    editButton.addEventListener('click', function() {transformToEdit(comment)})
+    editButton.addEventListener('click', function() {transformToEdit(comment, user)})
     editOptions.appendChild(editButton)
 
     var deleteButton       = document.createElement('button')
@@ -503,10 +590,10 @@ console.log(user.review)
     commentDiv.className = 'comment'
 
     if (user && comment.user.id === user.id) {
-      commentDiv.appendChild(editOptionsDiv(comment))
+      commentDiv.appendChild(editOptionsDiv(comment, user))
     }
 
-    commentDiv.appendChild(Renderer.user(comment))
+    commentDiv.appendChild(Renderer.displayName(comment))
     if (comment.review) commentDiv.appendChild(Renderer.review(comment.review))
 
     var commentText = document.createElement('div')
@@ -527,7 +614,7 @@ console.log(user.review)
   //
   var Renderer = {}
 
-  Renderer.user = function(comment) {
+  Renderer.displayName = function(comment) {
     var userSpan = document.createElement('span')
     userSpan.className = 'commenter_name'
     userSpan.appendChild(document.createTextNode(comment.user.displayName || ''))
@@ -535,6 +622,7 @@ console.log(user.review)
   }
 
   Renderer.review = function(review) {
+
     var reviewDiv = document.createElement('div')
     reviewDiv.className = 'review'
     for (var i = 1; i <= 5; i++) {
@@ -550,12 +638,12 @@ console.log(user.review)
     return gradeSpan
   }
 
-  Comment.getElement = function(comment, user, review) {
+  Comment.getElement = function(comment, user) {
     var div = document.createElement('div')
     div.className = 'comment_row'
     div.id = 'comment_' + comment.id
 
-    div.appendChild(avatarDiv(comment.user))
+    if (user.site.getSetting('useAvatar', true)) div.appendChild(avatarDiv(comment.user))
     div.appendChild(commentDiv(comment, user))
 
     return div

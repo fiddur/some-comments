@@ -3,23 +3,23 @@
 <h2>Authenticate with:</h2>
 
 <ul class="login_list">
-  {{#config.authenticators.openidconnect}}
+  {{#authenticators.openidconnect}}
     <li><a href="/auth/{{shortName}}" target="_blank"><img src="{{icon}}" style="max-width: 2em"
                                                            alt="{{title}}" /></a></li>
-  {{/config.authenticators.openidconnect}}
+  {{/authenticators.openidconnect}}
 
-  {{#config.authenticators.facebook}}
+  {{#authenticators.facebook}}
     <li><a href="/auth/facebook" target="_blank"><img src="{{icon}}" style="max-width: 2em"
                                                       alt="{{title}}" /></a></li>
-  {{/config.authenticators.facebook}}
+  {{/authenticators.facebook}}
 
 </ul>
 
-{{#config.authenticators.anonymous}}
+{{#authenticators.anonymous}}
   <p>
     Or <a href="/auth/anonymous">Comment anonymously</a></li>…
   </p>
-{{/config.authenticators.anonymous}}
+{{/authenticators.anonymous}}
 
 <form action="/auth/oidc" target="_blank">
   <p>

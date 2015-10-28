@@ -81,12 +81,10 @@ module.exports = (models) => {
    ************************************************************************************************/
 
   Page.prototype.getComments = async(function() {
-console.log('--------------- page.getComments', await(this.$loadRelated('comments.user')))
     return await(this.$loadRelated('comments.user')).comments
   })
 
   Page.prototype.getReviews = async(function() {
-console.log('--------------- page.getReviews', await(this.$loadRelated('reviews.user')))
     return await(this.$loadRelated('reviews.user')).reviews
   })
 
