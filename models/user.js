@@ -32,7 +32,7 @@ module.exports = (models, config) => {
   function User() {Model.apply(this, arguments)}
   Model.extend(User)
 
-  User.tableName = 'users';
+  User.tableName = 'users'
 
   User.create = (data) => User.query().insert(data)
 

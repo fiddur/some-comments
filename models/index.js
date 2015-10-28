@@ -49,6 +49,8 @@ module.exports = async((config) => {
   models.Comment        = comment(models)
   models.Account        = account(models)
   models.SiteAdmin      = siteadmin(models)
+  models.Oidc           = oidc()
+  models.OidcIdentifier = oidcIdentifier(models)
 
   models.User.relationMappings = {
     subscriptions: {

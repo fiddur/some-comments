@@ -62,10 +62,11 @@ const openIdConnectDynamic = (model, app, config) => {
   passport.use(oidcStrategy)
 
   oidcStrategy.configure(async((identifier, done) => {
-    const oidcIdentifier = model.OidcIdentifier.qOne({identifier: identifier}) ///////
+    const oidcIdentifier = await(model.OidcIdentifier.get(identifier))
 
     if (oidcIdentifier) {
-      oidcIdentifier.qGetOidc().done((oidc) => done(null, oidc)) //// qGet is removed
+      console.log(oidcIdentifier)
+      oidcIdentifier.getOidc().done((oidc) => done(null, oidc))
     }
     else {
       done(null, null)
@@ -73,7 +74,7 @@ const openIdConnectDynamic = (model, app, config) => {
   }))
 
   OpenIdConnect.config(async((issuer, done) => {
-    const oidc = await(model.Oidc.qOne({issuer: issuer})) ////////
+    const oidc = await(model.Oidc.getByIssuer(issuer))
 
     if (oidc) {
       done(null, oidc)

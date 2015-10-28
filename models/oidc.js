@@ -17,22 +17,15 @@
  * GNU-AGPL-3.0
  */
 
-var Promise = require('bluebird')
+const Model = require('objection').Model
 
-module.exports = function(db) {
-  var Oidc = {}
+module.exports = () => {
+  function Oidc() {Model.apply(this, arguments)}
+  Model.extend(Oidc)
 
-  Oidc.orm = Promise.promisifyAll(db.define('oidc', {
-    id:               {type: 'serial', key:    true},
-    issuer:           {type: 'text',   unique: true},
-    authorizationURL: {type: 'text'},
-    tokenURL:         {type: 'text'},
-    userInfoURL:      {type: 'text'},
-    registrationURL:  {type: 'text'},
-    clientID:         {type: 'text'},
-    clientSecret:     {type: 'text'},
-    expiresAt:        {type: 'integer', size: 8}
-  }))
+  Oidc.tableName = 'oidc'
+
+  Oidc.getByIssuer = (issuer) => Oidc.query().where({issuer: issuer}).first()
 
   return Oidc
 }
