@@ -17,18 +17,39 @@
  * GNU-AGPL-3.0
  */
 
-var Promise = require('bluebird')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-module.exports = function(db, Oidc) {
-  var OidcIdentifier = {}
+const Model = require('objection').Model
 
-  var orm = db.define('oidcIdentifiers', {
-    identifier: {type: 'text', unique: true, key: true},
+module.exports = (models) => {
+  function OidcIdentifier() {Model.apply(this, arguments)}
+  Model.extend(OidcIdentifier)
+
+  OidcIdentifier.tableName = 'oidcIdentifiers'
+
+  OidcIdentifier.relationMappings = {
+    oidc: {
+      relation: Model.OneToOneRelation,
+      modelClass: models.Oidc,
+      join: {
+        from: 'oidcidentifier.oidcId',
+        to:   'oidc.id',
+      }
+    },
+  }
+
+  OidcIdentifier.get = (identifier) =>
+    OidcIdentifier.query().where({identifier: identifier}).first()
+
+
+  /************************************************************************************************
+   * Instance methods
+   ************************************************************************************************/
+
+  OidcIdentifier.prototype.getOidc = async(function() {
+    return await(this.$loadRelated('oidc')).oidc
   })
-
-  orm.hasOne('oidc', Oidc.orm, {key: true, required: true})
-
-  OidcIdentifier.orm = Promise.promisifyAll(orm)
 
   return OidcIdentifier
 }

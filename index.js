@@ -17,14 +17,14 @@
  * GNU-AGPL-3.0
  */
 
-var configFile = process.argv[2] || 'config.js'
-var config = require('./' + configFile)
-var server = require('./server.js')
+'use strict'
 
-var models = require('./models/')
+const configFile = process.argv[2] || 'config.js'
+const config = require('./' + configFile)
+const server = require('./server.js')
+
+const models = require('./models/')
 
 models(config, {})
-  .then(function(model) {
-    server.start(model, config)
-  })
+  .then((model) => server.start(model, config))
   .done()

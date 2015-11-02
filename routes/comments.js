@@ -22,9 +22,9 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-//// TODO remove Q
-var Q          = require('q')
+var Promise    = require('bluebird')
 var Handlebars = require('handlebars')
+var readFile   = Promise.promisify(require("fs").readFile)
 var FS         = require('fs')
 var path       = require('path')
 var markdown   = require('markdown').markdown
@@ -123,14 +123,8 @@ module.exports = function (app, model, mailTransport, config) {
     var site        = await(page.getSite())
 
     var hbsRaw = await({
-      txt: Q.nfcall(
-        FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'),
-        'utf-8'
-      ),
-      html: Q.nfcall(
-        FS.readFile, path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'),
-        'utf-8'
-      )
+      txt: readFile(path.join(__dirname, '..', 'views', 'email', 'notification.txt.hbs'), 'utf-8'),
+      html: readFile(path.join(__dirname, '..', 'views', 'email', 'notification.html.hbs'), 'utf-8')
     })
     var templates = {
       txt:  Handlebars.compile(hbsRaw.txt),
@@ -160,7 +154,7 @@ module.exports = function (app, model, mailTransport, config) {
           unsubscribeUrl: unsubscribeUrl
         })
 
-        return Q.ninvoke(mailTransport, 'sendMail', {
+        return Promise.promisify(mailTransport.sendMail, mailTransport)({
           from:    config.email.address,
           to:      user.email,
           subject: 'New comment on: ' + page.url,

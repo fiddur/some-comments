@@ -325,7 +325,7 @@
     else iframe.src = server + 'login/site/' + siteId
     iframe.className = 'login'
 
-    var deferred = Q.defer()
+    var deferred = window.Q.defer()
 
     window.addEventListener('message', function(event) {
       var origUrl   = parseUrl(event.origin)
@@ -477,7 +477,7 @@
         )
     }
     else {
-      return ajax.post(base_url, {grade: grade, linkTo: commentId})
+      return ajax.post(base_url, {grade: grade, linkTo: comment.id})
         .then(
           function(reviewJson) {
             var review = JSON.parse(reviewJson)

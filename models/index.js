@@ -17,34 +17,32 @@
  * GNU-AGPL-3.0
  */
 
-var url = require('url')
+const url = require('url')
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-var user           = require('./user')
-var site           = require('./site')
-var account        = require('./account')
-var page           = require('./page')
-var comment        = require('./comment')
-var review         = require('./review')
-var siteadmin      = require('./siteadmin')
-var subscription   = require('./subscription')
-var oidc           = require('./oidc')
-var oidcIdentifier = require('./oidc_identifier')
+const user           = require('./user')
+const site           = require('./site')
+const account        = require('./account')
+const page           = require('./page')
+const comment        = require('./comment')
+const review         = require('./review')
+const siteadmin      = require('./siteadmin')
+const subscription   = require('./subscription')
+const oidc           = require('./oidc')
+const oidcIdentifier = require('./oidc_identifier')
 
-var Promise = require('bluebird')
-var orm     = Promise.promisifyAll(require('orm'))
-var modts   = require('orm-timestamps')
+const Promise = require('bluebird')
 
-module.exports = async(function(config) {
-  var Knex = require('knex')
-  var Model = require('objection').Model
+module.exports = async((config) => {
+  const Knex = require('knex')
+  const Model = require('objection').Model
 
-  var knex = Knex(config.database)
+  const knex = Knex(config.database)
   Model.knex(knex);
 
-  var models = {}
+  const models = {}
 
   models.User           = user(models, config)
   models.Site           = site(models)
@@ -53,6 +51,8 @@ module.exports = async(function(config) {
   models.Review         = review(models)
   models.Account        = account(models)
   models.SiteAdmin      = siteadmin(models)
+  models.Oidc           = oidc()
+  models.OidcIdentifier = oidcIdentifier(models)
 
   models.User.relationMappings = {
     subscriptions: {
@@ -87,12 +87,8 @@ module.exports = async(function(config) {
     }
   }
 
-  //var Oidc           = oidc(db)
-  //var OidcIdentifier = oidcIdentifier(db, Oidc)
-
-  //// Superadmins
-  //models.Superadmin = db.define('superadmin', {})
-  //models.Superadmin.hasOne('user', models.User.orm, {key: true})
+  //const Oidc           = oidc(db)
+  //const OidcIdentifier = oidcIdentifier(db, Oidc)
 
   if (config.testMode) {await(knex.migrate.latest())}
 

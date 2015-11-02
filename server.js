@@ -85,12 +85,16 @@ exports.start = function start(model, config) {
 
   config.baseUrl = url.parse(config.baseUrl)
   config.baseUrl.toString = function() {return url.format(this)}
-  var port   = process.env.PORT || config.baseUrl.port || null
-  var server = app.listen(port)
 
-  // Store port in config, if it wasn't there already.
-  config.baseUrl.host = null // Remove host, since hostname and port should be set now.
-  config.baseUrl.port = server.address().port
+  var port   = process.env.PORT || config.baseUrl.port || null
+  var server = app.listen(port, (listening) => {
+    // Store port in config, if it wasn't there already.
+    config.baseUrl.host = null // Remove host, since hostname and port should be set now.
+    config.baseUrl.port = server.address().port
+
+    console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
+                app.settings.env)
+  })
 
   // Authentication strategies
   Authentication.setup(app, model, config)
@@ -107,11 +111,12 @@ exports.start = function start(model, config) {
   app.get('/ping', function(req, res) {res.send('pong')})
 
   app.get('/test', function(req, res) {
-    model.Site.getByDomain(config.baseUrl.host)
+    const host = config.baseUrl.hostname + ':' + config.baseUrl.port
+    model.Site.getByDomain(host)
       .then(function(site) {
         if (site) {return site} // Chain it for creation below
 
-        return model.Site.create({domain: config.baseUrl.host})
+        return model.Site.create({domain: host})
       })
       .then(function(site) {
         res.render('test', {config: config, site: site.id})
@@ -122,7 +127,4 @@ exports.start = function start(model, config) {
   app.set('views', __dirname + '/views')
   app.engine('hbs', expressHbs({extname: 'hbs', defaultLayout: 'main.hbs'}))
   app.set('view engine', 'hbs')
-
-  console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
-              app.settings.env)
 }
