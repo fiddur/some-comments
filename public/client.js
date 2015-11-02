@@ -264,7 +264,7 @@
     else iframe.src = server + 'login/site/' + siteId
     iframe.className = 'login'
 
-    var deferred = Q.defer()
+    var deferred = window.Q.defer()
 
     window.addEventListener('message', function(event) {
       var origUrl   = parseUrl(event.origin)
@@ -409,6 +409,7 @@
 
     var row = e('comment_' + comment.id)
     var user = comment.user
+    user.site = comment.site
 
     var oldCommentDiv = e('comment_' + comment.id)
     var commentingDiv = makeCommentingDiv(comment.user, function(commentText) {

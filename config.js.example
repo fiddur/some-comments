@@ -1,6 +1,8 @@
-var path = require('path')
+'use strict'
 
-var config = {
+const path = require('path')
+
+module.exports = {
   secret:  'verysecret',
   baseUrl: 'http://localhost:1337/',
   email: {
@@ -28,10 +30,6 @@ var config = {
   },
   database: {
     client: 'sqlite3',
-    connection: {
-      filename: path.join(__dirname, 'comments.db'),
-    }
+    connection: {filename: path.join(__dirname, 'comments.db')}
   }
 }
-
-module.exports = config

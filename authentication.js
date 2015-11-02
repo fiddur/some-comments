@@ -17,61 +17,64 @@
  * GNU-AGPL-3.0
  */
 
-var async = require('asyncawait/async')
-var await = require('asyncawait/await')
+'use strict'
 
-var Q                = require('q')
-var passport         = require('passport')
-var FacebookStrategy = require('passport-facebook').Strategy
-var GithubStrategy   = require('passport-github').Strategy
-var GoogleOauth2     = require('passport-google-oauth2').Strategy
-var OpenIdConnect    = require('passport-openidconnect')
+const async = require('asyncawait/async')
+const await = require('asyncawait/await')
 
-function setupAnonymous(model, app, anonConfig) {
+const Promise          = require('bluebird')
+const passport         = require('passport')
+const FacebookStrategy = require('passport-facebook').Strategy
+const GithubStrategy   = require('passport-github').Strategy
+const GoogleOauth2     = require('passport-google-oauth2').Strategy
+const OpenIdConnect    = require('passport-openidconnect')
+
+const setupAnonymous = (model, app, anonConfig) => {
   app.get(
     '/auth/anonymous',
-    async(function(req, res) {
+    async((req, res) => {
       // Should not be used when already logged in.
       if (req.user) {return res.sendStatus(400)}
 
       // Create an anonymous user.
-      var user = await(model.User.createAnonymous(req.ip))
-      await(Q.ninvoke(req, 'login', user))
+      const user = await(model.User.createAnonymous(req.ip))
+      await(Promise.promisify(req.login, req)(user))
       res.redirect('/account')
     })
   )
 }
 
-function openIdConnectDynamic(model, app, config) {
-  var oidcStrategy = new OpenIdConnect.Strategy({
+const openIdConnectDynamic = (model, app, config) => {
+  const oidcStrategy = new OpenIdConnect.Strategy({
     identifierField:   'oidci',
     scope:             'openid profile email',
-  }, async(function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
+  }, async((iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) => {
     /// @todo Save identifier -> oidc  connection.
-    var account = await(model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
+    const account = await(model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture,
       email:       userInfo.email,
     }))
-    var user = await(account.getUser()) /// @todo test
+    const user = await(account.getUser()) /// @todo test
     done(null, user)
   }))
 
   passport.use(oidcStrategy)
 
-  oidcStrategy.configure(async(function(identifier, done) {
-    var oidcIdentifier = model.OidcIdentifier.qOne({identifier: identifier})
+  oidcStrategy.configure(async((identifier, done) => {
+    const oidcIdentifier = await(model.OidcIdentifier.get(identifier))
 
     if (oidcIdentifier) {
-      oidcIdentifier.qGetOidc().done(function(oidc) {done(null, oidc)})
+      console.log(oidcIdentifier)
+      oidcIdentifier.getOidc().done((oidc) => done(null, oidc))
     }
     else {
       done(null, null)
     }
   }))
 
-  OpenIdConnect.config(async(function(issuer, done) {
-    var oidc = await(model.Oidc.qOne({issuer: issuer}))
+  OpenIdConnect.config(async((issuer, done) => {
+    const oidc = await(model.Oidc.getByIssuer(issuer))
 
     if (oidc) {
       done(null, oidc)
@@ -84,8 +87,8 @@ function openIdConnectDynamic(model, app, config) {
   OpenIdConnect.register(OpenIdConnect.registration({
     name:        'Some Comments',
     redirectURI: config.baseUrl + 'auth/oidc/callback',
-  }, async(function(provider, reg, next) {
-    var oidcs = await(model.Oidc.create([{
+  }, async((provider, reg, next) => {
+    const oidcs = await(model.Oidc.create([{
       issuer:           provider.issuer,
       authorizationURL: provider.authorizationURL,
       tokenURL:         provider.tokenURL,
@@ -111,12 +114,12 @@ function openIdConnectDynamic(model, app, config) {
       callbackURL:      config.baseUrl + 'auth/oidc/callback',
       failureRedirect:  '/login',
     }),
-    function(req, res) {res.redirect('/account')}
+    (req, res) => {res.redirect('/account')}
   )
 }
 
-function openIdConnectProvider(app, model, baseUrl, provider) {
-  var oidcStrategy = new OpenIdConnect.Strategy({
+const openIdConnectProvider = (app, model, baseUrl, provider) => {
+  const oidcStrategy = new OpenIdConnect.Strategy({
     name:             provider.shortName,
     authorizationURL: provider.authorizationURL,
     tokenURL:         provider.tokenURL,
@@ -124,14 +127,14 @@ function openIdConnectProvider(app, model, baseUrl, provider) {
     clientID:         provider.clientID,
     clientSecret:     provider.clientSecret,
     scope:            'openid profile email',
-  }, function(iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) {
+  }, (iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) => {
     model.Account.getOrCreate(provider.shortName, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture || '',
       email:       userInfo.email,
     })
-      .then(function(account) {return account.getUser()})  /// @todo test
-      .then(function(user)    {done(null, user)})
+      .then((account) => account.getUser())  /// @todo test
+      .then((user)    => done(null, user))
       .done()
   })
 
@@ -150,12 +153,12 @@ function openIdConnectProvider(app, model, baseUrl, provider) {
       callbackURL:      baseUrl + 'auth/' + provider.shortName + '/callback',
       failureRedirect:  '/login',
     }),
-    function(req, res) {res.redirect('/account')}
+    (req, res) => res.redirect('/account')
   )
 }
 
-function facebook(app, provider, model, baseUrl) {
-  var defaultIcon = 'https://upload.wikimedia.org/wikipedia/commons/c/c2/F_icon.svg'
+const facebook = (app, provider, model, baseUrl) => {
+  const defaultIcon = 'https://upload.wikimedia.org/wikipedia/commons/c/c2/F_icon.svg'
   provider.icon = provider.icon || defaultIcon
 
   passport.use(new FacebookStrategy(
@@ -164,14 +167,14 @@ function facebook(app, provider, model, baseUrl) {
       clientSecret: provider.clientSecret,
       callbackURL:  baseUrl + 'auth/facebook/callback',
     },
-    function(accessToken, refreshToken, profile, done) {
+    (accessToken, refreshToken, profile, done) => {
       model.Account.getOrCreate('Facebook', profile._json.id, {
         displayName: profile.displayName,
         avatar:      'http://graph.facebook.com/' + profile._json.id + '/picture',
         email:       profile._json.email,
       })
-        .then(function(account) {return account.getUser()})  /// @todo test
-        .then(function(user) {done(null, user)})
+        .then((account) => account.getUser())  /// @todo test
+        .then((user)    => done(null, user))
         .done()
     }
   ))
@@ -180,31 +183,29 @@ function facebook(app, provider, model, baseUrl) {
   app.get(
     '/auth/facebook/callback',
     passport.authenticate('facebook', {failureRedirect: '/login'}),
-    function(req, res) {res.redirect('/account')}
+    (req, res) => res.redirect('/account')
   )
 }
 
 // test authentication
-function ensureAuthenticated(req, res, next) {
+const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) { return next() }
   res.sendStatus(403)
 }
 
-exports.setup = function setup(app, model, config) {
+exports.setup = (app, model, config) => {
   app.use(passport.initialize())
   app.use(passport.session())
 
   // serialize and deserialize
-  passport.serializeUser(function(user, done) {
-    done(null, user.id)
-  })
-  passport.deserializeUser(function(id, done) {
+  passport.serializeUser((user, done) => done(null, user.id))
+  passport.deserializeUser((id, done) => {
     model.User.get(id)
       .then((user) => done(null, user))
       .catch((error) => done(null, null))
   })
 
-  app.get('/login', function(req, res) {res.render('login', {config: config})})
+  app.get('/login', (req, res) => res.render('login', {config: config}))
 
   // Get login for specific site
   app.get('/login/site/:site', function(req, res) {
@@ -229,21 +230,19 @@ exports.setup = function setup(app, model, config) {
       .done()
   })
 
-  app.get('/account', ensureAuthenticated, function(req, res) {
-    res.render('account', {user: req.user})
-  })
+  app.get('/account', ensureAuthenticated, (req, res) => res.render('account', {user: req.user}))
 
   if (config.testMode) {
-    app.get('/login/:id', function(req, res, next) {
-      var user = {id: req.params.id}
-      req.logIn(user, function(err) {
+    app.get('/login/:id', (req, res, next) => {
+      const user = {id: req.params.id}
+      req.logIn(user, (err) => {
         if (err) {return next(err)}
         res.json('done')
       })
     })
   }
 
-  app.get('/logout', function(req, res) {
+  app.get('/logout', (req, res) => {
     req.logout()
     res.redirect('/')
   })
@@ -257,7 +256,7 @@ exports.setup = function setup(app, model, config) {
   if ('openidconnect' in config.authenticators) {
     openIdConnectDynamic(model, app, config)
 
-    for (var i = 0, len = config.authenticators.openidconnect.length; i < len; i++) {
+    for (let i = 0, len = config.authenticators.openidconnect.length; i < len; i++) {
       openIdConnectProvider(
         app, model, config.baseUrl.toString(), config.authenticators.openidconnect[i]
       )

@@ -73,7 +73,7 @@ module.exports = (models) => {
    ************************************************************************************************/
 
   Account.prototype.getUser = function() {
-    return await(this.$loadRelated('user')).user
+    return this.$loadRelated('user').then((account) => account.user)
   }
 
   return Account
