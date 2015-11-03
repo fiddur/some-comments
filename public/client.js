@@ -297,29 +297,30 @@
   ////////
   // Site
   //
-  //var SitePrototype = {}
+  var SitePrototype = {}
+
+  SitePrototype.config = function() {
+    var site = this
+    ajax.get(
+      site.server + 'sites/' + site.id
+    ).then(function(siteJson) {
+      var siteData = JSON.parse(siteJson)
+      site.domain = siteData.domain
+      site.settings = siteData.settings
+    })
+  }
+
+  SitePrototype.getSetting = function(key, defaultValue) {
+    if (this.settings == null) return defaultValue
+    if (!this.settings.hasOwnProperty(key)) return defaultValue
+    return this.settings[key]
+  }
 
   function Site(server, siteId) {
-    var site = {}//object.create(SitePrototype)
+    var site = Object.create(SitePrototype)
 
     site.id     = siteId
     site.server = server
-
-    site.config = function() {
-      ajax.get(
-        site.server + 'sites/' + site.id
-      ).then(function(siteJson) {
-        var siteData = JSON.parse(siteJson)
-        site.domain = siteData.domain
-        site.settings = siteData.settings
-      })
-    }
-
-    site.getSetting = function(key, defaultValue) {
-      if (site.settings == null) return defaultValue
-      if (!site.settings.hasOwnProperty(key)) return defaultValue
-      return site.settings[key]
-    }
 
     return site
   }
