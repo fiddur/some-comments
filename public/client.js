@@ -240,7 +240,7 @@
         }, function(error) {
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
-            return User.offerLogin(sc.server, null, error.call)
+            return User.offerLogin(sc.server, error.call)
               .then(function (siteJson) {
                 console.log('Added site after auth?', siteJson)
               })
@@ -258,10 +258,9 @@
   /**
    * Display a login iframe, promise to fulfil the original request.
    */
-  User.offerLogin = function(server, siteId, call) {
+  User.offerLogin = function(server, call) {
     var iframe = document.createElement('iframe')
-    if (siteId == null) iframe.src = server + 'login'
-    else iframe.src = server + 'login/site/' + siteId
+    iframe.src = server + 'login'
     iframe.className = 'login'
 
     var deferred = window.Q.defer()
@@ -363,7 +362,7 @@
           if (error instanceof ForbiddenError) {
 
             // Lets offer login and retry
-            return User.offerLogin(site.server, site.id, error.call)
+            return User.offerLogin(site.server, error.call)
               .then(function (commentJson) {
                 var comment = JSON.parse(commentJson)
                 return comment

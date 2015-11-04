@@ -207,29 +207,6 @@ exports.setup = (app, model, config) => {
 
   app.get('/login', (req, res) => res.render('login', {config: config}))
 
-  // Get login for specific site
-  app.get('/login/site/:site', function(req, res) {
-    model.Site.get(req.params.site)
-      .then(function(site) {
-        var settings = JSON.parse(site.settings)
-        var authenticators = {}
-        if (settings != null && settings.hasOwnProperty('authenticators')) {
-          // If authenticators are set in settings, enable only those listed
-          settings.authenticators.forEach(function(authenticator) {
-            if (config.authenticators.hasOwnProperty(authenticator)) {
-              authenticators[authenticator] = config.authenticators[authenticator]
-            }
-          })
-        }
-        else {
-          // Otherwise, enable all in config
-          authenticators = config.authenticators
-        }
-        res.render('login', {authenticators: authenticators})
-      })
-      .done()
-  })
-
   app.get('/account', ensureAuthenticated, (req, res) => res.render('account', {user: req.user}))
 
   if (config.testMode) {
