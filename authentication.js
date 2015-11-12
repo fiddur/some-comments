@@ -206,7 +206,6 @@ exports.setup = (app, model, config) => {
   })
 
   app.get('/login', (req, res) => res.render('login', {config: config}))
-
   app.get('/account', ensureAuthenticated, (req, res) => res.render('account', {user: req.user}))
 
   if (config.testMode) {

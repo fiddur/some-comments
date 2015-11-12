@@ -188,9 +188,9 @@
     window.Q.all([
       Comment.getAllByPage(site, urlStr),
       User.get(sc.server, 'me'),
-      site.config()
+      site.loadSettings()
     ])
-      .spread(function(comments, user, config) {
+      .spread(function(comments, user) {
 
         var commentContainer = document.createElement('div')
         commentContainer.className = 'comments_container'
@@ -298,7 +298,7 @@
   //
   var SitePrototype = {}
 
-  SitePrototype.config = function() {
+  SitePrototype.loadSettings = function() {
     var site = this
     ajax.get(
       site.server + 'sites/' + site.id

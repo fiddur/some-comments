@@ -32,6 +32,25 @@ module.exports = (models) => {
 
   Site.tableName = 'sites'
 
+  Site.jsonSchema = {
+    type: 'object',
+    required: ['domain'],
+    properties: {
+      id: {type: 'integer'},
+      domain: {type: 'string'},
+      maxLevels: {type: 'integer'},
+      createdAt: {type: 'string'},
+      modifiedAt: {type: 'string'},
+      settings: {
+        type: 'object',
+        properties: {
+          sortOrder: {type: 'string'},
+          useAvatar: {type: 'boolean'},
+        }
+      }
+    }
+  }
+
   Site.relationMappings = {
     admins: {
       relation: Model.ManyToManyRelation,
