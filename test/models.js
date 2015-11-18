@@ -31,7 +31,9 @@ describe('Models', function() {
     model = await(models(config, {}))
 
     // Setup some test data
-    site = await(model.Site.create({domain: 'testdomain'}))
+    site = await(model.Site.create(
+      {domain: 'testdomain', settings: {useAvatar: true, sortOrder: 'desc'}}
+    ))
 
     page = page2 = await(model.Page.create({
       site: site,
@@ -70,6 +72,18 @@ describe('Models', function() {
       let site2 = await(model.Site.getByOrigin('http://testdomain/foo'))
       assert.equal('testdomain', site2.domain)
     }))
+
+    it('should update settings', async(() => {
+      let site2 = await(model.Site.getByDomain('testdomain'))
+      assert.equal(true, site2.settings.useAvatar)
+      assert.equal('desc', site2.settings.sortOrder)
+      await(model.Site.update(site2.id, {settings: {useAvatar: false, sortOrder: 'asc'}}))
+      let site3 = await(model.Site.getByDomain('testdomain'))
+      assert.equal(site2.id, site3.id)
+      assert.equal(false, site3.settings.useAvatar)
+      assert.equal('asc', site3.settings.sortOrder)
+    }))
+
   })
 
   describe('Accounts', function() {
