@@ -40,14 +40,15 @@ module.exports = function (app, model, config) {
 
     if (typeof req.user === 'undefined') {return res.status(401).send('Unauthorized')}
 
-    var site = await(model.Site.create({domain: req.body.domain}))
-
+    var site = await(model.Site.create({domain: req.body.domain, settings: req.body.settings}))
     await(site.addAdmin(req.user))
 
     res.status(201).location(config.baseUrl + 'sites/' + site.id).send(site)
   }))
 
   app.get('/sites/:id', async(function(req, res) {
-    res.json(await(model.Site.get(req.params.id)))
+    var site = await(model.Site.get(req.params.id))
+    if (!site) return res.sendStatus(404)
+    res.json(site)
   }))
 }

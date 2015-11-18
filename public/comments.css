@@ -5,7 +5,11 @@
 .comments {
   padding: .5rem;
 }
-.comment_row {
+.comments .comments_container {
+  display:  table;
+  width:    100%;
+}
+.comments .comment_row {
   display: table-row;
 }
 
