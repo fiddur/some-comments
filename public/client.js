@@ -119,7 +119,7 @@
     var div = document.createElement('div')
     div.className = 'comment_row'
 
-    div.appendChild(avatarDiv(user))
+    if (user.site.getSetting('useAvatar', true)) div.appendChild(avatarDiv(user))
 
     // Instead of just showing the comment, make an input and a preview.
 
@@ -162,7 +162,13 @@
       Comment.add(user.site, urlStr, commentText)
         .then(function(comment) {
           comment.site = user.site
-          element.insertBefore(Comment.getElement(comment, user), div)
+
+          if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
+            element.insertBefore(Comment.getElement(comment, user), div)
+          }
+          else {
+            element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
+          }
 
           // Re-get the new comment div html, since user might have logged in.
           /// @todo Bind this to users/me instead.
@@ -181,16 +187,30 @@
 
     window.Q.all([
       Comment.getAllByPage(site, urlStr),
-      User.get(sc.server, 'me')
+      User.get(sc.server, 'me'),
+      site.loadSettings()
     ])
       .spread(function(comments, user) {
+
+        var commentContainer = document.createElement('div')
+        commentContainer.className = 'comments_container'
+        element.appendChild(commentContainer)
+
         user.site = site
-        for (var i = 0; i < comments.length; i++) {
-          element.appendChild(Comment.getElement(comments[i], user))
+
+        // On sortOrder=desc, input files first and then latest comment on top
+        if (site.getSetting('sortOrder', 'asc') == 'desc') {
+          insertNewCommentElement(commentContainer, user, urlStr)
+          comments.reverse()
         }
 
-        // Add field for new comment
-        insertNewCommentElement(element, user, urlStr)
+        for (var i = 0; i < comments.length; i++) {
+          commentContainer.appendChild(Comment.getElement(comments[i], user))
+        }
+
+        if (site.getSetting('sortOrder', 'asc') == 'asc') {
+          insertNewCommentElement(commentContainer, user, urlStr)
+        }
 
         var someCommentInfo = document.createElement('div')
         someCommentInfo.className = 'some_comment_info'
@@ -210,11 +230,11 @@
         return JSON.parse(sitesJson)
       })
   }
-  SomeCommentsPrototype.addSite = function(domain) {
+  SomeCommentsPrototype.addSite = function(domain, settings) {
     var sc = this
 
     return ajax.post(
-      sc.server + 'sites/', {domain: domain})
+      sc.server + 'sites/', {domain: domain, settings: settings})
       .then(
         function(response) {
         }, function(error) {
@@ -276,16 +296,35 @@
   ////////
   // Site
   //
-  //var SitePrototype = {}
+  var SitePrototype = {}
+
+  SitePrototype.loadSettings = function() {
+    var site = this
+    ajax.get(
+      site.server + 'sites/' + site.id
+    ).then(function(siteJson) {
+      var siteData = JSON.parse(siteJson)
+      site.domain = siteData.domain
+      site.settings = siteData.settings
+    })
+  }
+
+  SitePrototype.getSetting = function(key, defaultValue) {
+    if (this.settings == null) return defaultValue
+    if (!this.settings.hasOwnProperty(key)) return defaultValue
+    return this.settings[key]
+  }
 
   function Site(server, siteId) {
-    var site = {}//object.create(SitePrototype)
+    var site = Object.create(SitePrototype)
 
     site.id     = siteId
     site.server = server
 
     return site
   }
+
+
 
   ///////////
   // Comment
@@ -321,6 +360,7 @@
           return comment
         }, function(error) {
           if (error instanceof ForbiddenError) {
+
             // Lets offer login and retry
             return User.offerLogin(site.server, error.call)
               .then(function (commentJson) {
@@ -369,6 +409,7 @@
 
     var row = e('comment_' + comment.id)
     var user = comment.user
+    user.site = comment.site
 
     var oldCommentDiv = e('comment_' + comment.id)
     var commentingDiv = makeCommentingDiv(comment.user, function(commentText) {
@@ -439,7 +480,7 @@
     div.className = 'comment_row'
     div.id = 'comment_' + comment.id
 
-    div.appendChild(avatarDiv(comment.user))
+    if (user.site.getSetting('useAvatar', true)) div.appendChild(avatarDiv(comment.user))
     div.appendChild(commentDiv(comment, user))
 
     return div

@@ -106,6 +106,13 @@ describe('Routing Integration', function() {
         .expect('Content-Type', /html/)
         .expect(200, done)
     })
+
+    it('should return not found status', function(done) {
+      request(baseUrl)
+        .get('sites/555')
+        .set('Accept', 'application/json')
+        .expect(404, done)
+    })
   })
 
   describe('Anonymous user', function() {
@@ -145,7 +152,7 @@ describe('Routing Integration', function() {
 
     it('should add a site if authed', async(function() {
       var createRes = await(Q.ninvoke(
-        agentLoggedIn.post('sites/').send({domain: 'example.org'}),
+        agentLoggedIn.post('sites/').send({domain: 'example.org', settings: {}}),
         'end'
       ))
 
@@ -169,7 +176,7 @@ describe('Routing Integration', function() {
         uri:    baseUrl + 'sites',
         jar:    jarLoggedIn,
         method: 'POST',
-        json:   {domain: 'two.example.org'},
+        json:   {domain: 'two.example.org', settings: {}},
         resolveWithFullResponse: true
       }))
 
