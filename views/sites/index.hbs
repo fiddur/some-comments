@@ -16,10 +16,6 @@
 <form onsubmit="return addSite()">
   <label>Domain name only: <input id="domain" /></label><br>
   <label><input type="checkbox" id="avatars" checked /> Use avatars</label><br>
-  Authenticators:<br>
-  <label><input type="checkbox" id="authenticator.anonymous" /> Anonymous</label><br>
-  <label><input type="checkbox" id="authenticator.facebook" /> Facebook</label><br>
-  <label><input type="checkbox" id="authenticator.openidconnect" /> OpenID Connect</label><br>
   <label>Sort order: <select id="sort_order">
     <option value="asc">Latest comment last</option>
     <option value="desc">Latest comment first</option>
@@ -37,11 +33,8 @@
     console.log('Adding site.')
 
     var domain = document.getElementById('domain').value
-    var settings = {authenticators: [], sortOrder: 'asc', useAvatar: true}
+    var settings = {sortOrder: 'asc', useAvatar: true}
 
-    if (document.getElementById('authenticator.anonymous').checked) settings.authenticators.push('anonymous')
-    if (document.getElementById('authenticator.facebook').checked) settings.authenticators.push('facebook')
-    if (document.getElementById('authenticator.openidconnect').checked) settings.authenticators.push('openidconnect')
     var sort_select = document.getElementById('sort_order')
     settings.sortOrder = sort_select.options[sort_select.selectedIndex].value
     settings.useAvatar = document.getElementById('avatars').checked

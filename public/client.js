@@ -234,9 +234,9 @@
       Comment.getAllByPage(site, urlStr),
       Review.getAllByPage(site, urlStr),
       User.get(sc.server, 'me'),
-      site.config()
+      site.loadSettings()
     ])
-      .spread(function(comments, reviews, user, config) {
+      .spread(function(comments, reviews, user) {
 
         var commentContainer = document.createElement('div')
         commentContainer.className = 'comments_container'
@@ -301,7 +301,7 @@
         }, function(error) {
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
-            return User.offerLogin(sc.server, null, error.call)
+            return User.offerLogin(sc.server, error.call)
               .then(function (siteJson) {
                 console.log('Added site after auth?', siteJson)
               })
@@ -319,10 +319,9 @@
   /**
    * Display a login iframe, promise to fulfil the original request.
    */
-  User.offerLogin = function(server, siteId, call) {
+  User.offerLogin = function(server, call) {
     var iframe = document.createElement('iframe')
-    if (siteId == null) iframe.src = server + 'login'
-    else iframe.src = server + 'login/site/' + siteId
+    iframe.src = server + 'login'
     iframe.className = 'login'
 
     var deferred = window.Q.defer()
@@ -358,29 +357,30 @@
   ////////
   // Site
   //
-  //var SitePrototype = {}
+  var SitePrototype = {}
+
+  SitePrototype.loadSettings = function() {
+    var site = this
+    ajax.get(
+      site.server + 'sites/' + site.id
+    ).then(function(siteJson) {
+      var siteData = JSON.parse(siteJson)
+      site.domain = siteData.domain
+      site.settings = siteData.settings
+    })
+  }
+
+  SitePrototype.getSetting = function(key, defaultValue) {
+    if (this.settings == null) return defaultValue
+    if (!this.settings.hasOwnProperty(key)) return defaultValue
+    return this.settings[key]
+  }
 
   function Site(server, siteId) {
-    var site = {}//object.create(SitePrototype)
+    var site = Object.create(SitePrototype)
 
     site.id     = siteId
     site.server = server
-
-    site.config = function() {
-      ajax.get(
-        site.server + 'sites/' + site.id
-      ).then(function(siteJson) {
-        var siteData = JSON.parse(siteJson)
-        site.domain = siteData.domain
-        site.settings = siteData.settings
-      })
-    }
-
-    site.getSetting = function(key, defaultValue) {
-      if (site.settings == null) return defaultValue
-      if (!site.settings.hasOwnProperty(key)) return defaultValue
-      return site.settings[key]
-    }
 
     return site
   }
@@ -423,7 +423,7 @@
           if (error instanceof ForbiddenError) {
 
             // Lets offer login and retry
-            return User.offerLogin(site.server, site.id, error.call)
+            return User.offerLogin(site.server, error.call)
               .then(function (commentJson) {
                 var comment = JSON.parse(commentJson)
                 return comment
