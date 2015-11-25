@@ -126,7 +126,7 @@
     var commentDiv = document.createElement('div')
     commentDiv.className = 'comment'
 
-    if (reviewGrade != null) {
+    if (user.site.getSetting('useReviews', false) && reviewGrade != null) {
 
       // Review
       var reviewGradeLabelItems = {}
@@ -245,16 +245,19 @@
         user.site = site
         user.review = null
 
-        // Attach reviews to linked comment
-        for (var i = 0; i < comments.length; i++) {
-          comments[i].review = null
-          for (var j = 0; j < reviews.length; j++) {
-            if (reviews[j].userId == user.id) {
-              user.review = reviews[j]
-            }
-            if (reviews[j].commentId === comments[i].id) {
-              comments[i].review = reviews[j]
-              break
+        if (site.getSetting('useReviews', false)) {
+          // Attach reviews to linked comment
+
+          for (var i = 0; i < comments.length; i++) {
+            comments[i].review = null
+            for (var j = 0; j < reviews.length; j++) {
+              if (reviews[j].userId == user.id) {
+                user.review = reviews[j]
+              }
+              if (reviews[j].commentId === comments[i].id) {
+                comments[i].review = reviews[j]
+                break
+              }
             }
           }
         }
@@ -452,13 +455,14 @@
 
   /**
    * @param user    object  A user object
-   * @param comment object  A user object
+   * @param comment object  A comment object
+   * @param urlStr  string  The page ID
    * @param grade   int     Review grade
    */
   Review.save = function(user, comment, urlStr, grade) {
     var base_url = user.site.server + 'sites/' + user.site.id + '/pages/' + urlStr + '/reviews/'
     if (user.review) {
-      return ajax.put(base_url + user.review.id, {grade: grade, linkTo: comment.id})
+      return ajax.put(base_url + user.review.id, {grade: parseInt(grade, 10), linkTo: comment.id})
         .then(
           function(reviewJson) {
             var review = JSON.parse(reviewJson)
@@ -477,7 +481,7 @@
         )
     }
     else {
-      return ajax.post(base_url, {grade: grade, linkTo: comment.id})
+      return ajax.post(base_url, {grade: parseInt(grade, 10), linkTo: comment.id})
         .then(
           function(reviewJson) {
             var review = JSON.parse(reviewJson)
@@ -544,7 +548,7 @@
           newComment.site = comment.site
           newComment.review = null
 
-          if (grade != null) {
+          if (user.site.getSetting('useReviews', false) && grade != null) {
             Review.save(user, newComment, comment.pageId, grade)
               .then(function(review) {
                 newComment.review = review
@@ -593,8 +597,10 @@
       commentDiv.appendChild(editOptionsDiv(comment, user))
     }
 
-    commentDiv.appendChild(Renderer.displayName(comment))
-    if (comment.review) commentDiv.appendChild(Renderer.review(comment.review))
+    commentDiv.appendChild(displayNameSpan(comment))
+    if (user.site.getSetting('useReviews', false) && comment.review) {
+      commentDiv.appendChild(reviewDiv(comment.review))
+    }
 
     var commentText = document.createElement('div')
     commentText.className = 'comment_text'
@@ -609,29 +615,23 @@
     return commentDiv
   }
 
-  ///////////
-  // Renderer
-  //
-  var Renderer = {}
-
-  Renderer.displayName = function(comment) {
+  function displayNameSpan(comment) {
     var userSpan = document.createElement('span')
     userSpan.className = 'commenter_name'
     userSpan.appendChild(document.createTextNode(comment.user.displayName || ''))
     return userSpan;
   }
 
-  Renderer.review = function(review) {
-
+  function reviewDiv(review) {
     var reviewDiv = document.createElement('div')
     reviewDiv.className = 'review'
     for (var i = 1; i <= 5; i++) {
-      reviewDiv.appendChild(Renderer.reviewGrade(review.grade >= i))
+      reviewDiv.appendChild(reviewGradeSpan(review.grade >= i))
     }
     return reviewDiv;
   }
 
-  Renderer.reviewGrade = function(active) {
+  function reviewGradeSpan(active) {
     var gradeSpan = document.createElement('span')
     gradeSpan.innerHTML = '★'
     gradeSpan.className = active ? 'active' : ''

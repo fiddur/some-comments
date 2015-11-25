@@ -1,6 +1,6 @@
 /**
  * Some Comments - a comment engine
- * Copyright (C) 2015 Fredrik Liljegren, Sören Jensen
+ * Copyright (C) 2015 Fredrik Liljegren
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
  * GNU Affero General Public License as published by the Free Software Foundation, either version 3
@@ -30,6 +30,21 @@ module.exports = (models) => {
 
   Review.tableName = 'reviews'
 
+  Review.jsonSchema = {
+    type: 'object',
+    required: ['grade', 'userId', 'pageId', 'commentId'],
+    properties: {
+      id: {type: 'integer'},
+      grade: {type: 'integer'},
+      userId: {type: 'integer'},
+      pageId: {type: 'integer'},
+      commentId: {type: 'integer'},
+      createdAt: {type: 'string'},
+      modifiedAt: {type: 'string'},
+      deletedAt: {type: 'string'}
+    }
+  }
+
   Review.relationMappings = {
     page: {
       relation: Model.OneToManyRelation,
@@ -56,6 +71,7 @@ module.exports = (models) => {
   Review.create = async((data) => {
     if (data.user instanceof models.User) {data.userId = data.user.id}
     if (data.page instanceof models.Page) {data.pageId = data.page.id}
+    if (data.comment instanceof models.Comment) {data.commentId = data.comment.id}
 
     // Without await here, it somehow doubled the inserts…
     return await(Review.query().insert(data))
