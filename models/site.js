@@ -67,7 +67,7 @@ module.exports = (models) => {
   }
 
   Site.create      = (data)     => Site.query().insert(data)
-  Site.update      = (id, data) => Site.query().patch(data).where({id: id}).first()
+  Site.update      = (id, data) => Site.query().patch(data).where({id: id})
   Site.get         = (id)       => Site.query().where({id:     id    }).first()
   Site.getByDomain = (domain)   => Site.query().where({domain: domain}).first()
 

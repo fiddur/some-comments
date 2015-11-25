@@ -59,7 +59,7 @@ module.exports = function (app, model, config) {
     if (!site) return res.sendStatus(404)
 
     await(site.getAdmins())
-    if (req.user.id != site.admins[0].id) {return res.status(401).send('Unauthorized B')}
+    if (req.user.id != site.admins[0].id) {return res.status(401).send('Unauthorized')}
 
     await(model.Site.update(site.id, {domain: req.body.domain, settings: req.body.settings}))
     site = await(model.Site.get(req.params.id))
@@ -95,7 +95,9 @@ module.exports = function (app, model, config) {
       page.comments.reverse()
     })
 
-    res.render('sites/moderate', {site: site, pages: pages, baseUrl: config.baseUrl, user: req.user})
+    res.render(
+      'sites/moderate', {site: site, pages: pages, baseUrl: config.baseUrl, user: req.user}
+    )
    }))
 
 }

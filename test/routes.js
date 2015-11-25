@@ -199,10 +199,20 @@ describe('Routing Integration', function() {
 
     it('should return unauthorized status', function(done) {
       request(baseUrl)
-        .put('sites/987654321')
+        .put('sites/' + siteCreated.body.id)
         .send({domain: 'altered.example.org', settings: {useAvatar: true}})
         .expect(401, done)
     })
+
+    it('should return not found status', async(function() {
+      await(Q.ninvoke(
+        anotherUser
+        .put('sites/987654321')
+          .send({domain: 'altered.example.org', settings: {useAvatar: true}})
+          .expect(404),
+        'end'
+      ))
+    }))
 
     it('should return unauthorized status', async(function() {
       await(Q.ninvoke(
