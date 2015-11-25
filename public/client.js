@@ -56,6 +56,7 @@
     var req = new XMLHttpRequest()
     req.withCredentials = true
     req.open(method, url, true)
+    headers['accept'] = 'application/json'
 
     for (var header in headers) {req.setRequestHeader(header, headers[header])}
 
@@ -248,6 +249,28 @@
           console.log('Error', error)
         }
       )
+  }
+  SomeCommentsPrototype.updateSite = function(siteId, domain, settings) {
+    var sc = this
+
+    return ajax.put(
+      sc.server + 'sites/' + siteId, {domain: domain, settings: settings})
+      .then(
+        function(response) {
+        }, function(error) {
+          if (error instanceof ForbiddenError) {
+            // Lets offer login and retry
+            return User.offerLogin(sc.server, null, error.call)
+              .then(function (siteJson) {
+                console.log('Updated site after auth?', siteJson)
+              })
+          }
+          console.log('Error', error)
+        }
+      )
+  }
+  SomeCommentsPrototype.deleteComment = function(comment) {
+    Comment.del(comment)
   }
 
   ////////

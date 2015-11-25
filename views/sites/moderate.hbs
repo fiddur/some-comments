@@ -1,0 +1,29 @@
+<h1>Moderate {{site.id}} at {{baseUrl}}</h1>
+
+{{#user}}
+  <p>Logged in as {{displayName}} ({{id}}) <a href="/sites">Back to list</a></p>
+{{/user}}
+
+<h2>Your pages</h2>
+<div>
+  {{#pages}}
+    <h3>Page: {{url}} — <i>{{commentCount}} comments</i></h3>
+    {{#comments}}<div id="comment_{{id}}">
+      {{createdAt}} {{user.displayName}} ({{user.id}}): <i>{{text}}</i> {{site.id}}
+      <a href="#" onclick="return deleteComment({ pageId: {{pageId}}, id: {{id}} });">Delete</a>
+    </div>{{/comments}}
+  {{/pages}}
+</div>
+
+<script src="/node_modules/markdown/lib/markdown.js"></script>
+<script src="/node_modules/q/q.js"></script>
+<script src="/client.js"></script>
+<script>
+  var sc = SomeComments('{{baseUrl}}')
+
+  function deleteComment(comment) {
+    comment.site = {id: {{site.id}}, server: sc.server}
+    sc.deleteComment(comment)
+    return false
+  }
+</script>

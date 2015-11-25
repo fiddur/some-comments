@@ -167,6 +167,165 @@ describe('Routing Integration', function() {
     }))
   })
 
+  describe('Site alteration', function() {
+
+    var siteCreated
+    var anotherUser
+
+    before(async(function() {
+      siteCreated = await(Q.ninvoke(
+        agentLoggedIn
+          .post('sites/')
+          .send({domain: 'site.alteration.example.org', settings: {useAvatar: false}})
+          .expect(201),
+        'end'
+      ))
+      anotherUser = request.agent(baseUrl)
+      var authRes = await(Q.ninvoke(anotherUser.get('auth/anonymous'), 'end'))
+      anotherUser.saveCookies(authRes)
+    }))
+
+    it('should alter the site', async(function() {
+      var siteUpdated = await(Q.ninvoke(
+        agentLoggedIn
+          .put('sites/' + siteCreated.body.id)
+          .send({domain: 'altered.example.org', settings: {useAvatar: true}})
+          .expect(200),
+        'end'
+      ))
+      assert.equal(siteCreated.body.id, siteUpdated.body.id)
+      assert.equal('altered.example.org', siteUpdated.body.domain)
+    }))
+
+    it('should return unauthorized status', function(done) {
+      request(baseUrl)
+        .put('sites/987654321')
+        .send({domain: 'altered.example.org', settings: {useAvatar: true}})
+        .expect(401, done)
+    })
+
+    it('should return unauthorized status', async(function() {
+      await(Q.ninvoke(
+        anotherUser
+          .put('sites/' + siteCreated.body.id)
+          .send({domain: 'altered.example.org', settings: {useAvatar: true}})
+          .expect(401),
+        'end'
+      ))
+    }))
+
+  })
+
+  describe('Site info', function() {
+
+    var siteCreated
+    var anotherUser
+
+    before(async(function() {
+      siteCreated = await(Q.ninvoke(
+        agentLoggedIn
+          .post('sites/')
+          .send({domain: 'site.info.example.org', settings: {useAvatar: false}})
+          .expect(201),
+        'end'
+      ))
+      anotherUser = request.agent(baseUrl)
+      var authRes = await(Q.ninvoke(anotherUser.get('auth/anonymous'), 'end'))
+      anotherUser.saveCookies(authRes)
+    }))
+
+    it('should get site as JSON', async(function() {
+      var siteGot = await(Q.ninvoke(
+        agentLoggedIn
+          .get('sites/' + siteCreated.body.id)
+          .set('Accept', 'application/json')
+          .send()
+          .expect('Content-Type', /json/)
+          .expect(200),
+        'end'
+      ))
+      assert.equal(siteCreated.body.id, siteGot.body.id)
+    }))
+
+    it('should get site as HTML', async(function() {
+      await(Q.ninvoke(
+        agentLoggedIn
+          .get('sites/' + siteCreated.body.id)
+          .set('Accept', 'text/html')
+          .send()
+          .expect('Content-Type', /html/)
+          .expect(200),
+        'end'
+      ))
+    }))
+
+    it('should return unauthorized status', async(function() {
+      await(Q.ninvoke(
+        anotherUser
+          .get('sites/' + siteCreated.body.id)
+          .set('Accept', 'text/html')
+          .send()
+          .expect(401),
+        'end'
+      ))
+    }))
+
+  })
+
+  describe('Site moderation', function() {
+
+    var siteCreated
+    var anotherUser
+
+    before(async(function() {
+      siteCreated = await(Q.ninvoke(
+        agentLoggedIn
+          .post('sites/')
+          .send({domain: 'site.moderation.example.org', settings: {useAvatar: false}})
+          .expect(201),
+        'end'
+      ))
+      anotherUser = request.agent(baseUrl)
+      var authRes = await(Q.ninvoke(anotherUser.get('auth/anonymous'), 'end'))
+      anotherUser.saveCookies(authRes)
+    }))
+
+    it('should get site moderation as HTML', async(function() {
+      await(Q.ninvoke(
+        agentLoggedIn
+          .get('sites/' + siteCreated.body.id + '/moderate')
+          .set('Accept', 'text/html')
+          .send()
+          .expect('Content-Type', /html/)
+          .expect(200),
+        'end'
+      ))
+    }))
+
+    it('should return not found status', async(function() {
+      await(Q.ninvoke(
+        agentLoggedIn
+          .get('sites/987654321/moderate')
+          .set('Accept', 'text/html')
+          .send()
+          .expect(404),
+        'end'
+      ))
+    }))
+
+    it('should return unauthorized status', async(function() {
+      await(Q.ninvoke(
+        anotherUser
+          .get('sites/' + siteCreated.body.id + '/moderate')
+          .set('Accept', 'text/html')
+          .send()
+          .expect(401),
+        'end'
+      ))
+    }))
+
+  })
+
   describe('Page comments', function() {
     var siteUrl
 
