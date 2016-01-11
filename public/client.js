@@ -30,6 +30,10 @@
 (function(window) {
   'use strict'
 
+  // Constants (as vars for browser compability)
+  var REVIEW_GRADE_MAX = 5
+  var REVIEW_GRADE_SYMBOL = '★'
+
   /************************************************************************************************
    * A few simple utility helpers
    ************************************************************************************************/
@@ -127,33 +131,8 @@
     commentDiv.className = 'comment'
 
     if (user.site.getSetting('useReviews', false) && reviewGrade != null) {
-
-      // Review
-      var reviewGradeLabelItems = {}
-
-      var reviewDiv = document.createElement('div')
-      reviewDiv.className = 'review review_editable'
-
-      for (var i = 1; i <= 5; i++) {
-        var gradeItem = document.createElement('input')
-        var gradeItemLabel = document.createElement('label')
-        gradeItem.name = 'review_grade'
-        gradeItem.type = 'radio'
-        gradeItem.value = i
-        gradeItemLabel.innerHTML = '★'
-        gradeItemLabel.appendChild(gradeItem)
-        reviewGradeLabelItems[i] = gradeItemLabel;
-        reviewDiv.appendChild(gradeItemLabel)
-        gradeItemLabel.className = i <= reviewGrade ? 'active' : ''
-
-        gradeItem.addEventListener('click', function(cl) {
-          reviewGrade = this.value
-          for (var i = 1; i <= 5; i++) {
-            reviewGradeLabelItems[i].className = i <= reviewGrade ? 'active' : ''
-          }
-        })
-      }
-      commentDiv.appendChild(reviewDiv)
+      // Add Review component
+      commentDiv.appendChild(makeReviewDiv(user, reviewGrade))
     }
 
     var inputDiv = document.createElement('div')
@@ -178,7 +157,7 @@
       if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
         var commentText = input.value
         input.value = ''
-        postCb(commentText, reviewGrade)
+        postCb(commentText, user.review.grade)
       }
     })
 
@@ -187,16 +166,43 @@
     return div
   }
 
+  function makeReviewDiv(user, reviewGrade) {
+    var reviewGradeLabelItems = {}
+    var reviewDiv = document.createElement('div')
+    reviewDiv.className = 'review review_editable'
+
+    for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
+      var gradeItem = document.createElement('input')
+      var gradeItemLabel = document.createElement('label')
+      gradeItem.name = 'review_grade'
+      gradeItem.type = 'radio'
+      gradeItem.value = i
+      gradeItemLabel.innerHTML = REVIEW_GRADE_SYMBOL
+      gradeItemLabel.appendChild(gradeItem)
+      reviewGradeLabelItems[i] = gradeItemLabel;
+      reviewDiv.appendChild(gradeItemLabel)
+      gradeItemLabel.className = i <= reviewGrade ? 'active' : ''
+
+      gradeItem.addEventListener('click', function(cl) {
+        user.review.grade = parseInt(this.value, 10);
+        for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
+          reviewGradeLabelItems[i].className = i <= user.review.grade ? 'active' : ''
+        }
+      })
+    }
+    return reviewDiv;
+  }
+
   function insertNewCommentElement(element, user, urlStr, grade) {
     var div = makeCommentingDiv(user, function(commentText, grade) {
       Comment.add(user.site, urlStr, commentText)
         .then(function(comment) {
           comment.site = user.site
-          if (grade != null) {
+          if (user.review.grade != null) {
 
-            Review.save(user, comment, urlStr, grade)
+            Review.save(user, comment, urlStr)
               .then(function(review) {
-                comment.review = review
+                user.review = comment.review = review
                 if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
                   element.insertBefore(Comment.getElement(comment, user), div)
                 }
@@ -243,7 +249,7 @@
         element.appendChild(commentContainer)
 
         user.site = site
-        user.review = null
+        user.review = {grade: null}
 
         if (site.getSetting('useReviews', false)) {
           // Attach reviews to linked comment
@@ -459,10 +465,10 @@
    * @param urlStr  string  The page ID
    * @param grade   int     Review grade
    */
-  Review.save = function(user, comment, urlStr, grade) {
+  Review.save = function(user, comment, urlStr) {
     var base_url = user.site.server + 'sites/' + user.site.id + '/pages/' + urlStr + '/reviews/'
-    if (user.review) {
-      return ajax.put(base_url + user.review.id, {grade: parseInt(grade, 10), linkTo: comment.id})
+    if (user.review.id) {
+      return ajax.put(base_url + user.review.id, {grade: user.review.grade, linkTo: comment.id})
         .then(
           function(reviewJson) {
             var review = JSON.parse(reviewJson)
@@ -481,7 +487,7 @@
         )
     }
     else {
-      return ajax.post(base_url, {grade: parseInt(grade, 10), linkTo: comment.id})
+      return ajax.post(base_url, {grade: user.review.grade, linkTo: comment.id})
         .then(
           function(reviewJson) {
             var review = JSON.parse(reviewJson)
@@ -548,10 +554,10 @@
           newComment.site = comment.site
           newComment.review = null
 
-          if (user.site.getSetting('useReviews', false) && grade != null) {
-            Review.save(user, newComment, comment.pageId, grade)
+          if (user.site.getSetting('useReviews', false) && user.review.grade != null) {
+            Review.save(user, newComment, comment.pageId)
               .then(function(review) {
-                newComment.review = review
+                user.review = newComment.review = review
                 var newCommentDiv = Comment.getElement(newComment, user)
                 commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
                 commentingDiv.parentNode.removeChild(commentingDiv)
@@ -625,7 +631,7 @@
   function reviewDiv(review) {
     var reviewDiv = document.createElement('div')
     reviewDiv.className = 'review'
-    for (var i = 1; i <= 5; i++) {
+    for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
       reviewDiv.appendChild(reviewGradeSpan(review.grade >= i))
     }
     return reviewDiv;
@@ -633,7 +639,7 @@
 
   function reviewGradeSpan(active) {
     var gradeSpan = document.createElement('span')
-    gradeSpan.innerHTML = '★'
+    gradeSpan.innerHTML = REVIEW_GRADE_SYMBOL
     gradeSpan.className = active ? 'active' : ''
     return gradeSpan
   }

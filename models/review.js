@@ -87,8 +87,6 @@ module.exports = (models) => {
 
   Review.prototype.getPage = async(function() {
     if (this.page) {return this.page}
-
-    await(this.$loadRelated('page'))
     return await(this.$loadRelated('page')).page
   })
 

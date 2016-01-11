@@ -22,16 +22,9 @@
 var async = require('asyncawait/async')
 var await = require('asyncawait/await')
 
-//// TODO remove Q
-var Q          = require('q')
-var Handlebars = require('handlebars')
-var FS         = require('fs')
-var path       = require('path')
-var markdown   = require('markdown').markdown
-
 module.exports = function (app, model, config) {
 
-  // Get by comment
+  // Get all by page
   app.get('/sites/:site/pages/:page/reviews/', async(function(req, res) {
 
     var page = await(model.Page.getBySiteUrl(req.params.site, req.params.page))

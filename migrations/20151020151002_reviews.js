@@ -5,9 +5,9 @@ exports.up = function(knex) {
     table.increments()
     table.integer('grade').notNullable()
 
-    table.integer('userId')
-    table.integer('pageId')
-    table.integer('commentId')
+    table.integer('userId').references('user.id')
+    table.integer('pageId').references('page.id')
+    table.integer('commentId').references('comment.id')
 
     table.timestamp('createdAt').defaultTo(knex.raw('CURRENT_TIMESTAMP'))
     table.timestamp('modifiedAt').defaultTo(knex.raw('CURRENT_TIMESTAMP'))
