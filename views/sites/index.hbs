@@ -26,6 +26,7 @@
 <form onsubmit="return addSite()">
   <label>Domain name only: <input id="domain" /></label><br>
   <label><input type="checkbox" id="avatars" checked /> Use avatars</label><br>
+  <label><input type="checkbox" id="reviews" /> Use reviews</label><br>
   <label>Sort order: <select id="sort_order">
     <option value="asc">Latest comment last</option>
     <option value="desc">Latest comment first</option>
@@ -48,6 +49,7 @@
     var sort_select = document.getElementById('sort_order')
     settings.sortOrder = sort_select.options[sort_select.selectedIndex].value
     settings.useAvatar = document.getElementById('avatars').checked
+    settings.useReviews = document.getElementById('reviews').checked
 
     sc.addSite(domain, settings)
       .then(

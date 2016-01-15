@@ -30,6 +30,10 @@
 (function(window) {
   'use strict'
 
+  // Constants (as vars for browser compability)
+  var REVIEW_GRADE_MAX = 5
+  var REVIEW_GRADE_SYMBOL = '★'
+
   /************************************************************************************************
    * A few simple utility helpers
    ************************************************************************************************/
@@ -116,7 +120,7 @@
     return sc
   }
 
-  function makeCommentingDiv(user, postCb, preText) {
+  function makeCommentingDiv(user, postCb, preText, reviewGrade) {
     var div = document.createElement('div')
     div.className = 'comment_row'
 
@@ -126,6 +130,11 @@
 
     var commentDiv = document.createElement('div')
     commentDiv.className = 'comment'
+
+    if (user.site.getSetting('useReviews', false) && reviewGrade != null) {
+      // Add Review component
+      commentDiv.appendChild(makeReviewDiv(user, reviewGrade))
+    }
 
     var inputDiv = document.createElement('div')
     inputDiv.className = 'comment_text'
@@ -149,7 +158,7 @@
       if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
         var commentText = input.value
         input.value = ''
-        postCb(commentText)
+        postCb(commentText, user.review.grade)
       }
     })
 
@@ -158,24 +167,66 @@
     return div
   }
 
-  function insertNewCommentElement(element, user, urlStr) {
-    var div = makeCommentingDiv(user, function(commentText) {
+  function makeReviewDiv(user, reviewGrade) {
+    var reviewGradeLabelItems = {}
+    var reviewDiv = document.createElement('div')
+    reviewDiv.className = 'review review_editable'
+
+    for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
+      var gradeItem = document.createElement('input')
+      var gradeItemLabel = document.createElement('label')
+      gradeItem.name = 'review_grade'
+      gradeItem.type = 'radio'
+      gradeItem.value = i
+      gradeItemLabel.innerHTML = REVIEW_GRADE_SYMBOL
+      gradeItemLabel.appendChild(gradeItem)
+      reviewGradeLabelItems[i] = gradeItemLabel;
+      reviewDiv.appendChild(gradeItemLabel)
+      gradeItemLabel.className = i <= reviewGrade ? 'active' : ''
+
+      gradeItem.addEventListener('click', function(cl) {
+        user.review.grade = parseInt(this.value, 10);
+        for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
+          reviewGradeLabelItems[i].className = i <= user.review.grade ? 'active' : ''
+        }
+      })
+    }
+    return reviewDiv;
+  }
+
+  function insertNewCommentElement(element, user, urlStr, grade) {
+    var div = makeCommentingDiv(user, function(commentText, grade) {
       Comment.add(user.site, urlStr, commentText)
         .then(function(comment) {
           comment.site = user.site
+          if (user.review.grade != null) {
 
-          if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
-            element.insertBefore(Comment.getElement(comment, user), div)
+            Review.save(user, comment, urlStr)
+              .then(function(review) {
+                user.review = comment.review = review
+                if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
+                  element.insertBefore(Comment.getElement(comment, user), div)
+                }
+                else {
+                  element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
+                }
+              })
           }
           else {
-            element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
+            if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
+              element.insertBefore(Comment.getElement(comment, user), div)
+            }
+            else {
+              element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
+            }
           }
 
           // Re-get the new comment div html, since user might have logged in.
           /// @todo Bind this to users/me instead.
           /////newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
-        }).done()
-    })
+        })
+        .done()
+    }, '', 0)
 
     element.appendChild(div)
   }
@@ -188,16 +239,35 @@
 
     window.Q.all([
       Comment.getAllByPage(site, urlStr),
+      Review.getAllByPage(site, urlStr),
       User.get(sc.server, 'me'),
       site.loadSettings()
     ])
-      .spread(function(comments, user) {
+      .spread(function(comments, reviews, user) {
 
         var commentContainer = document.createElement('div')
         commentContainer.className = 'comments_container'
         element.appendChild(commentContainer)
 
         user.site = site
+        user.review = {grade: null}
+
+        if (site.getSetting('useReviews', false)) {
+          // Attach reviews to linked comment
+
+          for (var i = 0; i < comments.length; i++) {
+            comments[i].review = null
+            for (var j = 0; j < reviews.length; j++) {
+              if (reviews[j].userId == user.id) {
+                user.review = reviews[j]
+              }
+              if (reviews[j].commentId === comments[i].id) {
+                comments[i].review = reviews[j]
+                break
+              }
+            }
+          }
+        }
 
         // On sortOrder=desc, input files first and then latest comment on top
         if (site.getSetting('sortOrder', 'asc') == 'desc') {
@@ -407,6 +477,69 @@
       }).done()
   }
 
+  ///////////
+  // Review
+  //
+  var Review = {}
+
+  /**
+   * @param user    object  A user object
+   * @param comment object  A comment object
+   * @param urlStr  string  The page ID
+   * @param grade   int     Review grade
+   */
+  Review.save = function(user, comment, urlStr) {
+    var base_url = user.site.server + 'sites/' + user.site.id + '/pages/' + urlStr + '/reviews/'
+    if (user.review.id) {
+      return ajax.put(base_url + user.review.id, {grade: user.review.grade, linkTo: comment.id})
+        .then(
+          function(reviewJson) {
+            var review = JSON.parse(reviewJson)
+            return review
+          }, function(error) {
+            if (error instanceof ForbiddenError) {
+              // Lets offer login and retry
+              return User.offerLogin(site.server, error.call)
+                .then(function (reviewJson) {
+                  var review = JSON.parse(reviewJson)
+                  return review
+                })
+            }
+            console.log('Error', error)
+          }
+        )
+    }
+    else {
+      return ajax.post(base_url, {grade: user.review.grade, linkTo: comment.id})
+        .then(
+          function(reviewJson) {
+            var review = JSON.parse(reviewJson)
+            return review
+          }, function(error) {
+            if (error instanceof ForbiddenError) {
+              // Lets offer login and retry
+              return User.offerLogin(site.server, error.call)
+                .then(function (reviewJson) {
+                  var review = JSON.parse(reviewJson)
+                  return review
+                })
+            }
+            console.log('Error', error)
+          }
+        )
+    }
+  }
+
+  Review.getAllByPage = function(site, urlStr) {
+    return ajax.get(
+      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/reviews/'
+    ).then(function(reviewJson) {
+      var reviews = JSON.parse(reviewJson)
+      return reviews
+    })
+  }
+
+
   function avatarDiv(user) {
     var avatarDiv = document.createElement('div')
     avatarDiv.className = 'comment_avatar'
@@ -426,33 +559,46 @@
     return avatarDiv
   }
 
-  function transformToEdit(comment) {
+  function transformToEdit(comment, user) {
     var commentUrl = comment.site.server + 'sites/' + comment.site.id + '/pages/' +
         comment.pageId + '/comments/' + comment.id
 
-    var row = e('comment_' + comment.id)
-    var user = comment.user
-    user.site = comment.site
+    if (user.id !== comment.userId) {
+      console.log('Illegal edit')
+      return
+    }
 
     var oldCommentDiv = e('comment_' + comment.id)
-    var commentingDiv = makeCommentingDiv(comment.user, function(commentText) {
+    var commentingDiv = makeCommentingDiv(user, function(commentText, grade) {
       ajax.put(commentUrl, {text: commentText})
         .then(function(newCommentJson) {
           var newComment = JSON.parse(newCommentJson)
           newComment.user = user
           newComment.site = comment.site
+          newComment.review = null
 
-          var newCommentDiv = Comment.getElement(newComment, user)
-          commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
-          commentingDiv.parentNode.removeChild(commentingDiv)
+          if (user.site.getSetting('useReviews', false) && user.review.grade != null) {
+            Review.save(user, newComment, comment.pageId)
+              .then(function(review) {
+                user.review = newComment.review = review
+                var newCommentDiv = Comment.getElement(newComment, user)
+                commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
+                commentingDiv.parentNode.removeChild(commentingDiv)
+              })
+          }
+          else {
+            var newCommentDiv = Comment.getElement(newComment, user)
+            commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
+            commentingDiv.parentNode.removeChild(commentingDiv)
+          }
         }).done()
-    }, comment.text)
+    }, comment.text, comment.review ? comment.review.grade : null)
 
     oldCommentDiv.parentNode.insertBefore(commentingDiv, oldCommentDiv)
     oldCommentDiv.parentNode.removeChild(oldCommentDiv)
   }
 
-  function editOptionsDiv(comment) {
+  function editOptionsDiv(comment, user) {
     var editOptions = document.createElement('div')
     editOptions.className = 'edit_options'
 
@@ -460,7 +606,7 @@
     editButton.className = 'comment_edit'
     editButton.title     = 'Edit'
     editButton.appendChild(document.createTextNode('✎'))
-    editButton.addEventListener('click', function() {transformToEdit(comment)})
+    editButton.addEventListener('click', function() {transformToEdit(comment, user)})
     editOptions.appendChild(editButton)
 
     var deleteButton       = document.createElement('button')
@@ -477,13 +623,13 @@
     commentDiv.className = 'comment'
 
     if (user && comment.user.id === user.id) {
-      commentDiv.appendChild(editOptionsDiv(comment))
+      commentDiv.appendChild(editOptionsDiv(comment, user))
     }
 
-    var commenterName = document.createElement('span')
-    commenterName.className = 'commenter_name'
-    commenterName.appendChild(document.createTextNode(comment.user.displayName || ''))
-    commentDiv.appendChild(commenterName)
+    commentDiv.appendChild(displayNameSpan(comment))
+    if (user.site.getSetting('useReviews', false) && comment.review) {
+      commentDiv.appendChild(reviewDiv(comment.review))
+    }
 
     var commentText = document.createElement('div')
     commentText.className = 'comment_text'
@@ -496,6 +642,29 @@
     commentDiv.appendChild(createdAtSpan)
 
     return commentDiv
+  }
+
+  function displayNameSpan(comment) {
+    var userSpan = document.createElement('span')
+    userSpan.className = 'commenter_name'
+    userSpan.appendChild(document.createTextNode(comment.user.displayName || ''))
+    return userSpan;
+  }
+
+  function reviewDiv(review) {
+    var reviewDiv = document.createElement('div')
+    reviewDiv.className = 'review'
+    for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
+      reviewDiv.appendChild(reviewGradeSpan(review.grade >= i))
+    }
+    return reviewDiv;
+  }
+
+  function reviewGradeSpan(active) {
+    var gradeSpan = document.createElement('span')
+    gradeSpan.innerHTML = REVIEW_GRADE_SYMBOL
+    gradeSpan.className = active ? 'active' : ''
+    return gradeSpan
   }
 
   Comment.getElement = function(comment, user) {

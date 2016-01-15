@@ -88,6 +88,10 @@ module.exports = (models) => {
     return await(this.$loadRelated('comments.user')).comments
   })
 
+  Page.prototype.getReviews = async(function() {
+    return await(this.$loadRelated('reviews.user')).reviews
+  })
+
   Page.prototype.getSubscribers = async(function() {
     return await(this.$loadRelated('subscribers')).subscribers
   })

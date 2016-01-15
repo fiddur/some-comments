@@ -25,7 +25,7 @@ var config = {
 }
 
 describe('Models', function() {
-  var model, site, user, page, page2, comments = []
+  var model, site, user, page, page2, comments = [], review
 
   before(async(function() {
     model = await(models(config, {}))
@@ -58,8 +58,18 @@ describe('Models', function() {
         text: 'This is comment, ay?',
         user: user,
         pageId: page.id,
-      }),
+      })
     ])
+
+    review = await(
+      model.Review.create({
+        grade:     4,
+        userId:    user.id,
+        pageId:    page.id,
+        commentId: comments[0].id,
+      })
+    )
+
   }))
 
   describe('Sites', function() {
@@ -137,6 +147,58 @@ describe('Models', function() {
       var comment2 = await(model.Comment.get(comment.id))
       assert.equal(comment2.text, 'Else')
     }))
+  })
+
+  describe('Reviews', function() {
+    it('should list all reviews from one page', async(function() {
+      var pageReviews = await(page.getReviews())
+      assert.equal(pageReviews.length, 1)
+      assert.equal(pageReviews[0].grade, 4)
+      assert.equal(pageReviews[0].user.displayName, 'Foo Bar')
+    }))
+
+    it('should create a review', async(function() {
+      var new_review = await(model.Review.create({
+        grade: 2,
+        user:  user,
+        page:  page,
+        comment: comments[1]
+      }))
+
+      assert.equal(new_review.grade, 2)
+    }))
+
+    it('should alter a review', async(function() {
+      var new_review = await(model.Review.create({
+        grade: 5,
+        user:  user,
+        page:  page,
+        comment: comments[0]
+      }))
+      assert.equal(new_review.grade, 5)
+      assert.equal(new_review.commentId, comments[0].id)
+
+      await(new_review.update(1, comments[1].id))
+      assert.equal(new_review.grade, 1)
+      assert.equal(new_review.commentId, comments[1].id)
+
+      var get_review = await(model.Review.get(new_review.id))
+      assert.equal(new_review.grade, 1)
+      assert.equal(new_review.commentId, comments[1].id)
+    }))
+
+    it('should find review by comment', async(function() {
+      var found_review = await(model.Review.getByComment(comments[0].id))
+
+      assert.equal(found_review.grade, 4)
+      assert.equal(found_review.commentId, comments[0].id)
+    }))
+
+    it('should get page from review', async(function() {
+      await(review.getPage())
+      assert.equal(review.page[0].url, 'http://testdomain/myPage')
+    }))
+
   })
 
   describe('Pages', function() {
