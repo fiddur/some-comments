@@ -68,14 +68,14 @@ module.exports = (models, config) => {
    * Create an anonymous user from IP address.
    *
    */
-  User.createAnonymous = async((ip) => {
+  User.createAnonymous = async((alias, ip) => {
     if (!('anonymous' in config.authenticators)) {
       throw new Error('Anonymous users are not enabled in config.')
     }
 
     const userData = {
       anonymousIp: ip,
-      displayName: config.authenticators.anonymous.displayName || 'Anonymous',
+      displayName: alias || config.authenticators.anonymous.displayName || 'Anonymous',
       avatar:      config.authenticators.anonymous.avatar || 'gravatar(monsterid)',
     }
 

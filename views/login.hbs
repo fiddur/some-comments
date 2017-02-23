@@ -1,29 +1,30 @@
-<h1>You need to authenticate ({{user}})</h1>
-
-<h2>Authenticate with:</h2>
+<h1>Comment as...</h1>
 
 <ul class="login_list">
   {{#config.authenticators.openidconnect}}
-    <li><a href="/auth/{{shortName}}" target="_blank"><img src="{{icon}}" style="max-width: 2em"
+    <li><a href="auth/{{shortName}}" target="_blank"><img src="{{icon}}" style="max-width: 2em"
                                                            alt="{{title}}" /></a></li>
   {{/config.authenticators.openidconnect}}
 
   {{#config.authenticators.facebook}}
-    <li><a href="/auth/facebook" target="_blank"><img src="{{icon}}" style="max-width: 2em"
+    <li><a href="auth/facebook" target="_blank"><img src="{{icon}}" style="max-width: 2em"
                                                       alt="{{title}}" /></a></li>
   {{/config.authenticators.facebook}}
 
 </ul>
 
 {{#config.authenticators.anonymous}}
-  <p>
-    Or <a href="/auth/anonymous">Comment anonymously</a></li>…
-  </p>
+  <form action="auth/anonymous" target="_blank">
+    <p>
+      Use name: <input name="anonymous" />
+      <input type="submit" value="Go" />
+    </p>
+  </form>
 {{/config.authenticators.anonymous}}
 
-<form action="/auth/oidc" target="_blank">
+<form action="auth/oidc" target="_blank">
   <p>
-    Or login with an OpenID Connect account:
+    Use OpenID Connect account:
     <span class="oidc"><input name="oidci" /></span><input type="submit" />
   </p>
 </form>

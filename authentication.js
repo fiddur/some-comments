@@ -19,8 +19,8 @@
 
 'use strict'
 
-const async = require('asyncawait/async')
-const await = require('asyncawait/await')
+const aasync = require('asyncawait/async')
+const aawait = require('asyncawait/await')
 
 const Promise          = require('bluebird')
 const passport         = require('passport')
@@ -29,52 +29,54 @@ const GithubStrategy   = require('passport-github').Strategy
 const GoogleOauth2     = require('passport-google-oauth2').Strategy
 const OpenIdConnect    = require('passport-openidconnect')
 
-const setupAnonymous = (model, app, anonConfig) => {
+const setupAnonymous = (model, app, anonConfig, baseUrl) => {
   app.get(
     '/auth/anonymous',
-    async((req, res) => {
+    aasync((req, res) => {
       // Should not be used when already logged in.
       if (req.user) {return res.sendStatus(400)}
 
       // Create an anonymous user.
-      const user = await(model.User.createAnonymous(req.ip))
-      await(Promise.promisify(req.login, req)(user))
-      res.redirect('/account')
+      const user = aawait(model.User.createAnonymous(req.query.anonymous, req.ip))
+      aawait(Promise.promisify(req.login, req)(user))
+      res.redirect(`${baseUrl}account`)
     })
   )
 }
 
 const openIdConnectDynamic = (model, app, config) => {
+  const baseUrl = config.baseUrl
+
   const oidcStrategy = new OpenIdConnect.Strategy({
-    identifierField:   'oidci',
-    scope:             'openid profile email',
-  }, async((iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) => {
+    identifierField: 'oidci',
+    scope:           'openid profile email',
+  }, aasync((iss, sub, userInfo, jwtClaims, accessToken, refreshToken, params, done) => {
     /// @todo Save identifier -> oidc  connection.
-    const account = await(model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
+    const account = aawait(model.Account.getOrCreate('OpenID Connect:' + iss, sub, {
       displayName: userInfo.displayName,
       avatar:      userInfo.picture,
       email:       userInfo.email,
     }))
-    const user = await(account.getUser()) /// @todo test
+    const user = aawait(account.getUser()) /// @todo test
     done(null, user)
   }))
 
   passport.use(oidcStrategy)
 
-  oidcStrategy.configure(async((identifier, done) => {
-    const oidcIdentifier = await(model.OidcIdentifier.get(identifier))
+  oidcStrategy.configure(aasync((identifier, done) => {
+    const oidcIdentifier = aawait(model.OidcIdentifier.get(identifier))
 
     if (oidcIdentifier) {
       console.log(oidcIdentifier)
-      oidcIdentifier.getOidc().done((oidc) => done(null, oidc))
+      oidcIdentifier.getOidc().done(oidc => done(null, oidc))
     }
     else {
       done(null, null)
     }
   }))
 
-  OpenIdConnect.config(async((issuer, done) => {
-    const oidc = await(model.Oidc.getByIssuer(issuer))
+  OpenIdConnect.config(aasync((issuer, done) => {
+    const oidc = aawait(model.Oidc.getByIssuer(issuer))
 
     if (oidc) {
       done(null, oidc)
@@ -86,9 +88,9 @@ const openIdConnectDynamic = (model, app, config) => {
 
   OpenIdConnect.register(OpenIdConnect.registration({
     name:        'Some Comments',
-    redirectURI: config.baseUrl + 'auth/oidc/callback',
-  }, async((provider, reg, next) => {
-    const oidcs = await(model.Oidc.create([{
+    redirectURI: `${baseUrl}auth/oidc/callback`,
+  }, aasync((provider, reg, next) => {
+    const oidcs = aawait(model.Oidc.create([{
       issuer:           provider.issuer,
       authorizationURL: provider.authorizationURL,
       tokenURL:         provider.tokenURL,
@@ -104,17 +106,17 @@ const openIdConnectDynamic = (model, app, config) => {
   app.get(
     '/auth/oidc',
     passport.authenticate('openidconnect', {
-      callbackURL:      config.baseUrl + 'auth/oidc/callback',
+      callbackURL:      `${baseUrl}auth/oidc/callback`,
       failureRedirect:  '/login',
     })
   )
   app.get(
     '/auth/oidc/callback',
     passport.authenticate('openidconnect', {
-      callbackURL:      config.baseUrl + 'auth/oidc/callback',
+      callbackURL:      `${baseUrl}auth/oidc/callback`,
       failureRedirect:  '/login',
     }),
-    (req, res) => {res.redirect('/account')}
+    (req, res) => {res.redirect(`${baseUrl}account`)}
   )
 }
 
@@ -153,7 +155,7 @@ const openIdConnectProvider = (app, model, baseUrl, provider) => {
       callbackURL:      baseUrl + 'auth/' + provider.shortName + '/callback',
       failureRedirect:  '/login',
     }),
-    (req, res) => res.redirect('/account')
+    (req, res) => res.redirect(`${baseUrl}account`)
   )
 }
 
@@ -183,7 +185,7 @@ const facebook = (app, provider, model, baseUrl) => {
   app.get(
     '/auth/facebook/callback',
     passport.authenticate('facebook', {failureRedirect: '/login'}),
-    (req, res) => res.redirect('/account')
+    (req, res) => res.redirect(`${baseUrl}account`)
   )
 }
 
@@ -201,18 +203,18 @@ exports.setup = (app, model, config) => {
   passport.serializeUser((user, done) => done(null, user.id))
   passport.deserializeUser((id, done) => {
     model.User.get(id)
-      .then((user) => done(null, user))
-      .catch((error) => done(null, null))
+      .then(user => done(null, user))
+      .catch(() => done(null, null))
   })
 
-  app.get('/login', (req, res) => res.render('login', {config: config}))
-  app.get('/account', ensureAuthenticated, (req, res) => res.render('account', {user: req.user}))
+  app.get('/login', (req, res) => res.render('login', { config }))
+  app.get('/account', ensureAuthenticated, (req, res) => res.render('account', { user: req.user }))
 
   if (config.testMode) {
     app.get('/login/:id', (req, res, next) => {
-      const user = {id: req.params.id}
-      req.logIn(user, (err) => {
-        if (err) {return next(err)}
+      const user = { id: req.params.id }
+      req.logIn(user, err => {
+        if (err) return next(err)
         res.json('done')
       })
     })
@@ -225,7 +227,7 @@ exports.setup = (app, model, config) => {
 
   // Setup anonymous "authentication" :)
   if ('anonymous' in config.authenticators) {
-    setupAnonymous(model, app, config.authenticators.anonymous)
+    setupAnonymous(model, app, config.authenticators.anonymous, config.baseUrl)
   }
 
   // Setup OpenID Connect authentication

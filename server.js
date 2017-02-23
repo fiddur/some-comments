@@ -86,13 +86,13 @@ exports.start = function start(model, config) {
   config.baseUrl = url.parse(config.baseUrl)
   config.baseUrl.toString = function() {return url.format(this)}
 
-  var port   = process.env.PORT || config.baseUrl.port || null
+  var port   = process.env.PORT || 3000
   var server = app.listen(port, (listening) => {
-    // Store port in config, if it wasn't there already.
-    config.baseUrl.host = null // Remove host, since hostname and port should be set now.
-    config.baseUrl.port = server.address().port
+    // // Store port in config, if it wasn't there already.
+    // config.baseUrl.host = null // Remove host, since hostname and port should be set now
+    // config.baseUrl.port = server.address().port
 
-    console.log('Express server listening on port %d in %s mode', config.baseUrl.port,
+    console.log('Express server listening on port %d in %s mode', server.address().port,
                 app.settings.env)
   })
 

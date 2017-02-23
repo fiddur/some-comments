@@ -156,14 +156,17 @@ describe('Routing Integration', function() {
         'end'
       ))
 
-      var sitesRegex = new RegExp('^' + baseUrl + 'sites/')
+      var sitesRegex = new RegExp('^' + config.baseUrl + 'sites/')
       assert(
         createRes.headers.location.match(sitesRegex),
         'Site location "' + createRes.headers.location + '"should match ' + sitesRegex
       )
 
       // Get the created site to confirm the domain.
-      assert.equal(JSON.parse(await(rp(createRes.headers.location))).domain, 'example.org')
+      const response = await(rp(
+        createRes.headers.location.replace(config.baseUrl, baseUrl)
+      ))
+      assert.equal(JSON.parse(response).domain, 'example.org')
     }))
   })
 
@@ -180,7 +183,7 @@ describe('Routing Integration', function() {
         resolveWithFullResponse: true
       }))
 
-      siteUrl = response.headers.location
+      siteUrl = response.headers.location.replace(config.baseUrl, baseUrl)
     }))
 
     it('POST should give comments with user info', async(function() {

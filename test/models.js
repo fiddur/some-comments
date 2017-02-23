@@ -272,7 +272,7 @@ describe('Models', function() {
     }))
 
     it('should create an anonymous user with monster gravatars', async(function() {
-      var user = await(model.User.createAnonymous('127.0.0.1'))
+      var user = await(model.User.createAnonymous('myname', '127.0.0.1'))
 
       var hash = crypto.createHash('md5')
       hash.update(user.id + ': 127.0.0.1')
@@ -281,6 +281,7 @@ describe('Models', function() {
         user.avatar,
         'https://www.gravatar.com/avatar/' + hash.digest('hex') + '?d=monsterid'
       )
+      assert.equal(user.displayName, 'myname')
     }))
   })
 })
