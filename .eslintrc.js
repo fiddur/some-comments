@@ -14,10 +14,10 @@ module.exports = {
     'no-unused-vars': ['error', { argsIgnorePattern: 'next' }],
     'arrow-parens': ['error', 'as-needed'],
     'comma-dangle': ['error', {
-        arrays:    'always',
-        objects:   'always',
-        imports:   'always',
-        exports:   'always',
+        arrays:    'always-multiline',
+        objects:   'always-multiline',
+        imports:   'always-multiline',
+        exports:   'always-multiline',
         functions: 'ignore',
     }]
 

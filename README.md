@@ -4,15 +4,25 @@ Some comments
 [![Build Status](https://travis-ci.org/fiddur/some-comments.svg?branch=master)](https://travis-ci.org/fiddur/some-comments)
 [![Coverage Status](https://coveralls.io/repos/fiddur/some-comments/badge.svg?branch=master&service=github)](https://coveralls.io/r/fiddur/some-comments?branch=master)
 
-**Some comments** is stand-alone commenting microservice that you could attach by including
-javascript.
+**Some comments** is stand-alone commenting microservice that you could attach
+by including javascript.
 
-This was initially constructed because Ghost has no built in commenting functionality and I don't
-want ads funded commenting, nor tie it to one specific social platform.
+This was initially constructed because Ghost has no built in commenting
+functionality and I don't want ads funded commenting, nor tie it to one
+specific social platform.
 
-Commenters can authenticate via 3rd party authentication like openid, google, facebook etc, or
-comment anonymously.
+Commenters can authenticate via the OpenID Connect protocol (supported by
+e.g. Google) or comment anonymously with a name.
 
+Version **1.0.0** is a rewrite of the system.
+
+
+Compatibility note
+------------------
+
+This is written for modern browsers, using modern javascript.  To get it to
+work in older or stupid browsers, you would need to transpile the client code
+with e.g. babel.
 
 
 Features
@@ -63,10 +73,7 @@ Install (server)
 git clone https://github.com/fiddur/some-comments.git
 cd some-comments
 npm install
-cp config.js.example config.js # Edit to configure…
-npm install -g grunt-cli       # if you don't already have it…
-grunt migrate:up
-node index.js
+OPTIONS=SETTINGS... node server.js
 ```
 
 To run in production I suggest using [forever](https://github.com/foreverjs/forever).
@@ -104,9 +111,10 @@ but relies solely on other systems.
 
 #### Anonymous
 
-To allow anonymous commenting, include anonymous in authenticators.  It could be as `{}`, but you
-could also configure default displayName (default: 'Anonymous') and default avatar (could be a URL
-or `gravatar(method)` where method is one of the defaults in
+To allow anonymous commenting, include anonymous in authenticators.  It could
+be as `{}`, but you could also configure default displayName (default:
+'Anonymous') and default avatar (could be a URL or `gravatar(method)` where
+method is one of the defaults in
 [Gravatar](https://en.gravatar.com/site/implement/images/https://en.gravatar.com/site/implement/images/);
 defaults to `gravatar(monsterid)`.
 
@@ -124,13 +132,14 @@ authenticators: {
 }
 ```
 
-If you add objects in the array (see below), Dynamic Registration will still be available.
+If you add objects in the array (see below), Dynamic Registration will still be
+available.
 
 
-#### OpenID Connect without Dynamic (e.g. Google)
+#### Preconfigured OpenID Connect providers (e.g. Google)
 
-For OpenID Connect endpoints that haven't implemented Dynamic Client Registration, you need to
-supply API credentials.  For example:
+For OpenID Connect endpoints that haven't implemented Dynamic Client
+Registration, you need to supply API credentials.  For example:
 
 ```javascript
 authenticators: {
@@ -149,55 +158,32 @@ authenticators: {
 }
 ```
 
-For Google, you get your API credentials at [the Developers
-Console](https://console.developers.google.com/).  Add an Oauth Client, with redirect URIs in the
-form: `http(s)://yourdomain.org/auth/<shortName>/callback`.  The `shortName` is a URL fragment and
-is needed to separate the callback URIs for each openidconnect issuer.
+For Google, you get your API credentials at
+[the Developers Console](https://console.developers.google.com/).  Add an Oauth
+Client, with redirect URIs in the form:
+`http(s)://yourdomain.org/auth/<shortName>/callback`.  The `shortName` is a URL
+fragment and is needed to separate the callback URIs for each openidconnect
+issuer.
 
 Note: It's only the `icon` that is displayed in the login list on default login frame.
 
 
-#### Facebook
+### Database - EventStore
 
-```javascript
-authenticators: {
-  facebook: [
-    {
-      clientId:     'get your own',
-      clientSecret: 'get your own',
-    }
-  ]
-}
-```
+Using [EventStore](https://geteventstore.com/).
 
-Callback URI will be `http(s)://domain/auth/facebook/callback`.
-
-
-### Database
-
-Anything that [Knex](http://knexjs.org/) supports.
-
-To use a backend, simply install it:
-
-```bash
-npm install sqlite3
-```
-
-…and use it in your config:
 ```javascript
 database: {
-  client: 'sqlite3',
-  connection: {
-    filename: "/var/lib/some-comments.db"
+  eventstore: {
+    address: '127.0.0.1',
+    port:    1113,
+    credentials: {
+      username: 'admin',
+      password: 'changeit'
+    }
   }
 }
 ```
-
-…and run the migrations:
-```
-grunt migrate:up
-```
-
 
 ### E-mail notifications
 
@@ -219,28 +205,28 @@ email: {
 
 By default, `transport` is your SMTP settings.  It will be sent directly to
 `nodemailer.createTransport`, so it can use what
-[Nodemailer](https://github.com/andris9/Nodemailer) can use.  To use a a non-builtin transport, you
-could for example `npm install nodemailer-sendmail-transport` and in config put `transport:
+[Nodemailer](https://github.com/andris9/Nodemailer) can use.  To use a a
+non-builtin transport, you could for example `npm install
+nodemailer-sendmail-transport` and in config put `transport:
 require('nodemailer-sendmail-transport')(options)`.
 
 
 Contributing
 ------------
 
-* Comment on issue to let others know you started implementing something.  Discuss data & code
-  design on the issue.
-* Use [gitflow](https://github.com/nvie/gitflow) branching model - make pull requests toward the
-  `develop` branch.
-* Use jscs for code formatting.
-* Skip unnecessary semicolons.
-* Use ES6 `const`, `=>`, prefer `async/await` before explicit promises.
-* Make sure new code is tested both with relevant unit tests and integration tests.
-* Make sure there are working migrations from older versions.
-* See [TODO](TODO.md) for refactorings waiting to happen…
+See [CONTRIBUTING](CONTRIBUTING.md).
 
 
 Changelog
 ---------
+
+### 1.0.0
+
+**In progress**
+
+Completely new architecture and new storage backend using
+[EventStore](https://geteventstore.com/)...
+
 
 ### 0.4.0
 
@@ -303,12 +289,13 @@ License ([GNU AGPLv3](http://www.gnu.org/licenses/agpl-3.0.html))
 
 Copyright (C) 2015 Fredrik Liljegren <fredrik@liljegren.org>
 
-Some Comments is free software: you can redistribute it and/or modify it under the terms of the GNU
-Affero General Public License as published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
+Some Comments is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
-even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-Affero General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
 See COPYING.

@@ -20,12 +20,12 @@
 const Model = require('objection').Model
 
 module.exports = () => {
-  function Oidc() {Model.apply(this, arguments)}
+  function Oidc() { Model.apply(this, arguments) }
   Model.extend(Oidc)
 
   Oidc.tableName = 'oidc'
 
-  Oidc.getByIssuer = (issuer) => Oidc.query().where({issuer: issuer}).first()
+  Oidc.getByIssuer = issuer => Oidc.query().where({ issuer }).first()
 
   return Oidc
 }

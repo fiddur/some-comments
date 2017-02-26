@@ -2,316 +2,147 @@
  * Some Comments - a comment engine
  * Copyright (C) 2015 Fredrik Liljegren
  *
- * This program is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
- * the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with this
- * program. If not, see <http://www.gnu.org/licenses/>.
- *
  * @license magnet:?xt=urn:btih:0b31508aeb0634b347b8270c7bee4d411b5d4109&dn=agpl-3.0.txt
  * GNU-AGPL-3.0
  */
 
 /**
- * This file contains all that is needed on the actual commenting page except two dependencies:
- *  * q.js
- *  * markdown.js
+ * Dependencies:
  *
- * Code design is meant to keep dependencies down to a minimum, and disregard deprecated browsers -
- * commenting is hardly a critical service.  When IE12 is rolled out we can skip Q and use native
- * promises…
+ *  * immutable
+ *  * preact
+ *  * markdown
+ *
+ * Code design is meant to keep dependencies down to a minimum, and disregard
+ * deprecated browsers - commenting is hardly a critical service.
  */
 
-(function(window) {
-  'use strict'
-
-  // Constants (as vars for browser compability)
-  var REVIEW_GRADE_MAX = 5
-  var REVIEW_GRADE_SYMBOL = '★'
-
-  /************************************************************************************************
-   * A few simple utility helpers
-   ************************************************************************************************/
-
-  /**
-   * Make a shortcut to document.getElementById…
-   */
-  var e = function (id) {return document.getElementById(id)}
+(window => {
+  const { h, render } = window.preact
 
   function ForbiddenError(req, call) {
-    this.name = 'Forbidden'
-    this.call = call
-    this.req  = req
+    this.name    = 'Forbidden'
+    this.call    = call
+    this.req     = req
     this.message = ''
   }
   ForbiddenError.prototype = Error.prototype
 
-  /**
-   * Minimal ajax wrapper with promises.
-   */
-  var ajax = {}
-  ajax.call = function(method, url, headers, body) {
-    var deferred = window.Q.defer()
-    var req = new XMLHttpRequest()
-    req.withCredentials = true
-    req.open(method, url, true)
+  // Minimal ajax wrapper with promises.
+  const ajax = {
+    call: (method, url, headers, body) => new Promise((resolve, reject) => {
+      const req = new XMLHttpRequest()
+      req.withCredentials = true
+      req.open(method, url, true)
 
-    for (var header in headers) {req.setRequestHeader(header, headers[header])}
+      Object.keys(headers).forEach(
+        header => req.setRequestHeader(header, headers[header])
+      )
 
-    req.onload = function() {
-      if (req.status >= 200 && req.status < 300) {return deferred.resolve(req.response)}
-      if (req.status == 401) {
-        deferred.reject(
-          new ForbiddenError(req, {method: method, url: url, headers: headers, body: body})
-        )
+      req.onload = () => {
+        if (req.status >= 200 && req.status < 300) return resolve(req.response)
+        if (req.status === 401) {
+          return reject(new ForbiddenError(req, { method, url, headers, body }))
+        }
+        return reject(req.statusText)
       }
-      deferred.reject(req.statusText)
-    }
-    req.onerror = function() {deferred.reject('Network failure')}
-    req.send(body)
 
-    return deferred.promise
-  }
-  ajax.get = function(url) {
-    return ajax.call('GET', url, {}, '')
-  }
-  ajax.del = function(url) {
-    return ajax.call('DELETE', url, {}, '')
-  }
-  ajax.post = function(url, data) {
-    var headers = {}
-    headers['content-type'] = 'application/json'
-    var body = JSON.stringify(data)
-    return ajax.call('POST', url, headers, body)
-  }
-  ajax.put = function(url, data) {
-    var headers = {}
-    headers['content-type'] = 'application/json'
-    var body = JSON.stringify(data)
-    return ajax.call('PUT', url, headers, body)
-  }
+      req.onerror = () => reject('Network failure')
 
-  function parseUrl(url) {
-    return document.createElement('a')
+      req.send(body)
+    }),
+
+    get: url => ajax.call('GET', url, {}, ''),
+
+    del: url => ajax.call('DELETE', url, {}, ''),
+
+    post: (url, data) => ajax.call(
+      'POST', url, { 'content-type': 'application/json' }, JSON.stringify(data)
+    ),
+
+    put: (url, data) => ajax.call(
+      'PUT', url, { 'content-type': 'application/json' }, JSON.stringify(data)
+    ),
   }
 
 
-  /************************************************************************************************
-   * Some Comments
-   ************************************************************************************************/
+  /** **************************************************************************/
 
-  var SomeCommentsPrototype = {}
+  const renderDisplayNameSpan = comment => h(
+    'span', { class: 'commenter_name' }, comment.user.displayName || ''
+  )
 
-  /**
-   * Base class for Some Comments.
-   *
-   * @param server  string   Base URL, e.g. https://foo.bar/sc/
-   * @param siteId  integer  Site ID
-   */
-  function SomeComments(server) {
-    var sc = Object.create(SomeCommentsPrototype)
-    sc.server = server
-    return sc
+  const renderCommentDiv = comment => h(
+    'div', { class: 'comment' }, [
+      renderDisplayNameSpan(comment),
+      h('div', {
+        class:                   'comment_text',
+        dangerouslySetInnerHTML: { __html: markdown.toHTML(comment.text) },
+      }),
+      h('span', { class: 'comment_created' }, comment.createdAt || ''),
+    ]
+  )
+
+  const renderAvatarDiv = user => h(
+    'div', { class: `comment_avatar ${user.avatar ? '' : 'unknown_user'}` },
+    user.avatar ? h('img', { src: user.avatar || '', alt: user.displayName || '' })
+                : '?'
+  )
+
+  const renderCommentRow = (comment, user) => h(
+    'div', { class: 'comment_row', id: `comment_${comment.id}` }, [
+      renderAvatarDiv(comment.user),
+      renderCommentDiv(comment, user),
+    ]
+  )
+
+  const renderCommentingDiv = (user, text, onInput) => h(
+    'div', { class: 'comment_row' }, [
+      renderAvatarDiv(user),
+      h('div', { class: 'comment' }, [ // commentDiv
+        h('div', { class: 'comment_text comment_input' }, [
+          h('textarea', {
+            placeholder: 'Type your comment…',
+            onInput,
+          }), // input.value = preText
+        ]),
+        h('div', {
+          class:                   'comment_text comment_preview',
+          dangerouslySetInnerHTML: { __html: markdown.toHTML(text || '') },
+        }),
+      ]),
+    ]
+
+    // input.addEventListener('input', () => {
+    //   commentPreview.innerHTML = markdown.toHTML(this.value)
+    // })
+
+    // input.addEventListener('keypress', kp => {
+    //   if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
+    //     const commentText = input.value
+    //     input.value = ''
+    //   }
+    // })
+  )
+
+
+  /*
+  SomeCommentsPrototype.getSites = function () {
+    return ajax.get(`${this.server}sites/`)
+      .then(sitesJson => JSON.parse(sitesJson))
   }
-
-  function makeCommentingDiv(user, postCb, preText, reviewGrade) {
-    var div = document.createElement('div')
-    div.className = 'comment_row'
-
-    if (user.site.getSetting('useAvatar', true)) div.appendChild(avatarDiv(user))
-
-    // Instead of just showing the comment, make an input and a preview.
-
-    var commentDiv = document.createElement('div')
-    commentDiv.className = 'comment'
-
-    if (user.site.getSetting('useReviews', false) && reviewGrade != null) {
-      // Add Review component
-      commentDiv.appendChild(makeReviewDiv(user, reviewGrade))
-    }
-
-    var inputDiv = document.createElement('div')
-    inputDiv.className = 'comment_text'
-
-    var input = document.createElement('textarea')
-    input.placeholder = 'Type your comment and press enter…'
-    inputDiv.appendChild(input)
-    commentDiv.appendChild(inputDiv)
-    if (preText) input.value = preText
-
-    var commentPreview = document.createElement('div')
-    commentPreview.className = 'comment_text'
-    commentDiv.appendChild(commentPreview)
-
-    input.addEventListener('input', function() {
-      commentPreview.innerHTML = markdown.toHTML(this.value)
-    })
-    if (preText) {input.dispatchEvent(new Event('input'))}
-
-    input.addEventListener('keypress', function(kp) {
-      if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
-        var commentText = input.value
-        input.value = ''
-        postCb(commentText, user.review.grade)
-      }
-    })
-
-    div.appendChild(commentDiv)
-
-    return div
-  }
-
-  function makeReviewDiv(user, reviewGrade) {
-    var reviewGradeLabelItems = {}
-    var reviewDiv = document.createElement('div')
-    reviewDiv.className = 'review review_editable'
-
-    for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
-      var gradeItem = document.createElement('input')
-      var gradeItemLabel = document.createElement('label')
-      gradeItem.name = 'review_grade'
-      gradeItem.type = 'radio'
-      gradeItem.value = i
-      gradeItemLabel.innerHTML = REVIEW_GRADE_SYMBOL
-      gradeItemLabel.appendChild(gradeItem)
-      reviewGradeLabelItems[i] = gradeItemLabel;
-      reviewDiv.appendChild(gradeItemLabel)
-      gradeItemLabel.className = i <= reviewGrade ? 'active' : ''
-
-      gradeItem.addEventListener('click', function(cl) {
-        user.review.grade = parseInt(this.value, 10);
-        for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
-          reviewGradeLabelItems[i].className = i <= user.review.grade ? 'active' : ''
-        }
-      })
-    }
-    return reviewDiv;
-  }
-
-  function insertNewCommentElement(element, user, urlStr, grade) {
-    var div = makeCommentingDiv(user, function(commentText, grade) {
-      Comment.add(user.site, urlStr, commentText)
-        .then(function(comment) {
-          comment.site = user.site
-          if (user.review.grade != null) {
-
-            Review.save(user, comment, urlStr)
-              .then(function(review) {
-                user.review = comment.review = review
-                if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
-                  element.insertBefore(Comment.getElement(comment, user), div)
-                }
-                else {
-                  element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
-                }
-              })
-          }
-          else {
-            if (comment.site.getSetting('sortOrder', 'asc') == 'asc') {
-              element.insertBefore(Comment.getElement(comment, user), div)
-            }
-            else {
-              element.insertBefore(Comment.getElement(comment, user), div.nextSibling);
-            }
-          }
-
-          // Re-get the new comment div html, since user might have logged in.
-          /// @todo Bind this to users/me instead.
-          /////newCommentDiv.innerHTML = getNewCommentDivInnerHtml(comment.user)
-        })
-        .done()
-    }, '', 0)
-
-    element.appendChild(div)
-  }
-
-  SomeCommentsPrototype.displayByPage = function(siteId, url, elementId) {
-    var element = e(elementId)
-    var sc      = this
-    var site    = Site(sc.server, siteId)
-    var urlStr  = encodeURIComponent(url)
-
-    window.Q.all([
-      Comment.getAllByPage(site, urlStr),
-      Review.getAllByPage(site, urlStr),
-      User.get(sc.server, 'me'),
-      site.loadSettings()
-    ])
-      .spread(function(comments, reviews, user) {
-
-        var commentContainer = document.createElement('div')
-        commentContainer.className = 'comments_container'
-        element.appendChild(commentContainer)
-
-        user.site = site
-        user.review = {grade: null}
-
-        if (site.getSetting('useReviews', false)) {
-          // Attach reviews to linked comment
-
-          for (var i = 0; i < comments.length; i++) {
-            comments[i].review = null
-            for (var j = 0; j < reviews.length; j++) {
-              if (reviews[j].userId == user.id) {
-                user.review = reviews[j]
-              }
-              if (reviews[j].commentId === comments[i].id) {
-                comments[i].review = reviews[j]
-                break
-              }
-            }
-          }
-        }
-
-        // On sortOrder=desc, input files first and then latest comment on top
-        if (site.getSetting('sortOrder', 'asc') == 'desc') {
-          insertNewCommentElement(commentContainer, user, urlStr)
-          comments.reverse()
-        }
-
-        for (var i = 0; i < comments.length; i++) {
-          commentContainer.appendChild(Comment.getElement(comments[i], user))
-        }
-
-        if (site.getSetting('sortOrder', 'asc') == 'asc') {
-          insertNewCommentElement(commentContainer, user, urlStr)
-        }
-
-        var someCommentInfo = document.createElement('div')
-        someCommentInfo.className = 'some_comment_info'
-        someCommentInfo.innerHTML =
-          '<p>' +
-          '  <a href="https://github.com/fiddur/some-comments">Some Comments</a>' +
-          '  ©Fredrik Liljegren' +
-          '  <a href="http://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL-3.0</a>' +
-          '</p>'
-        element.appendChild(someCommentInfo)
-      }).done()
-  }
-
-  SomeCommentsPrototype.getSites = function() {
-    return ajax.get(this.server + 'sites/')
-      .then(function(sitesJson) {
-        return JSON.parse(sitesJson)
-      })
-  }
-  SomeCommentsPrototype.addSite = function(domain, settings) {
-    var sc = this
+  SomeCommentsPrototype.addSite = function (domain, settings) {
+    const sc = this
 
     return ajax.post(
-      sc.server + 'sites/', {domain: domain, settings: settings})
+      `${sc.server}sites/`, { domain, settings })
       .then(
-        function(response) {
-        }, function(error) {
+        response => {
+        }, error => {
           if (error instanceof ForbiddenError) {
             // Lets offer login and retry
             return User.offerLogin(sc.server, error.call)
-              .then(function (siteJson) {
+              .then(siteJson => {
                 console.log('Added site after auth?', siteJson)
               })
           }
@@ -319,344 +150,219 @@
         }
       )
   }
+  */
 
-  ////////
-  // User
-  //
-  var User = {}
+  /*
+  let User = {}
 
-  /**
-   * Display a login iframe, promise to fulfil the original request.
-   */
-  User.offerLogin = function(server, call) {
-    var iframe = document.createElement('iframe')
-    iframe.src = server + 'login'
+  User.offerLogin = function (server, call) {
+    const iframe = document.createElement('iframe')
+    iframe.src = `${server}login`
     iframe.className = 'login'
 
-    var deferred = window.Q.defer()
+    const deferred = window.Q.defer()
 
-    window.addEventListener('message', function(event) {
-      var origUrl   = parseUrl(event.origin)
-      var serverUrl = parseUrl(server)
+    window.addEventListener('message', event => {
+      const origUrl   = parseUrl(event.origin)
+      const serverUrl = parseUrl(server)
 
-      if (origUrl.hostname !== serverUrl.hostname) {return }
+      if (origUrl.hostname !== serverUrl.hostname) { return }
 
-      if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
+      if (!event.data.authenticated) { return deferred.reject('Not authenticated') }
 
       // Resend ajax request.
       document.body.removeChild(iframe)
       ajax.call(call.method, call.url, call.headers, call.body).then(deferred.resolve).done()
-    }, false);
+    }, false)
 
     document.body.appendChild(iframe)
 
     return deferred.promise
   }
 
-  User.get = function(server, id) {
-    return ajax.get(server + 'users/' + id)
-      .then(function(userJson) {
-        return JSON.parse(userJson)
-      }, function(error) {
+  User.get = function (server, id) {
+    return ajax.get(`${server}users/${id}`)
+      .then(userJson => JSON.parse(userJson), error =>
         // Probably not logged in then…
-        return {displayName: '?¿?¿?'}
-      })
+         ({ displayName: '?¿?¿?' }))
   }
+  */
 
-  ////////
-  // Site
-  //
-  var SitePrototype = {}
-
-  SitePrototype.loadSettings = function() {
-    var site = this
-    ajax.get(
-      site.server + 'sites/' + site.id
-    ).then(function(siteJson) {
-      var siteData = JSON.parse(siteJson)
-      site.domain = siteData.domain
-      site.settings = siteData.settings
-    })
-  }
-
-  SitePrototype.getSetting = function(key, defaultValue) {
-    if (this.settings == null) return defaultValue
-    if (!this.settings.hasOwnProperty(key)) return defaultValue
-    return this.settings[key]
-  }
-
-  function Site(server, siteId) {
-    var site = Object.create(SitePrototype)
-
-    site.id     = siteId
-    site.server = server
-
-    return site
-  }
-
-
-
-  ///////////
-  // Comment
-  //
-  var Comment = {}
-
-  /**
-   * Get all the comments from one page
-   *
-   * @param site    object  A site object
-   * @param urlStr  string  The page ID
-   */
-  Comment.getAllByPage = function(site, urlStr) {
-    return ajax.get(
-      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/'
-    ).then(function(commentsJson) {
-      var comments = JSON.parse(commentsJson)
-      return comments.map(function(comment) {comment.site = site; return comment})
-    })
-  }
-
-  /**
-   * @param site    object  A site object
-   * @param urlStr  string  The page ID
-   * @param text    string  Comment text
-   */
-  Comment.add = function(site, urlStr, text) {
-    return ajax.post(
-      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/comments/', {text: text})
-      .then(
-        function(commentJson) {
-          var comment = JSON.parse(commentJson)
-          return comment
-        }, function(error) {
-          if (error instanceof ForbiddenError) {
-
-            // Lets offer login and retry
-            return User.offerLogin(site.server, error.call)
-              .then(function (commentJson) {
-                var comment = JSON.parse(commentJson)
-                return comment
-              })
-          }
-          console.log('Error', error)
-        }
-      )
-  }
-
-  Comment.del = function(comment) {
-    var commentUrl = comment.site.server + 'sites/' + comment.site.id + '/pages/' +
-        comment.pageId + '/comments/' + comment.id
+  /*
+  Comment.del = function (comment) {
+    const commentUrl = `${comment.site.server}sites/${comment.site.id}/pages/${
+        comment.pageId}/comments/${comment.id}`
 
     ajax.del(commentUrl)
-      .then(function() {
-        var commentRow = e('comment_' + comment.id)
+      .then(() => {
+        const commentRow = e(`comment_${comment.id}`)
         commentRow.parentNode.removeChild(commentRow)
       }).done()
   }
+  */
 
-  ///////////
-  // Review
-  //
-  var Review = {}
-
-  /**
-   * @param user    object  A user object
-   * @param comment object  A comment object
-   * @param urlStr  string  The page ID
-   * @param grade   int     Review grade
-   */
-  Review.save = function(user, comment, urlStr) {
-    var base_url = user.site.server + 'sites/' + user.site.id + '/pages/' + urlStr + '/reviews/'
-    if (user.review.id) {
-      return ajax.put(base_url + user.review.id, {grade: user.review.grade, linkTo: comment.id})
-        .then(
-          function(reviewJson) {
-            var review = JSON.parse(reviewJson)
-            return review
-          }, function(error) {
-            if (error instanceof ForbiddenError) {
-              // Lets offer login and retry
-              return User.offerLogin(site.server, error.call)
-                .then(function (reviewJson) {
-                  var review = JSON.parse(reviewJson)
-                  return review
-                })
-            }
-            console.log('Error', error)
-          }
-        )
-    }
-    else {
-      return ajax.post(base_url, {grade: user.review.grade, linkTo: comment.id})
-        .then(
-          function(reviewJson) {
-            var review = JSON.parse(reviewJson)
-            return review
-          }, function(error) {
-            if (error instanceof ForbiddenError) {
-              // Lets offer login and retry
-              return User.offerLogin(site.server, error.call)
-                .then(function (reviewJson) {
-                  var review = JSON.parse(reviewJson)
-                  return review
-                })
-            }
-            console.log('Error', error)
-          }
-        )
-    }
-  }
-
-  Review.getAllByPage = function(site, urlStr) {
-    return ajax.get(
-      site.server + 'sites/' + site.id + '/pages/' + urlStr + '/reviews/'
-    ).then(function(reviewJson) {
-      var reviews = JSON.parse(reviewJson)
-      return reviews
-    })
-  }
-
-
-  function avatarDiv(user) {
-    var avatarDiv = document.createElement('div')
-    avatarDiv.className = 'comment_avatar'
-
-    if (user.avatar) {
-      var avatarImg = document.createElement('img')
-      avatarImg.src = user.avatar || ''
-      avatarImg.alt = user.displayName || ''
-      avatarDiv.appendChild(avatarImg)
-    }
-    else {
-      var avatarTxt = document.createTextNode('?')
-      avatarDiv.className = avatarDiv.className + ' unknown_user'
-      avatarDiv.appendChild(avatarTxt)
-    }
-
-    return avatarDiv
-  }
-
+  /*
   function transformToEdit(comment, user) {
-    var commentUrl = comment.site.server + 'sites/' + comment.site.id + '/pages/' +
-        comment.pageId + '/comments/' + comment.id
+    const commentUrl = `${comment.site.server}sites/${comment.site.id}/pages/${
+        comment.pageId}/comments/${comment.id}`
 
     if (user.id !== comment.userId) {
       console.log('Illegal edit')
       return
     }
 
-    var oldCommentDiv = e('comment_' + comment.id)
-    var commentingDiv = makeCommentingDiv(user, function(commentText, grade) {
-      ajax.put(commentUrl, {text: commentText})
-        .then(function(newCommentJson) {
-          var newComment = JSON.parse(newCommentJson)
+    const oldCommentDiv = e(`comment_${comment.id}`)
+    const commentingDiv = makeCommentingDiv(user, (commentText) => {
+      ajax.put(commentUrl, { text: commentText })
+        .then(newCommentJson => {
+          const newComment = JSON.parse(newCommentJson)
           newComment.user = user
           newComment.site = comment.site
-          newComment.review = null
 
-          if (user.site.getSetting('useReviews', false) && user.review.grade != null) {
-            Review.save(user, newComment, comment.pageId)
-              .then(function(review) {
-                user.review = newComment.review = review
-                var newCommentDiv = Comment.getElement(newComment, user)
-                commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
-                commentingDiv.parentNode.removeChild(commentingDiv)
-              })
-          }
-          else {
-            var newCommentDiv = Comment.getElement(newComment, user)
-            commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
-            commentingDiv.parentNode.removeChild(commentingDiv)
-          }
+          const newCommentDiv = makeCommentDiv(newComment, user)
+          commentingDiv.parentNode.insertBefore(newCommentDiv, commentingDiv)
+          commentingDiv.parentNode.removeChild(commentingDiv)
         }).done()
-    }, comment.text, comment.review ? comment.review.grade : null)
+    }, comment.text)
 
     oldCommentDiv.parentNode.insertBefore(commentingDiv, oldCommentDiv)
     oldCommentDiv.parentNode.removeChild(oldCommentDiv)
   }
 
   function editOptionsDiv(comment, user) {
-    var editOptions = document.createElement('div')
+    const editOptions = document.createElement('div')
     editOptions.className = 'edit_options'
 
-    var editButton       = document.createElement('button')
+    const editButton       = document.createElement('button')
     editButton.className = 'comment_edit'
     editButton.title     = 'Edit'
     editButton.appendChild(document.createTextNode('✎'))
-    editButton.addEventListener('click', function() {transformToEdit(comment, user)})
+    editButton.addEventListener('click', () => { transformToEdit(comment, user) })
     editOptions.appendChild(editButton)
 
-    var deleteButton       = document.createElement('button')
+    const deleteButton       = document.createElement('button')
     deleteButton.className = 'comment_delete'
     deleteButton.title     = 'Delete'
-    deleteButton.addEventListener('click', function() {Comment.del(comment)})
+    deleteButton.addEventListener('click', () => { Comment.del(comment) })
     editOptions.appendChild(deleteButton)
 
     return editOptions
   }
 
-  function commentDiv(comment, user) {
-    var commentDiv = document.createElement('div')
-    commentDiv.className = 'comment'
+  */
 
-    if (user && comment.user.id === user.id) {
-      commentDiv.appendChild(editOptionsDiv(comment, user))
+  const someCommentInfo = h(
+    'div', { class: 'some_comment_info' }, h(
+      'p', null, [
+        h('a', { href: 'https://github.com/fiddur/some-comments' }, 'Some Comments'),
+        ' ©Fredrik Liljegren ',
+        h('a', { href: 'http://www.gnu.org/licenses/agpl-3.0.html' }, 'GNU AGPL-3.0'),
+      ]
+    )
+  )
+
+  const renderComments = ({ comments, newComment, user }, dispatch) => {
+    console.log(comments)
+
+    const rows = comments.map(comment => renderCommentRow(comment, user))
+
+    rows.push(renderCommentingDiv(user, newComment.text, input => {
+      console.log('got input', input.target.value)
+      dispatch({ type: 'newCommentInput', data: input.target.value })
+    }))
+
+    return h('div', { class: 'some_comments' }, [
+      h('div', { class: 'comments_container' }, rows),
+      someCommentInfo,
+    ])
+  }
+
+  // Representing the colleciton of comments on one page.
+  const Comments = server => (site, page) => {
+    const store = {
+      state: Immutable.fromJS({
+        comments:   [],
+        user:       {},
+        newComment: { text: 'fou' },
+      }),
+      listeners: Immutable.Set(),
+      handlers:  {
+        comment: (state, comment) => state
+          .updateIn(['comments'], comments => comments.push(comment)),
+        newCommentInput: (state, input) => state
+          .setIn(['newComment', 'text'], input)
+      },
+
+      dispatch({ type, data }) {
+        console.log('dispatch of', type, data)
+
+        store.state = store.handlers[type](store.state, data)
+
+        store.listeners.forEach(listener => listener(store.state))
+      },
+
+      addListener(listener) {
+        store.listeners = store.listeners.add(listener)
+      },
     }
 
-    commentDiv.appendChild(displayNameSpan(comment))
-    if (user.site.getSetting('useReviews', false) && comment.review) {
-      commentDiv.appendChild(reviewDiv(comment.review))
+    // Get all the comments from one page.
+    const get = onComment => ajax.get(`${server}sites/${site}/pages/${page}/comments/`)
+      .then(commentsJson => {
+        JSON.parse(commentsJson).forEach(onComment)
+      })
+
+    // const add = text => ajax
+    //   .post(`${server}sites/${site}/pages/${page}/comments/`, { text })
+    //   .then(commentJson => JSON.parse(commentJson))
+    //   .catch(error => {
+    //     if (error instanceof ForbiddenError) {
+    //       // Lets offer login and retry
+    //       return User.offerLogin(site.server, error.call)
+    //         .then(commentJson => {
+    //           const comment = JSON.parse(commentJson)
+    //           return comment
+    //         })
+    //     }
+    //     console.log('Error', error)
+    //   })
+
+    // del: onDone => {
+    // },
+
+    // Mount the (auto-updating) commenting display on element
+    const mount = element => {
+      console.log('mounting on', element)
+
+      // Fetch all comments.
+      get(comment => store.dispatch({ type: 'comment', data: comment }))
+
+      // Render onto given element.
+      const previous = render(
+        renderComments(store.state.toJS(), store.dispatch), element
+      )
+
+      // Re-render on updated state.
+      store.addListener(
+        newState => render(
+          renderComments(newState.toJS(), store.dispatch), element, previous
+        )
+      )
     }
 
-    var commentText = document.createElement('div')
-    commentText.className = 'comment_text'
-    commentText.innerHTML = markdown.toHTML(comment.text)
-    commentDiv.appendChild(commentText)
-
-    var createdAtSpan = document.createElement('span')
-    createdAtSpan.className = 'comment_created'
-    createdAtSpan.appendChild(document.createTextNode(comment.createdAt || ''))
-    commentDiv.appendChild(createdAtSpan)
-
-    return commentDiv
-  }
-
-  function displayNameSpan(comment) {
-    var userSpan = document.createElement('span')
-    userSpan.className = 'commenter_name'
-    userSpan.appendChild(document.createTextNode(comment.user.displayName || ''))
-    return userSpan;
-  }
-
-  function reviewDiv(review) {
-    var reviewDiv = document.createElement('div')
-    reviewDiv.className = 'review'
-    for (var i = 1; i <= REVIEW_GRADE_MAX; i++) {
-      reviewDiv.appendChild(reviewGradeSpan(review.grade >= i))
+    return {
+      get,
+      mount,
     }
-    return reviewDiv;
   }
 
-  function reviewGradeSpan(active) {
-    var gradeSpan = document.createElement('span')
-    gradeSpan.innerHTML = REVIEW_GRADE_SYMBOL
-    gradeSpan.className = active ? 'active' : ''
-    return gradeSpan
-  }
 
-  Comment.getElement = function(comment, user) {
-    var div = document.createElement('div')
-    div.className = 'comment_row'
-    div.id = 'comment_' + comment.id
+  const SomeComments = server => ({
+    comments: Comments(server),
+  })
 
-    if (user.site.getSetting('useAvatar', true)) div.appendChild(avatarDiv(comment.user))
-    div.appendChild(commentDiv(comment, user))
 
-    return div
-  }
-
-  // Make some things available on window
-  window.SomeComments = SomeComments
+  window.SomeComments = SomeComments // eslint-disable-line no-param-reassign
 })(window)
 
 // @license-end
