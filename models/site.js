@@ -98,5 +98,9 @@ module.exports = (models) => {
     return models.SiteAdmin.query().insert({siteId: this.id, userId: adminId})
   }
 
+  Site.prototype.getPages = function() {
+    return await(models.Page.getAllBySite(this))
+  }
+
   return Site
 }

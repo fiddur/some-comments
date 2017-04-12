@@ -94,6 +94,13 @@ describe('Models', function() {
       assert.equal('asc', site3.settings.sortOrder)
     }))
 
+    it('should get all pages for site', async(() => {
+      let pages = await(site.getPages())
+
+      assert.equal(pages.length, 1)
+      assert.equal(pages[0].siteId, site.id)
+    }))
+
   })
 
   describe('Accounts', function() {

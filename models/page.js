@@ -75,6 +75,10 @@ module.exports = (models) => {
     return Page.query().where({siteId: site, url: url}).first()
   }
 
+  Page.getAllBySite = (site) => {
+    if (site instanceof models.Site) {site = site.id}
+    return Page.query().where({siteId: site})
+  }
 
   /************************************************************************************************
    * Instance methods

@@ -4,10 +4,20 @@
   Here might some day be a nice list with links and supearmin functionality to remove unwanted
   sites :)
 </p>
+{{#user}}
+  <p>Logged in as {{displayName}} ({{id}})</p>
+{{/user}}
 
 <ul>
   {{#sites}}
-    <li>{{id}} - <a href="http://{{domain}}/">{{domain}}</a> - by {{admins.0.displayName}}</li>
+    <li>
+      {{id}} - <a href="http://{{domain}}/">{{domain}}</a>
+      - by {{admins.0.displayName}} ({{admins.0.id}})
+      {{#editable}}
+        <a href="/sites/{{id}}">Settings</a>
+        <a href="/sites/{{id}}/moderate">Moderate</a>
+      {{/editable}}
+    </li>
   {{/sites}}
 </ul>
 
