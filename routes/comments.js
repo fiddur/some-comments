@@ -26,7 +26,7 @@ module.exports = function (app, model, mailTransport, config) {
       return res.status(400).send('Bad Request: text is required')
     }
 
-    const page = aawait(model.Page.getBySiteUrl(req.params.site, req.params.page))
+    let page = aawait(model.Page.getBySiteUrl(req.params.site, req.params.page))
 
     if (!page) { page = aawait(model.Page.create({ siteId: req.params.site, url: req.params.page })) }
 

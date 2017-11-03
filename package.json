@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "coveralls": "^2.11.2",
+    "eslint-plugin-async-await": "0.0.0",
     "istanbul": "^0.3.14",
     "istanbul-middleware": "git+https://github.com/mcollina/istanbul-middleware.git#update-dependencies",
     "mocha": "^2.2",

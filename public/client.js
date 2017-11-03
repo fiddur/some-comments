@@ -96,61 +96,25 @@
     ]
   )
 
-  const renderCommentingDiv = (user, text, onInput) => h(
+  const renderCommentingDiv = (user, text, onInput, onSubmit) => h(
     'div', { class: 'comment_row' }, [
       renderAvatarDiv(user),
-      h('div', { class: 'comment' }, [ // commentDiv
+      h('div', { class: 'comment' }, [
         h('div', { class: 'comment_text comment_input' }, [
           h('textarea', {
             placeholder: 'Type your comment…',
+            value: text,
             onInput,
-          }), // input.value = preText
+          }),
         ]),
         h('div', {
           class:                   'comment_text comment_preview',
           dangerouslySetInnerHTML: { __html: markdown.toHTML(text || '') },
         }),
+        h('input', { type: 'submit', value: 'Submit', onClick: onSubmit }),
       ]),
     ]
-
-    // input.addEventListener('input', () => {
-    //   commentPreview.innerHTML = markdown.toHTML(this.value)
-    // })
-
-    // input.addEventListener('keypress', kp => {
-    //   if (kp.keyCode === 13 && !kp.ctrlKey && !kp.shiftKey) {
-    //     const commentText = input.value
-    //     input.value = ''
-    //   }
-    // })
   )
-
-
-  /*
-  SomeCommentsPrototype.getSites = function () {
-    return ajax.get(`${this.server}sites/`)
-      .then(sitesJson => JSON.parse(sitesJson))
-  }
-  SomeCommentsPrototype.addSite = function (domain, settings) {
-    const sc = this
-
-    return ajax.post(
-      `${sc.server}sites/`, { domain, settings })
-      .then(
-        response => {
-        }, error => {
-          if (error instanceof ForbiddenError) {
-            // Lets offer login and retry
-            return User.offerLogin(sc.server, error.call)
-              .then(siteJson => {
-                console.log('Added site after auth?', siteJson)
-              })
-          }
-          console.log('Error', error)
-        }
-      )
-  }
-  */
 
   /*
   let User = {}
@@ -267,8 +231,9 @@
     const rows = comments.map(comment => renderCommentRow(comment, user))
 
     rows.push(renderCommentingDiv(user, newComment.text, input => {
-      console.log('got input', input.target.value)
       dispatch({ type: 'newCommentInput', data: input.target.value })
+    }, () => {
+      console.log('POSTed...', newComment)
     }))
 
     return h('div', { class: 'some_comments' }, [
@@ -283,21 +248,39 @@
       state: Immutable.fromJS({
         comments:   [],
         user:       {},
-        newComment: { text: 'fou' },
+        newComment: { text: '' },
       }),
       listeners: Immutable.Set(),
-      handlers:  {
+      commands:  {
+        // Takes state.newComment and sends it to server.
+        attemptAddComment: () => {
+          const text = store.state.getIn(['newComment', 'text'])
+          store.dispatch({ type: 'postingComment' })
+          ajax
+            .post(`${server}sites/${site}/pages/${page}/comments/`, { text })
+            .then(() => store.dispatch({ type: 'commentPosted' }))
+            .catch(error => store.dispatch({
+              type: 'postingCommentFailed', data: { error },
+            }))
+        },
+      },
+
+      apply: {
         comment: (state, comment) => state
           .updateIn(['comments'], comments => comments.push(comment)),
+
         newCommentInput: (state, input) => state
-          .setIn(['newComment', 'text'], input)
+          .setIn(['newComment', 'text'], input),
+
+        // postingComment
+        // postingCommentFailed
+        commentPosted: state => state
+          .setIn(['newComment', 'text'], ''),
       },
 
       dispatch({ type, data }) {
         console.log('dispatch of', type, data)
-
-        store.state = store.handlers[type](store.state, data)
-
+        if (type in store.apply) store.state = store.apply[type](store.state, data)
         store.listeners.forEach(listener => listener(store.state))
       },
 
@@ -312,20 +295,18 @@
         JSON.parse(commentsJson).forEach(onComment)
       })
 
-    // const add = text => ajax
-    //   .post(`${server}sites/${site}/pages/${page}/comments/`, { text })
-    //   .then(commentJson => JSON.parse(commentJson))
-    //   .catch(error => {
-    //     if (error instanceof ForbiddenError) {
-    //       // Lets offer login and retry
-    //       return User.offerLogin(site.server, error.call)
-    //         .then(commentJson => {
-    //           const comment = JSON.parse(commentJson)
-    //           return comment
-    //         })
-    //     }
-    //     console.log('Error', error)
-    //   })
+    const add = text => ajax
+      .post(`${server}sites/${site}/pages/${page}/comments/`, { text })
+      .then(commentJson => JSON.parse(commentJson))
+      .catch(error => (
+        (error instanceof ForbiddenError)
+          ? User.offerLogin(site.server, error.call)
+          .then(commentJson => {
+            const comment = JSON.parse(commentJson)
+            return comment
+          }) : error
+      ))
+
 
     // del: onDone => {
     // },
