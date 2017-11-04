@@ -5,14 +5,9 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 8,
   },
-
   'extends': 'airbnb',
-  'installedESLint': true,
-  'plugins': [
-    'jsx-a11y',
-    'async-await',
-  ],
   rules: {
+    camelcase: 'off',
     'semi': ['error', 'never'],
     'no-reserved-keys': 0,
     'no-multi-spaces': 0,

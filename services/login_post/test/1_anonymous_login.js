@@ -1,4 +1,4 @@
-'use strict'
+/* eslint-env node, mocha */
 
 const assert = require('assert')
 const esClient = require('node-eventstore-client')
@@ -39,7 +39,7 @@ describe('POST /login: Anonymous logins', () => {
           ACCESS_TOKEN_SECRET,
           USERS_STREAM,
           ...process.env,
-        }
+        },
       })
       serverProcess.stdout.on('data', buffer => {
         const portRegex = /listening on port (\d+) in process (\d+)./g
@@ -48,9 +48,8 @@ describe('POST /login: Anonymous logins', () => {
           baseUrl = `http://localhost:${portMatch[1]}`
           serverPid = portMatch[2]
           resolve()
-        }
-        else {
-          console.log('Ignoring server output: ' + buffer)
+        } else {
+          console.log(`Ignoring server output: ${buffer}`)
         }
       })
       serverProcess.stderr.on('data', buffer => {
@@ -69,7 +68,7 @@ describe('POST /login: Anonymous logins', () => {
     it('returns a json response with access_token', async () => {
       const response = await fetch(`${baseUrl}/login`, {
         method: 'POST',
-        body: { account: 'User Name@anonymous' },
+        body:   JSON.stringify({ account: 'User Name@anonymous' }),
       })
       const body = await response.json()
       assert.ok('access_token' in body)
@@ -78,7 +77,7 @@ describe('POST /login: Anonymous logins', () => {
     it('has access_token with user', async () => {
       const response = await fetch(`${baseUrl}/login`, {
         method: 'POST',
-        body: { account: 'User Name@anonymous' },
+        body:   JSON.stringify({ account: 'User Name@anonymous' }),
       })
       const body = await response.json()
       const tokenData = jwt.decode(body.access_token)
@@ -86,13 +85,22 @@ describe('POST /login: Anonymous logins', () => {
       assert.notStrictEqual(tokenData, null, 'Token should be decoded to object')
       assert.ok('user' in tokenData)
       // assert.equal('aud', siteId)
-      assert.equal('scope', ['comment'])
+      assert.deepEqual(tokenData.scope, ['comment'])
+    })
+
+    it('signs access_token with ACCESS_TOKEN_SECRET', async () => {
+      const response = await fetch(`${baseUrl}/login`, {
+        method: 'POST',
+        body:   JSON.stringify({ account: 'User Name@anonymous' }),
+      })
+      const body = await response.json()
+      jwt.verify(body.access_token, ACCESS_TOKEN_SECRET)
     })
 
     it('sends new user event to users_stream', async () => {
       const response = await fetch(`${baseUrl}/login`, {
         method: 'POST',
-        body: { account: 'User Name@anonymous' },
+        body:   JSON.stringify({ account: 'User Name@anonymous' }),
       })
       const body = await response.json()
       const tokenData = jwt.decode(body.access_token)
@@ -101,18 +109,18 @@ describe('POST /login: Anonymous logins', () => {
       const slice = await es.readStreamEventsForward(
         USERS_STREAM, 0, 100, false
       )
-      assert.ok(
-        slice.events.find(event => (
-          event.data.user === userId && event.data.account === 'User Name@anonymous'
-        )),
-        `Missing event with ${userId} account: ${JSON.stringify(slice.events)}`
-      )
+      const usersEvents = slice.events
+        .map(e => JSON.parse(e.event.data))
+        .filter(data => data.user === userId)
+
+      assert.equal(usersEvents.length, 1, 'Should be ONE event for user id')
+      assert.equal(usersEvents[0].account, 'User Name@anonymous')
     })
 
     it('sends created event on user uuid stream', async () => {
       const response = await fetch(`${baseUrl}/login`, {
         method: 'POST',
-        body: { account: 'User Name@anonymous' },
+        body:   JSON.stringify({ account: 'User Name@anonymous' }),
       })
       const body = await response.json()
       const tokenData = jwt.decode(body.access_token)
@@ -124,10 +132,12 @@ describe('POST /login: Anonymous logins', () => {
 
       assert.equal(slice.events.length, 1, 'There should be one event for userId')
 
-      const event = slice.events[0]
-      assert.equal(event.eventType, 'new_user')
-      assert.equal(event.data.user, userId)
-      assert.equal(event.data.displayName, 'User Name')
+      const e = slice.events[0]
+      assert.equal(e.event.eventType, 'new_user')
+
+      const data = JSON.parse(e.event.data)
+      assert.equal(data.user, userId)
+      assert.equal(data.displayName, 'User Name')
     })
   })
 })
