@@ -5,6 +5,9 @@ Payload `application/x-www-form-urlencoded`: `account=sub@iss`.
 
 For anonymous commenters, the `iss` is set to `anonymous`.
 
+Each service should have a `make start-test-service`, that outputs on
+listening: `listening on port ${port} in process ${process.pid}.`
+
 
 Configuration
 -------------
@@ -13,7 +16,6 @@ Configuration
 * `ES_ENDPOINT`
 * `USERS_STREAM`
 * `PORT`
-
 
 
 Compliance

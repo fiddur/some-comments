@@ -10,27 +10,28 @@ const usersStream = process.env.USERS_STREAM
 
 process.on('SIGINT', () => process.exit(0))
 
-const getPayload = req => new Promise(resolve => {
+const getPayload = req => new Promise((resolve, reject) => {
   let payload = ''
+  req.on('error', reject)
   req.on('data', chunk => { payload += chunk })
   req.on('end', () => resolve(JSON.parse(payload)))
 })
 
-const registerUserUuid = async ({ es, user, account }) => {
-  await es.appendToStream(usersStream, esClient.expectedVersion.any, [
+const registerUserUuid = ({ es, user, account }) => es.appendToStream(
+  usersStream, esClient.expectedVersion.any, [
     esClient.createJsonEventData(
       uuid.v4(), { user, account }, null, null
     ),
-  ])
-}
+  ]
+)
 
-const sendNewUserEvent = async ({ es, user, displayName, account }) => {
-  await es.appendToStream(user, esClient.expectedVersion.noStream, [
+const sendNewUserEvent = ({ es, user, displayName, account }) => es.appendToStream(
+  user, esClient.expectedVersion.noStream, [
     esClient.createJsonEventData(
       uuid.v4(), { user, displayName, account }, null, 'new_user',
     ),
-  ])
-}
+  ]
+)
 
 const handleRequest = es => async (req, res) => {
   const body = await getPayload(req)
