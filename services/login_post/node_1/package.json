@@ -8,5 +8,9 @@
   },
   "main": "loginPost.js",
   "author": "Fredrik Liljegren <fredrik@liljegren.org>",
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "jsonwebtoken": "^8.1.0",
+    "node-eventstore-client": "^0.1.10"
+  }
 }

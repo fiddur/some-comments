@@ -6,6 +6,16 @@ Payload `application/x-www-form-urlencoded`: `account=sub@iss`.
 For anonymous commenters, the `iss` is set to `anonymous`.
 
 
+Configuration
+-------------
+
+* `ACCESS_TOKEN_SECRET`
+* `ES_ENDPOINT`
+* `USERS_STREAM`
+* `PORT`
+
+
+
 Compliance
 ----------
 
@@ -18,7 +28,7 @@ Compliance
 
 3. Return `access_token` for authenticated user.
 
-  * `sub` set to user uuid.
+  * `user` set to user uuid.
 
   * `aud` set to site uuid.
 

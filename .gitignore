@@ -1,4 +1,4 @@
 /build
 /data/comments.db
 /config.js
-/node_modules
+node_modules
