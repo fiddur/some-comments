@@ -1,0 +1,12 @@
+{
+  "name": "some-comments-login_post_node_1",
+  "version": "1.0.0",
+  "description": "POST /login handler",
+  "scripts": {
+    "start": "node loginPost.js",
+    "test": "make test-coveralls"
+  },
+  "main": "loginPost.js",
+  "author": "Fredrik Liljegren <fredrik@liljegren.org>",
+  "license": "AGPL-3.0"
+}

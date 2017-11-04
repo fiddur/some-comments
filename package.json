@@ -1,0 +1,19 @@
+{
+  "name": "some-comments",
+  "description": "Some Comments commenting engine",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fiddur/some-comments.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fiddur/some-comments/issues"
+  },
+  "author": "Fredrik Liljegren",
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "mocha": "^4.0.1"
+  },
+  "dependencies": {
+    "node-fetch": "^1.7.3"
+  }
+}

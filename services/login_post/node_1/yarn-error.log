@@ -1,0 +1,36 @@
+Arguments: 
+  /usr/bin/node /usr/share/yarn/bin/yarn.js init
+
+PATH: 
+  /usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+
+Yarn version: 
+  1.0.1
+
+Node version: 
+  8.6.0
+
+Platform: 
+  linux x64
+
+npm manifest: 
+  No manifest
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
+
+Trace: 
+  Error: canceled
+      at Interface.<anonymous> (/usr/share/yarn/lib/cli.js:115284:13)
+      at emitNone (events.js:105:13)
+      at Interface.emit (events.js:207:7)
+      at Interface._ttyWrite (readline.js:775:16)
+      at ReadStream.onkeypress (readline.js:160:10)
+      at emitTwo (events.js:125:13)
+      at ReadStream.emit (events.js:213:7)
+      at emitKeys (internal/readline.js:420:14)
+      at emitKeys.next (<anonymous>)
+      at ReadStream.onData (readline.js:1011:36)
