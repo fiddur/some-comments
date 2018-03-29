@@ -1,0 +1,11 @@
+{
+  "name": "commentPost",
+  "version": "1.0.0",
+  "main": "commentPost.js",
+  "license": "ISC",
+  "dependencies": {
+    "jsonwebtoken": "^8.2.0",
+    "node-eventstore-client": "^0.2.3",
+    "uuid": "^3.2.1"
+  }
+}

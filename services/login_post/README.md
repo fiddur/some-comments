@@ -26,7 +26,9 @@ Compliance
   * If the `account` has `iss` set to `anonymous`, create a user with given
     `sub` as `display_name`.
 
-2. Implement OIDC (requires a GET endpoint as well).
+  * Return `access_token`.
+
+2. TODO: Implement OIDC (requires a GET endpoint as well...).
 
 3. Return `access_token` for authenticated user.
 

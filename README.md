@@ -25,6 +25,7 @@ Each endpoint is in its own service, having different implementations.  Start
 up at least one version of each endpoint, use a proxy like haproxy or nginx to
 route:
 
+* POST /login
 * POST /comments/
 * GET /comments/
 

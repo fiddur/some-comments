@@ -58,7 +58,9 @@ Perform OpenID Connect login and exchange the `id_token` for an `access_token`.
 #### POST /comments/
 
 Authorization: `Bearer access_token`
-Payload: `{ page (uuid), created_at, body }`
+Payload: `{ page (uuid), body }`
+
+The page SHOULD be registered with a `POST /pages/` call
 
 
 #### GET /comments/
@@ -68,15 +70,27 @@ Payload: `{ page (uuid), created_at, body }`
 
 ### Event streams and events
 
-* user
+* Streams: `user-<user>`
+  * Event `UserAdded`: `{ user: '<id>', displayName: 'User Name', account: 'sub@iss' }`
 
-* comment
+* Streams: `site-<site>`
 
-* page
+* Streams: `page-<page>`
+  * Event `CommentAdded`: `{ body, page, user }`
+
+  * page
+  * site
+  * user
+
+* page - The page ID Stream ID is `page@site`.
+  * site
+  * url ?
 
 * site
 
 * siteadmin
+  * site
+  * 
 
 * subscription
 

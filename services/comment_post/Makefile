@@ -13,7 +13,9 @@ test-target:
 	TARGET=$(TARGET) \
 	../../node_modules/.bin/mocha test
 
-test: $(SUBDIRS)
+test:
+ #$(SUBDIRS)
+	echo No test yet.
 
 $(SUBDIRS):
 	echo Testing for $@
@@ -21,8 +23,4 @@ $(SUBDIRS):
 	TARGET=$@ \
 	../../node_modules/.bin/mocha test
 
-test/.:
-	# Don't treat the test dir as a service.
-
 .PHONY: test-target test-all $(SUBDIRS)
-

@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken')
 const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET
 const esEndpoint = process.env.ES_ENDPOINT
 const port = process.env.PORT || 3001
-const usersStream = process.env.USERS_STREAM
 
 process.on('SIGINT', () => process.exit(0))
 
@@ -17,36 +16,27 @@ const getPayload = req => new Promise((resolve, reject) => {
   req.on('end', () => resolve(JSON.parse(payload)))
 })
 
-const registerUserUuid = ({ es, user, account }) => es.appendToStream(
-  usersStream, esClient.expectedVersion.any, [
+const addUser = ({ es, user, displayName, account }) => es.appendToStream(
+  `user-${user}`, esClient.expectedVersion.noStream, [
     esClient.createJsonEventData(
-      uuid.v4(), { user, account }, null, null
-    ),
-  ]
-)
-
-const sendNewUserEvent = ({ es, user, displayName, account }) => es.appendToStream(
-  user, esClient.expectedVersion.noStream, [
-    esClient.createJsonEventData(
-      uuid.v4(), { user, displayName, account }, null, 'new_user',
+      uuid.v4(), { user, displayName, account }, null, 'UserAdded',
     ),
   ]
 )
 
 const handleRequest = es => async (req, res) => {
-  const body = await getPayload(req)
-  const user = uuid.v4()
-  const account = body.account
+  const { account } = await getPayload(req)
   const [subject, issuer] = account.split('@')
 
   if (issuer === 'anonymous') {
     const displayName = subject
+    const user = uuid.v4()
 
-    await registerUserUuid({ es, user, account })
-    await sendNewUserEvent({ es, user, displayName, account })
+    await addUser({ es, user, displayName, account })
 
     const scope = ['comment']
     const access_token = jwt.sign({ user, scope }, accessTokenSecret)
+    // TODO: Return stream version as ETag
     res.end(JSON.stringify({ access_token }))
   }
 }
