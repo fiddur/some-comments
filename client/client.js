@@ -6,6 +6,9 @@
  * GNU-AGPL-3.0
  */
 
+/* eslint-env browser */
+/* global Immutable, markdown */
+
 /**
  * Dependencies:
  *
@@ -16,6 +19,11 @@
 
 (window => {
   const { h, render } = window.preact
+
+  function uuid(a) {
+    return a ? (a^Math.random() * 16 >> a / 4).toString(16)
+      : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, uuid)
+  }
 
   const renderDisplayNameSpan = comment => h(
     'span', { class: 'commenter_name' }, comment.user.displayName || ''
@@ -75,15 +83,18 @@
     )
   )
 
-  const renderComments = ({ comments, newComment, user }, dispatch) => {
+  const renderComments = (
+    { comments, newComment, user }, { attemptAddComment, updateNewComment }
+  ) => {
     console.log(comments)
 
     const rows = comments.map(comment => renderCommentRow(comment, user))
 
     rows.push(renderCommentingDiv(user, newComment.text, input => {
-      dispatch({ type: 'newCommentInput', data: input.target.value })
-    }, () => {
-      console.log('POSTed...', newComment)
+      updateNewComment(input.target.value)
+    }, input => {
+      attemptAddComment(input.target.value)
+      console.log('PUTed...', newComment)
     }))
 
     return h('div', { class: 'some_comments' }, [
@@ -102,16 +113,27 @@
       listeners: Immutable.Set(),
       commands:  {
         // Takes state.newComment and sends it to server.
-        attemptAddComment: () => {
-          const text = store.state.getIn(['newComment', 'text'])
-          store.dispatch({ type: 'postingComment' })
-          ajax
-            .post(`${server}sites/${site}/pages/${page}/comments/`, { text })
-            .then(() => store.dispatch({ type: 'commentPosted' }))
-            .catch(error => store.dispatch({
-              type: 'postingCommentFailed', data: { error },
-            }))
+        attemptAddComment: async body => {
+          try {
+            const id = uuid() // create the comment id
+            store.dispatch({ type: 'postingComment', data: { body, id, page, site } })
+            const response = await fetch(`${server}sites/${site}/pages/${page}/comments/`, {
+              body:        JSON.stringify({ body, id, page, site }),
+              credentials: 'same-origin',
+              headers:     { 'content-type': 'application/json' },
+              method:      'PUT',
+              mode:        'cors',
+            })
+
+            store.dispatch({ type: 'commentPosted', data: { response } })
+          } catch (error) {
+            store.dispatch({ type: 'postingCommentFailed', data: { error } })
+          }
         },
+
+        storeComment: comment => store.dispatch({ type: 'comment', data: comment }),
+
+        updateNewComment: data => store.dispatch({ type: 'newCommentInput', data }),
       },
 
       apply: {
@@ -140,9 +162,8 @@
 
     // Get all the comments from one page.
     const get = async onComment => {
-      const commentsJson = await window.fetch(`${server}sites/${site}/pages/${page}/comments/`)
-      JSON.parse(commentsJson)
-        .forEach(onComment)
+      const comments = await (await window.fetch(`${server}sites/${site}/pages/${page}/comments/`)).json()
+      comments.forEach(onComment)
     }
 
     // Mount the (auto-updating) commenting display on element
@@ -150,17 +171,17 @@
       console.log('mounting on', element)
 
       // Fetch all comments.
-      get(comment => store.dispatch({ type: 'comment', data: comment }))
+      get(store.commands.storeComment)
 
       // Render onto given element.
       const previous = render(
-        renderComments(store.state.toJS(), store.dispatch), element
+        renderComments(store.state.toJS(), store.commands), element
       )
 
       // Re-render on updated state.
       store.addListener(
         newState => render(
-          renderComments(newState.toJS(), store.dispatch), element, previous
+          renderComments(newState.toJS(), store.commands), element, previous
         )
       )
     }

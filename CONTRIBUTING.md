@@ -52,12 +52,13 @@ nickname, or a principle tried out).
 
 #### [POST /login](services/login_post/README.md)
 
-Perform OpenID Connect login and exchange the `id_token` for an `access_token`.
+Perform OpenID Connect login and exchange the `id_token` for a cookie (http
+only, secure) `Authorization: access_token`.
 
 
 #### POST /comments/
 
-Authorization: `Bearer access_token`
+Cookie: `Authorization: access_token`
 Payload: `{ page (uuid), body }`
 
 The page SHOULD be registered with a `POST /pages/` call
