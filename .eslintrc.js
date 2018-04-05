@@ -15,6 +15,8 @@ module.exports = {
     'new-cap': 0,
     'no-nested-ternary': 0,
     'no-console': 0,
+    'no-void': 0,
+    'consistent-return': ['error', { treatUndefinedAsUnspecified: true }],
     'no-unused-vars': ['error', { argsIgnorePattern: 'next' }],
     'arrow-parens': ['error', 'as-needed'],
     'require-await': 'error',

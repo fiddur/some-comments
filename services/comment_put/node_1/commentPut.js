@@ -17,6 +17,15 @@ const getPayload = req => new Promise((resolve, reject) => {
   })
 })
 
+const parseCookies = cookie => cookie.split(';').reduce(
+  (prev, curr) => {
+    const cookies = { ...prev }
+    const m = / *([^=]+)=(.*)/.exec(curr)
+    cookies[m[1]] = decodeURIComponent(m[2])
+    return cookies
+  }, {}
+)
+
 const addComment = ({ es, body, page, user }) => es.appendToStream(
   `page-${page}`, esClient.expectedVersion.any, [
     esClient.createJsonEventData(
@@ -25,13 +34,25 @@ const addComment = ({ es, body, page, user }) => es.appendToStream(
   ]
 )
 
+const authenticate = req => {
+  if (!req.headers.cookie) return null
+
+  const { accessToken } = parseCookies(req.headers.cookie)
+  if (!accessToken) return null
+
+  const { user } = jwt.verify(accessToken, accessTokenSecret)
+  return user
+}
+
 const handleRequest = es => async (req, res) => {
   try {
-    const { page, body } = await getPayload(req)
-    const accessToken = req.headers.authorization.slice('Bearer '.length)
-    console.log({ accessToken })
-    const { user } = jwt.verify(accessToken, accessTokenSecret)
+    const user = authenticate(req)
+    if (!user) {
+      res.statusCode = 401
+      return void res.end('Forbidden')
+    }
 
+    const { page, body } = await getPayload(req)
     await addComment({ es, body, page, user })
   } catch (err) {
     console.log(err)
