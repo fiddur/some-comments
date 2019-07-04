@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "make test-coveralls"
+    "test": "make test-coveralls",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
   },
   "repository": {
     "type": "git",
@@ -36,7 +38,8 @@
     "passport-google-oauth2": "^0.1.6",
     "passport-openidconnect": "git+https://github.com/fiddur/passport-openidconnect.git",
     "q": "^1.4.1",
-    "request-promise": "^0.4.3"
+    "request-promise": "^0.4.3",
+    "snyk": "^1.189.0"
   },
   "optionalDependencies": {
     "sqlite3": "3"
@@ -50,5 +53,6 @@
     "supertest": "^0.15.0"
   },
   "author": "Fredrik Liljegren",
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "snyk": true
 }
