@@ -1,0 +1,12 @@
+<html>
+  <body>
+    <script>
+      window.addEventListener("message", function(event) {
+        if (!event.data.authenticated) {return deferred.reject('Not authenticated')}
+    
+        // Forward to parent.
+        window.parent.postMessage({authenticated: true}, '*')
+      }, false);
+    </script>
+  </body>
+</html>

@@ -25,6 +25,13 @@ const addUser = ({ es, user, displayName, account }) => es.appendToStream(
 )
 
 const handleRequest = es => async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
+  res.setHeader('Access-Control-Allow-Methods', 'POST')
+  res.setHeader('Access-Control-Allow-Headers', 'content-type')
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+
+  if (req.method === 'OPTIONS') return void res.end()
+
   const { account } = await getPayload(req)
   const [subject, issuer] = account.split('@')
 
@@ -35,9 +42,10 @@ const handleRequest = es => async (req, res) => {
     await addUser({ es, user, displayName, account })
 
     const scope = ['comment']
-    const access_token = jwt.sign({ user, scope }, accessTokenSecret)
-    // TODO: Return stream version as ETag
-    res.end(JSON.stringify({ access_token }))
+    const accessToken = jwt.sign({ user, scope }, accessTokenSecret)
+
+    res.setHeader('Set-Cookie', [`accessToken=${accessToken}; HttpOnly`])
+    res.end('Ok')
   }
 }
 

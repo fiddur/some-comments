@@ -83,25 +83,82 @@
     )
   )
 
+  const renderLogin = ({ server, authenticators }) => h('div', { class: 'login' }, [
+    h('h1', null, 'Comment as…'),
+    h('ul', { class: 'login_list' }, [
+      ...authenticators.map(authenticator => h('li', null, h(
+        'a', { href: `${server}auth/${authenticator.id}`, target: '_blank' }, [
+          h('img', {
+            src:   authenticator.icon,
+            class: 'authicon',
+            alt:   authenticator.title,
+          }),
+          `${authenticator.title} ..`,
+        ]
+      ))),
+      h('li', null, h('label', null, [
+        'Anonymously as: ',
+        h(
+          'form', { onSubmit: async e => {
+            e.preventDefault()
+            console.log('submitted')
+            const response = await fetch(`${server}login`, {
+              body:        JSON.stringify({ account: 'a name@anonymous' }),
+              credentials: 'include',
+              headers:     { 'content-type': 'application/json' },
+              method:      'POST',
+              mode:        'cors',
+            })
+            console.log(response)
+          } },
+          h('input', { name: 'anonymous', placeholder: 'Display name' })
+        ),
+      ])),
+    ]),
+  ])
+
   const renderComments = (
-    { comments, newComment, user }, { attemptAddComment, updateNewComment }
+    server, { comments, newComment, user }, { attemptAddComment, updateNewComment }
   ) => {
     console.log(comments)
 
     const rows = comments.map(comment => renderCommentRow(comment, user))
 
-    rows.push(renderCommentingDiv(user, newComment.text, input => {
-      updateNewComment(input.target.value)
-    }, input => {
-      attemptAddComment(input.target.value)
-      console.log('PUTed...', newComment)
-    }))
+    rows.push(renderCommentingDiv(
+      user, newComment.text,
+      input => updateNewComment(input.target.value),
+      () => attemptAddComment(newComment.text)
+    ))
+
+    const loginFrame = user.loginRequested
+      ? h('iframe', { src: `${server}checkauth.html`, class: 'hidden' })
+      : ''
+
+    const authenticators = [ // ..get from.. 401?
+      {
+        title: 'Google',
+        id:    'google',
+        icon:  'https://upload.wikimedia.org/wikipedia/commons/4/4d/Google_Icon.svg',
+      },
+    ]
+    const loginBox = user.loginRequested ? renderLogin({ server, authenticators }) : ''
 
     return h('div', { class: 'some_comments' }, [
       h('div', { class: 'comments_container' }, rows),
-      someCommentInfo,
+      someCommentInfo, loginFrame, loginBox,
     ])
   }
+
+  const putComment = ({ server, body, id, page, site }) => fetch(
+    `${server}sites/${site}/pages/${page}/comments/`,
+    {
+      body:        JSON.stringify({ body, id, page, site }),
+      credentials: 'include',
+      headers:     { 'content-type': 'application/json' },
+      method:      'PUT',
+      mode:        'cors',
+    }
+  )
 
   const Comments = server => (site, page) => {
     const store = {
@@ -117,13 +174,20 @@
           try {
             const id = uuid() // create the comment id
             store.dispatch({ type: 'postingComment', data: { body, id, page, site } })
-            const response = await fetch(`${server}sites/${site}/pages/${page}/comments/`, {
-              body:        JSON.stringify({ body, id, page, site }),
-              credentials: 'same-origin',
-              headers:     { 'content-type': 'application/json' },
-              method:      'PUT',
-              mode:        'cors',
-            })
+            const response = await putComment({ server, body, id, page, site })
+
+            if (response.status === 401) {
+              store.dispatch({ type: 'loginRequested' })
+              await new Promise(resolve => {
+                const waitForUser = newState => {
+                  if (newState.toJS().user.displayName) {
+                    resolve()
+                    store.removeListener(waitForUser)
+                  }
+                }
+                store.addListener(waitForUser)
+              })
+            }
 
             store.dispatch({ type: 'commentPosted', data: { response } })
           } catch (error) {
@@ -145,8 +209,9 @@
 
         // postingComment
         // postingCommentFailed
-        commentPosted: state => state
-          .setIn(['newComment', 'text'], ''),
+        commentPosted: state => state.setIn(['newComment', 'text'], ''),
+
+        loginRequested: state => state.setIn(['user', 'loginRequested'], true),
       },
 
       dispatch({ type, data }) {
@@ -157,6 +222,12 @@
 
       addListener(listener) {
         store.listeners = store.listeners.add(listener)
+        console.log(store.listeners)
+      },
+
+      removeListener(listener) {
+        store.listeners = store.listeners.remove(listener)
+        console.log(store.listeners)
       },
     }
 
@@ -175,13 +246,13 @@
 
       // Render onto given element.
       const previous = render(
-        renderComments(store.state.toJS(), store.commands), element
+        renderComments(server, store.state.toJS(), store.commands), element
       )
 
       // Re-render on updated state.
       store.addListener(
         newState => render(
-          renderComments(newState.toJS(), store.commands), element, previous
+          renderComments(server, newState.toJS(), store.commands), element, previous
         )
       )
     }

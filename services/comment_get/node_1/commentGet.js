@@ -22,6 +22,10 @@ const handleRequest = es => async (req, res) => {
 
     comments.push({ text: 'hej', user: { displayName: 'No One' } })
 
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
+    res.setHeader('Access-Control-Allow-Methods', 'PUT, GET')
+    res.setHeader('Access-Control-Allow-Headers', 'content-type')
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.end(JSON.stringify(comments))
   } catch (err) {
     console.log(err)

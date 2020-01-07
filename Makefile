@@ -1,7 +1,8 @@
-SERVICE_DIRS := $(wildcard services/*/.)
-ES_ENDPOINT  := tcp://localhost:1113
-ES_USER      := admin
-ES_PASS      := changeit
+SERVICE_DIRS        := $(wildcard services/*/.)
+ES_ENDPOINT         ?= tcp://localhost:1113
+ES_USER             ?= admin
+ES_PASS             ?= changeit
+ACCESS_TOKEN_SECRET ?= verysecret
 
 .EXPORT_ALL_VARIABLES:
 .PHONY: test $(SERVICE_DIRS)

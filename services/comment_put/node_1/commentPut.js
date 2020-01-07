@@ -45,6 +45,11 @@ const authenticate = req => {
 }
 
 const handleRequest = es => async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
+  res.setHeader('Access-Control-Allow-Methods', 'PUT, GET')
+  res.setHeader('Access-Control-Allow-Headers', 'content-type')
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+
   try {
     const user = authenticate(req)
     if (!user) {
@@ -54,6 +59,8 @@ const handleRequest = es => async (req, res) => {
 
     const { page, body } = await getPayload(req)
     await addComment({ es, body, page, user })
+    console.log('comment added', { body, page, user })
+    res.end()
   } catch (err) {
     console.log(err)
     res.statusCode = 500

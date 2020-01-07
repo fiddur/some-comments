@@ -85,7 +85,16 @@
   color: red;
 }
 
-iframe.login {
+.hidden {
+  width: 0;
+  height: 0;
+  z-index: -1000;
+  position: fixed;
+  left: -10;
+  top: -10;
+}
+
+.login {
   z-index: 1000;
   position: fixed;
   top: 5%;
@@ -95,6 +104,8 @@ iframe.login {
   height: 800px;
   max-height: 90%;
   background: white;
+  border: 1px solid black;
+  padding: .5em;
 }
 
 .some_comment_info {
@@ -108,7 +119,20 @@ iframe.login {
 }
 
 .login_list li {
-  display: inline;
+  height: 2.5em;
+  vertical-align: middle;
+}
+
+.login_list li :link, .login_list li :visited {
+  text-decoration: none;
+  color: black;
+}
+
+.login_list li img.authicon {
+  max-width: 2em;
+  max-height: 2em;
+  margin-right: .5em;
+  vertical-align: middle;
 }
 
 .oidc {
