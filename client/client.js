@@ -20,10 +20,10 @@
 (window => {
   const { h, render } = window.preact
 
-  function uuid(a) {
-    return a ? (a^Math.random() * 16 >> a / 4).toString(16)
+  const parseUrl = url => document.createElement('a')
+
+  const uuid = a => a ? (a ^ Math.random() * 16 >> a / 4).toString(16)
       : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, uuid)
-  }
 
   const renderDisplayNameSpan = comment => h(
     'span', { class: 'commenter_name' }, comment.user.displayName || ''
@@ -77,7 +77,7 @@
     'div', { class: 'some_comment_info' }, h(
       'p', null, [
         h('a', { href: 'https://github.com/fiddur/some-comments' }, 'Some Comments'),
-        ' ©Fredrik Liljegren ',
+        ' ©Fredrik Liljegren 2020 ',
         h('a', { href: 'http://www.gnu.org/licenses/agpl-3.0.html' }, 'GNU AGPL-3.0'),
       ]
     )
@@ -87,7 +87,7 @@
     h('h1', null, 'Comment as…'),
     h('ul', { class: 'login_list' }, [
       ...authenticators.map(authenticator => h('li', null, h(
-        'a', { href: `${server}auth/${authenticator.id}`, target: '_blank' }, [
+        'a', { href: `${server}/auth/${authenticator.id}`, target: '_blank' }, [
           h('img', {
             src:   authenticator.icon,
             class: 'authicon',
@@ -98,11 +98,11 @@
       ))),
       h('li', null, h('label', null, [
         'Anonymously as: ',
-        h(
-          'form', { onSubmit: async e => {
+        h('form', {
+          onSubmit: async e => {
             e.preventDefault()
             console.log('submitted')
-            const response = await fetch(`${server}login`, {
+            const response = await fetch(`${server}/login`, {
               body:        JSON.stringify({ account: 'a name@anonymous' }),
               credentials: 'include',
               headers:     { 'content-type': 'application/json' },
@@ -110,9 +110,8 @@
               mode:        'cors',
             })
             console.log(response)
-          } },
-          h('input', { name: 'anonymous', placeholder: 'Display name' })
-        ),
+          },
+        }, h('input', { name: 'anonymous', placeholder: 'Display name' })),
       ])),
     ]),
   ])
@@ -131,7 +130,7 @@
     ))
 
     const loginFrame = user.loginRequested
-      ? h('iframe', { src: `${server}checkauth.html`, class: 'hidden' })
+      ? h('iframe', { src: `${server}/checkauth.html`, class: 'hidden' })
       : ''
 
     const authenticators = [ // ..get from.. 401?
@@ -149,10 +148,9 @@
     ])
   }
 
-  const putComment = ({ server, body, id, page, site }) => fetch(
-    `${server}sites/${site}/pages/${page}/comments/`,
-    {
-      body:        JSON.stringify({ body, id, page, site }),
+  const putComment = ({ server, text, id, page }) => fetch(
+    `${server}/pages/${page}/comments/:id`, {
+      body:        JSON.stringify({ text }),
       credentials: 'include',
       headers:     { 'content-type': 'application/json' },
       method:      'PUT',
@@ -160,7 +158,7 @@
     }
   )
 
-  const Comments = server => (site, page) => {
+  const Comments = server => (page) => {
     const store = {
       state: Immutable.fromJS({
         comments:   [],
@@ -170,17 +168,18 @@
       listeners: Immutable.Set(),
       commands:  {
         // Takes state.newComment and sends it to server.
-        attemptAddComment: async body => {
+        attemptAddComment: async text => {
           try {
             const id = uuid() // create the comment id
-            store.dispatch({ type: 'postingComment', data: { body, id, page, site } })
-            const response = await putComment({ server, body, id, page, site })
+            store.dispatch({ type: 'postingComment', data: { text, id, page } })
+            let response = await putComment({ server, text, id, page })
 
             if (response.status === 401) {
               store.dispatch({ type: 'loginRequested' })
               await new Promise(resolve => {
-                const waitForUser = newState => {
+                const waitForUser = async newState => {
                   if (newState.toJS().user.displayName) {
+                    response = await putComment({ server, text, id, page })
                     resolve()
                     store.removeListener(waitForUser)
                   }
@@ -189,7 +188,9 @@
               })
             }
 
-            store.dispatch({ type: 'commentPosted', data: { response } })
+            const comment = await response.json()
+            store.dispatch({ type: 'commentPosted', data: { } })
+            store.dispatch({ type: 'comment', data: comment })
           } catch (error) {
             store.dispatch({ type: 'postingCommentFailed', data: { error } })
           }
@@ -212,6 +213,11 @@
         commentPosted: state => state.setIn(['newComment', 'text'], ''),
 
         loginRequested: state => state.setIn(['user', 'loginRequested'], true),
+        authenticationRejected: state => state.setIn(['user', 'loginRequested'], false),
+        userAuthenticated: (state, { avatar, displayName }) => state
+          .setIn(['user', 'loginRequested'], false)
+          .setIn(['user', 'displayName'], displayName)
+          .setIn(['user', 'avatar'], avatar),
       },
 
       dispatch({ type, data }) {
@@ -233,7 +239,7 @@
 
     // Get all the comments from one page.
     const get = async onComment => {
-      const comments = await (await window.fetch(`${server}sites/${site}/pages/${page}/comments/`)).json()
+      const comments = await (await window.fetch(`${server}/pages/${page}/comments`)).json()
       comments.forEach(onComment)
     }
 
@@ -255,6 +261,26 @@
           renderComments(server, newState.toJS(), store.commands), element, previous
         )
       )
+
+      window.addEventListener('message', (event) => {
+        const origUrl   = parseUrl(event.origin)
+        const serverUrl = parseUrl(server)
+
+        console.log('got event data', event.data)
+
+        if (origUrl.hostname !== serverUrl.hostname) {
+          console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
+          return
+        }
+        if (!event.data.authenticated) {
+          return store.dispatch({ type: 'authenticationRejected' })
+        }
+
+        return store.dispatch({ type: 'userAuthenticated', data: event.data.user })
+
+        // Resend ajax request.
+        // ajax.call(call.method, call.url, call.headers, call.body).then(deferred.resolve)
+      }, false);
     }
 
     return { mount }

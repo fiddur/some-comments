@@ -3,9 +3,9 @@ module.exports = {
     node: true
   },
   parserOptions: {
-    ecmaVersion: 8,
+    ecmaVersion: 11,
   },
-  'extends': 'airbnb',
+  'extends': 'airbnb-base',
   rules: {
     camelcase: 'off',
     'semi': ['error', 'never'],

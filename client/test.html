@@ -1,5 +1,6 @@
 <html>
   <head>
+    <meta charset="utf-8"/>
     <link href="comments.css" rel="stylesheet" />
   </head>
   <body>
@@ -13,8 +14,8 @@
     <script src="node_modules/preact/dist/preact.dev.js"></script>
     <script src="client.js"></script>
     <script>
-      SomeComments('http://ydalar/some-comments/')
-        .comments('MyTestSite', 'MyTestPage')
+      SomeComments('http://ydalar.hökåsgård.se:3000')
+        .comments('MyTestPage')
         .mount(document.getElementById('commentsDiv'))
     </script>
   </body>

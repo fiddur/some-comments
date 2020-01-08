@@ -11,11 +11,23 @@
   "author": "Fredrik Liljegren",
   "license": "AGPL-3.0",
   "devDependencies": {
+    "eslint": "^6.8.0",
     "mocha": "^4.0.1"
   },
   "dependencies": {
+    "@koa/cors": "2",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-plugin-import": "^2.19.1",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.17.0",
     "jsonwebtoken": "^8.1.0",
+    "koa": "^2.11.0",
+    "koa-body": "^4.1.1",
+    "koa-router": "^7.4.0",
+    "koa-session2": "^2.2.10",
     "node-eventstore-client": "^0.1.10",
-    "node-fetch": "^1.7.3"
+    "node-fetch": "^1.7.3",
+    "openid-client": "^3.10.1",
+    "uuid": "^3.3.3"
   }
 }
