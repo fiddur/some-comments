@@ -56,42 +56,33 @@ Perform OpenID Connect login and exchange the `id_token` for a cookie (http
 only, secure) `Authorization: access_token`.
 
 
-#### POST /comments/
+#### GET /pages/:page/comments/
 
-Cookie: `Authorization: access_token`
+Response: `{ comments: [ ... ] }`
+
+
+#### PUT /pages/:page/comments/:id
+
+Header: `Authorization: Bearer <access_token>`
 Payload: `{ page (uuid), body }`
 
-The page SHOULD be registered with a `POST /pages/` call
+#### DELETE /pages/:page/comments/:id
 
-
-#### GET /comments/
-
-
+Header: `Authorization: Bearer <access_token>`
 
 
 ### Event streams and events
-
-* Streams: `user-<user>`
-  * Event `UserAdded`: `{ user: '<id>', displayName: 'User Name', account: 'sub@iss' }`
-
-* Streams: `site-<site>`
 
 * Streams: `page-<page>`
   * Event `CommentAdded`: `{ body, page, user }`
 
   * page
-  * site
-  * user
+  * user (sub@iss)
+  * text
 
 * page - The page ID Stream ID is `page@site`.
   * site
   * url ?
-
-* site
-
-* siteadmin
-  * site
-  * 
 
 * subscription
 

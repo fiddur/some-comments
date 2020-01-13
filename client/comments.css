@@ -13,7 +13,7 @@
   display: table-row;
 }
 
-.comments .comment_avatar {
+.comments .comment_picture {
   vertical-align: top;
   display:        table-cell;
   min-width:      3rem;
@@ -24,11 +24,11 @@
   padding-bottom: 0.2rem;
   overflow:       hidden;
 }
-.comments .comment_avatar img {
+.comments .comment_picture img {
   max-width:  100%;
   max-height: 100%;
 }
-.comments .comment_avatar.unknown_user {
+.comments .comment_picture.unknown_user {
   font-size: 300%;
   text-align: center;
 }

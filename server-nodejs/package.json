@@ -23,11 +23,12 @@
     "jsonwebtoken": "^8.1.0",
     "koa": "^2.11.0",
     "koa-body": "^4.1.1",
+    "koa-jwt": "^3.6.0",
     "koa-router": "^7.4.0",
     "koa-session2": "^2.2.10",
     "node-eventstore-client": "^0.1.10",
     "node-fetch": "^1.7.3",
     "openid-client": "^3.10.1",
-    "uuid": "^3.3.3"
+    "uuidv4": "^6.0.0"
   }
 }

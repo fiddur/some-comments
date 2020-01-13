@@ -7,12 +7,11 @@
  */
 
 /* eslint-env browser */
-/* global Immutable, markdown */
+/* global markdown */
 
 /**
  * Dependencies:
  *
- *  * immutable
  *  * preact
  *  * markdown
  */
@@ -20,13 +19,19 @@
 (window => {
   const { h, render } = window.preact
 
-  const parseUrl = url => document.createElement('a')
+  const parseUrl = url => {
+    const l = document.createElement('a')
+    l.href = url
+    return l
+  }
 
-  const uuid = a => a ? (a ^ Math.random() * 16 >> a / 4).toString(16)
+  const uuid = a => (
+    a ? (a ^ Math.random() * 16 >> a / 4).toString(16)
       : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, uuid)
+  )
 
   const renderDisplayNameSpan = comment => h(
-    'span', { class: 'commenter_name' }, comment.user.displayName || ''
+    'span', { class: 'commenter_name' }, comment.user.name || ''
   )
 
   const renderCommentDiv = comment => h(
@@ -36,26 +41,27 @@
         class:                   'comment_text',
         dangerouslySetInnerHTML: { __html: markdown.toHTML(comment.text) },
       }),
-      h('span', { class: 'comment_created' }, comment.createdAt || ''),
+      h('span', { class: 'comment_created' },
+        comment.createdAt ? new Date(comment.createdAt).toString() : ''),
     ]
   )
 
-  const renderAvatarDiv = user => h(
-    'div', { class: `comment_avatar ${user.avatar ? '' : 'unknown_user'}` },
-    user.avatar ? h('img', { src: user.avatar || '', alt: user.displayName || '' })
-                : '?'
+  const renderPictureDiv = user => h(
+    'div', { class: `comment_picture ${user.picture ? '' : 'unknown_user'}` },
+    user.picture ? h('img', { src: user.picture || '', alt: user.name || '' })
+      : '?'
   )
 
   const renderCommentRow = (comment, user) => h(
     'div', { class: 'comment_row', id: `comment_${comment.id}` }, [
-      renderAvatarDiv(comment.user),
+      renderPictureDiv(comment.user),
       renderCommentDiv(comment, user),
     ]
   )
 
   const renderCommentingDiv = (user, text, onInput, onSubmit) => h(
     'div', { class: 'comment_row' }, [
-      renderAvatarDiv(user),
+      renderPictureDiv(user),
       h('div', { class: 'comment' }, [
         h('div', { class: 'comment_text comment_input' }, [
           h('textarea', {
@@ -101,7 +107,6 @@
         h('form', {
           onSubmit: async e => {
             e.preventDefault()
-            console.log('submitted')
             const response = await fetch(`${server}/login`, {
               body:        JSON.stringify({ account: 'a name@anonymous' }),
               credentials: 'include',
@@ -109,7 +114,6 @@
               method:      'POST',
               mode:        'cors',
             })
-            console.log(response)
           },
         }, h('input', { name: 'anonymous', placeholder: 'Display name' })),
       ])),
@@ -119,8 +123,6 @@
   const renderComments = (
     server, { comments, newComment, user }, { attemptAddComment, updateNewComment }
   ) => {
-    console.log(comments)
-
     const rows = comments.map(comment => renderCommentRow(comment, user))
 
     rows.push(renderCommentingDiv(
@@ -148,38 +150,39 @@
     ])
   }
 
-  const putComment = ({ server, text, id, page }) => fetch(
-    `${server}/pages/${page}/comments/:id`, {
+  const putComment = ({ accessToken, server, text, id, page }) => fetch(
+    `${server}/pages/${page}/comments/${id}`, {
       body:        JSON.stringify({ text }),
       credentials: 'include',
-      headers:     { 'content-type': 'application/json' },
       method:      'PUT',
       mode:        'cors',
+      headers:     {
+        Authorization:  `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
     }
   )
 
-  const Comments = server => (page) => {
+  const Comments = server => page => {
     const store = {
-      state: Immutable.fromJS({
+      state: {
         comments:   [],
         user:       {},
         newComment: { text: '' },
-      }),
-      listeners: Immutable.Set(),
+      },
+      listeners: new Set(),
       commands:  {
         // Takes state.newComment and sends it to server.
         attemptAddComment: async text => {
           try {
             const id = uuid() // create the comment id
             store.dispatch({ type: 'postingComment', data: { text, id, page } })
-            let response = await putComment({ server, text, id, page })
 
-            if (response.status === 401) {
+            if (!store.state.user || !store.state.user.accessToken) {
               store.dispatch({ type: 'loginRequested' })
               await new Promise(resolve => {
-                const waitForUser = async newState => {
-                  if (newState.toJS().user.displayName) {
-                    response = await putComment({ server, text, id, page })
+                const waitForUser = newState => {
+                  if (newState.user && newState.user.accessToken) {
                     resolve()
                     store.removeListener(waitForUser)
                   }
@@ -187,6 +190,10 @@
                 store.addListener(waitForUser)
               })
             }
+
+            const response = await putComment(
+              { accessToken: store.state.user.accessToken, server, text, id, page },
+            )
 
             const comment = await response.json()
             store.dispatch({ type: 'commentPosted', data: { } })
@@ -202,39 +209,27 @@
       },
 
       apply: {
-        comment: (state, comment) => state
-          .updateIn(['comments'], comments => comments.push(comment)),
+        comment: (state, comment) => ({ ...state, comments: [...state.comments, comment] }),
 
-        newCommentInput: (state, input) => state
-          .setIn(['newComment', 'text'], input),
+        newCommentInput: (state, text) => ({ ...state, newComment: { ...state.newComment, text } }),
 
         // postingComment
         // postingCommentFailed
-        commentPosted: state => state.setIn(['newComment', 'text'], ''),
+        commentPosted: state => ({ ...state, newComment: { ...state.newComment, text: '' } }),
 
-        loginRequested: state => state.setIn(['user', 'loginRequested'], true),
-        authenticationRejected: state => state.setIn(['user', 'loginRequested'], false),
-        userAuthenticated: (state, { avatar, displayName }) => state
-          .setIn(['user', 'loginRequested'], false)
-          .setIn(['user', 'displayName'], displayName)
-          .setIn(['user', 'avatar'], avatar),
+        loginRequested:         state => ({ ...state, user: { loginRequested: true } }),
+        authenticationRejected: state => ({ ...state, user: {} }),
+        userAuthenticated:      (state, user) => ({ ...state, user }),
       },
 
       dispatch({ type, data }) {
-        console.log('dispatch of', type, data)
         if (type in store.apply) store.state = store.apply[type](store.state, data)
         store.listeners.forEach(listener => listener(store.state))
       },
 
-      addListener(listener) {
-        store.listeners = store.listeners.add(listener)
-        console.log(store.listeners)
-      },
+      addListener(listener) { store.listeners.add(listener) },
 
-      removeListener(listener) {
-        store.listeners = store.listeners.remove(listener)
-        console.log(store.listeners)
-      },
+      removeListener(listener) { store.listeners.delete(listener) },
     }
 
     // Get all the comments from one page.
@@ -245,50 +240,38 @@
 
     // Mount the (auto-updating) commenting display on element
     const mount = element => {
-      console.log('mounting on', element)
-
       // Fetch all comments.
       get(store.commands.storeComment)
 
       // Render onto given element.
       const previous = render(
-        renderComments(server, store.state.toJS(), store.commands), element
+        renderComments(server, store.state, store.commands), element
       )
 
       // Re-render on updated state.
       store.addListener(
         newState => render(
-          renderComments(server, newState.toJS(), store.commands), element, previous
+          renderComments(server, newState, store.commands), element, previous
         )
       )
 
-      window.addEventListener('message', (event) => {
+      window.addEventListener('message', event => {
         const origUrl   = parseUrl(event.origin)
         const serverUrl = parseUrl(server)
 
-        console.log('got event data', event.data)
-
-        if (origUrl.hostname !== serverUrl.hostname) {
-          console.log('Origin ' + origUrl.hostname + ' != ' + serverUrl.hostname + '.  Ignoring.')
-          return
-        }
+        if (origUrl.hostname !== serverUrl.hostname) return
         if (!event.data.authenticated) {
-          return store.dispatch({ type: 'authenticationRejected' })
+          return void store.dispatch({ type: 'authenticationRejected' })
         }
 
-        return store.dispatch({ type: 'userAuthenticated', data: event.data.user })
-
-        // Resend ajax request.
-        // ajax.call(call.method, call.url, call.headers, call.body).then(deferred.resolve)
-      }, false);
+        return void store.dispatch({ type: 'userAuthenticated', data: event.data.user })
+      }, false)
     }
 
     return { mount }
   }
 
-  const SomeComments = server => ({
-    comments: Comments(server),
-  })
+  const SomeComments = server => ({ comments: Comments(server) })
 
   window.SomeComments = SomeComments // eslint-disable-line no-param-reassign
 })(window)
