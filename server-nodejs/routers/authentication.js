@@ -55,12 +55,10 @@ const authentication = async ({ config: { host, oidcProviders }, accessTokenSecr
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     ctx.set('Pragma', 'no-cache')
     ctx.set('Expires', 0)
+    ctx.cookies.set('accessToken', accessToken)
     ctx.body = `
       <script>
-        window.opener.postMessage({
-          authenticated: true,
-          user: ${JSON.stringify({ accessToken, ...user })},
-        }, '*')
+        window.opener.postMessage({ authenticated: true, user: ${JSON.stringify({ user })}}, '*')
         window.close()
       </script>
     `

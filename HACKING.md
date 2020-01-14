@@ -16,6 +16,8 @@ Contributing
 
 * Settings are EVIL!  ...make extensibility in clients.
 
+* Clients dictates IDs, for posts and whatnots.
+
 * NodeJS specifics:
 
   * Immutable.  Don't mutate state, always use `const`.  (Exception: replacing
@@ -34,21 +36,8 @@ This is about comments, designed for a blog.
 
 Extensibility lives in the client, don't complect the code!
 
-Each service has a list of compliance , that should be verified with service
-acceptance testing.
 
-All services must respond to `GET /check` with validation of live connectivity.
-
-Keep services separated.  E.g. install all deps in service dir; the only top
-level dependencies (node.js) are for running acceptance tests.
-
-All services must listen to port `PORT` from env.
-
-Name service dir `{language}_version` (where version can be a number, or a
-nickname, or a principle tried out).
-
-
-### Services
+### Endpoints
 
 #### [POST /login](services/login_post/README.md)
 

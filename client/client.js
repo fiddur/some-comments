@@ -19,24 +19,20 @@
 (window => {
   const { h, render } = window.preact
 
-  const parseUrl = url => {
-    const l = document.createElement('a')
-    l.href = url
-    return l
-  }
+  const parseUrl = url => { const l = document.createElement('a'); l.href = url; return l }
 
   const uuid = a => (
     a ? (a ^ Math.random() * 16 >> a / 4).toString(16)
       : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, uuid)
   )
 
-  const renderDisplayNameSpan = comment => h(
+  const renderDisplayNameSpan = ({ comment }) => h(
     'span', { class: 'commenter_name' }, comment.user.name || ''
   )
 
-  const renderCommentDiv = comment => h(
+  const renderCommentDiv = ({ comment }) => h(
     'div', { class: 'comment' }, [
-      renderDisplayNameSpan(comment),
+      renderDisplayNameSpan({ comment }),
       h('div', {
         class:                   'comment_text',
         dangerouslySetInnerHTML: { __html: markdown.toHTML(comment.text) },
@@ -46,22 +42,21 @@
     ]
   )
 
-  const renderPictureDiv = user => h(
+  const renderPictureDiv = ({ user }) => h(
     'div', { class: `comment_picture ${user.picture ? '' : 'unknown_user'}` },
-    user.picture ? h('img', { src: user.picture || '', alt: user.name || '' })
-      : '?'
+    user.picture ? h('img', { src: user.picture || '', alt: user.name || '' }) : '?'
   )
 
-  const renderCommentRow = (comment, user) => h(
+  const renderCommentRow = ({ comment }) => h(
     'div', { class: 'comment_row', id: `comment_${comment.id}` }, [
-      renderPictureDiv(comment.user),
-      renderCommentDiv(comment, user),
+      renderPictureDiv({ user: comment.user }),
+      renderCommentDiv({ comment }),
     ]
   )
 
-  const renderCommentingDiv = (user, text, onInput, onSubmit) => h(
+  const renderCommentingDiv = ({ user, text, onInput, onSubmit }) => h(
     'div', { class: 'comment_row' }, [
-      renderPictureDiv(user),
+      renderPictureDiv({ user }),
       h('div', { class: 'comment' }, [
         h('div', { class: 'comment_text comment_input' }, [
           h('textarea', {
@@ -90,7 +85,7 @@
   )
 
   const renderLogin = ({ server, authenticators }) => h('div', { class: 'login' }, [
-    h('h1', null, 'Comment as…'),
+    h('h1', null, 'Authenticate with…'),
     h('ul', { class: 'login_list' }, [
       ...authenticators.map(authenticator => h('li', null, h(
         'a', { href: `${server}/auth/${authenticator.id}`, target: '_blank' }, [
@@ -102,40 +97,24 @@
           `${authenticator.title} ..`,
         ]
       ))),
-      h('li', null, h('label', null, [
-        'Anonymously as: ',
-        h('form', {
-          onSubmit: async e => {
-            e.preventDefault()
-            const response = await fetch(`${server}/login`, {
-              body:        JSON.stringify({ account: 'a name@anonymous' }),
-              credentials: 'include',
-              headers:     { 'content-type': 'application/json' },
-              method:      'POST',
-              mode:        'cors',
-            })
-          },
-        }, h('input', { name: 'anonymous', placeholder: 'Display name' })),
-      ])),
     ]),
   ])
 
-  const renderComments = (
-    server, { comments, newComment, user }, { attemptAddComment, updateNewComment }
-  ) => {
-    const rows = comments.map(comment => renderCommentRow(comment, user))
+  const renderComments = ({
+    server,
+    state: { comments, newComment, user },
+    commands: { attemptAddComment, updateNewComment },
+  }) => {
+    const rows = comments.map(comment => renderCommentRow({ comment, user }))
 
-    rows.push(renderCommentingDiv(
-      user, newComment.text,
-      input => updateNewComment(input.target.value),
-      () => attemptAddComment(newComment.text)
-    ))
+    rows.push(renderCommentingDiv({
+      user,
+      text:     newComment.text,
+      onInput:  input => updateNewComment(input.target.value),
+      onSubmit: () => attemptAddComment(newComment.text),
+    }))
 
-    const loginFrame = user.loginRequested
-      ? h('iframe', { src: `${server}/checkauth.html`, class: 'hidden' })
-      : ''
-
-    const authenticators = [ // ..get from.. 401?
+    const authenticators = [ // TODO: Fetch as metadata.
       {
         title: 'Google',
         id:    'google',
@@ -146,20 +125,17 @@
 
     return h('div', { class: 'some_comments' }, [
       h('div', { class: 'comments_container' }, rows),
-      someCommentInfo, loginFrame, loginBox,
+      someCommentInfo, loginBox,
     ])
   }
 
-  const putComment = ({ accessToken, server, text, id, page }) => fetch(
+  const putComment = ({ server, text, id, page }) => fetch(
     `${server}/pages/${page}/comments/${id}`, {
       body:        JSON.stringify({ text }),
       credentials: 'include',
       method:      'PUT',
       mode:        'cors',
-      headers:     {
-        Authorization:  `Bearer ${accessToken}`,
-        'content-type': 'application/json',
-      },
+      headers:     { 'content-type': 'application/json' },
     }
   )
 
@@ -172,17 +148,16 @@
       },
       listeners: new Set(),
       commands:  {
-        // Takes state.newComment and sends it to server.
         attemptAddComment: async text => {
           try {
             const id = uuid() // create the comment id
             store.dispatch({ type: 'postingComment', data: { text, id, page } })
 
-            if (!store.state.user || !store.state.user.accessToken) {
+            if (!store.state.user || !store.state.user.name) {
               store.dispatch({ type: 'loginRequested' })
               await new Promise(resolve => {
                 const waitForUser = newState => {
-                  if (newState.user && newState.user.accessToken) {
+                  if (newState.user && newState.user.name) {
                     resolve()
                     store.removeListener(waitForUser)
                   }
@@ -191,9 +166,7 @@
               })
             }
 
-            const response = await putComment(
-              { accessToken: store.state.user.accessToken, server, text, id, page },
-            )
+            const response = await putComment({ server, text, id, page })
 
             const comment = await response.json()
             store.dispatch({ type: 'commentPosted', data: { } })
@@ -219,12 +192,13 @@
 
         loginRequested:         state => ({ ...state, user: { loginRequested: true } }),
         authenticationRejected: state => ({ ...state, user: {} }),
-        userAuthenticated:      (state, user) => ({ ...state, user }),
+        userAuthenticated:      (state, { user }) => ({ ...state, user }),
       },
 
       dispatch({ type, data }) {
         if (type in store.apply) store.state = store.apply[type](store.state, data)
         store.listeners.forEach(listener => listener(store.state))
+        console.log('new state', store.state)
       },
 
       addListener(listener) { store.listeners.add(listener) },
@@ -232,29 +206,26 @@
       removeListener(listener) { store.listeners.delete(listener) },
     }
 
-    // Get all the comments from one page.
-    const get = async onComment => {
+    const get = async ({ onComment }) => {
       const comments = await (await window.fetch(`${server}/pages/${page}/comments`)).json()
       comments.forEach(onComment)
     }
 
-    // Mount the (auto-updating) commenting display on element
     const mount = element => {
-      // Fetch all comments.
-      get(store.commands.storeComment)
+      get({ onComment: store.commands.storeComment })
 
-      // Render onto given element.
       const previous = render(
-        renderComments(server, store.state, store.commands), element
+        renderComments({ server, state: store.state, commands: store.commands }),
+        element
       )
 
-      // Re-render on updated state.
       store.addListener(
         newState => render(
-          renderComments(server, newState, store.commands), element, previous
+          renderComments({ server, state: newState, commands: store.commands }), element, previous
         )
       )
 
+      // Listen to message from authentication window.
       window.addEventListener('message', event => {
         const origUrl   = parseUrl(event.origin)
         const serverUrl = parseUrl(server)

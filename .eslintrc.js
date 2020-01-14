@@ -26,7 +26,12 @@ module.exports = {
         imports:   'always-multiline',
         exports:   'always-multiline',
         functions: 'ignore',
-    }]
-
+    }],
+    'object-curly-newline': ['error', {
+      ObjectExpression:  { minProperties: 8, multiline: true, consistent: true },
+      ObjectPattern:     { minProperties: 8, multiline: true, consistent: true },
+      ImportDeclaration: { minProperties: 8, multiline: true, consistent: true },
+      ExportDeclaration: { minProperties: 8, multiline: true, consistent: true },
+    }],
   },
 }

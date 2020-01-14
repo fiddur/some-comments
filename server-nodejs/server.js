@@ -19,7 +19,9 @@ const getComments = es => async ctx => {
   const { events } = await es.readStreamEventsForward(`page-${page}`, 0, 1000)
 
   const comments = events
-    .map(e => ({ ...JSON.parse(e.event.data.toString()), createdAt: e.event.created }))
+    .map(({ event }) => event)
+    .filter(({ eventType }) => eventType === 'CommentAdded')
+    .map(e => ({ ...JSON.parse(e.data.toString()), createdAt: e.created }))
     .filter(c => 'user' in c)
     .filter(c => 'text' in c)
 
@@ -50,7 +52,7 @@ const main = async () => {
   const app = new Koa()
   app.use(koaBody({ jsonLimit: '1kb' }))
   app.use(cors({ credentials: true, exposeHeaders: ['content-type'] }))
-  app.use(koaJwt({ secret: accessTokenSecret, passthrough: true }))
+  app.use(koaJwt({ cookie: 'accessToken', secret: accessTokenSecret, passthrough: true }))
   app.use(koaSession())
 
   const router = koaRouter()

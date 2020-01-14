@@ -5,7 +5,6 @@
   "author": "Fredrik Liljegren",
   "license": "AGPL-3.0",
   "dependencies": {
-    "immutable": "^3.8.2",
     "markdown": "^0.5.0",
     "preact": "^8.2.7"
   }
